@@ -19,4 +19,4 @@ echo '     -H "Content-Type: application/json" \'
 echo '     -d '"'"'{"username":"admin","email":"admin@school.com","password":"admin123","full_name":"Admin","is_superadmin":true}'"'"
 echo ""
 
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8060
