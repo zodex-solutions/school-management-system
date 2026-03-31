@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: "DM Sans", sans-serif;
+      background: #f0f2f8;
+      color: #1e293b
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .font-outfit {
+      font-family: "Outfit", sans-serif
+    }
+
+    .finput {
+      width: 100%;
+      padding: .625rem .875rem;
+      border-radius: .75rem;
+      border: 1.5px solid #e2e8f0;
+      background: #f0f2f8;
+      font-size: .875rem;
+      outline: none;
+      transition: all .15s;
+      color: #1e293b
+    }
+
+    .finput:focus {
+      background: #fff;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .12)
+    }
+
+    .lbl {
+      display: block;
+      font-size: .8125rem;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: .375rem
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(15, 23, 42, .55);
+      backdrop-filter: blur(4px)
+    }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 1.5rem;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, .22);
+      width: 100%;
+      overflow: hidden;
+      animation: modalIn .2s ease
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(.96) translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0)
+      }
+    }
+
+    .tab-bar {
+      display: flex;
+      border-bottom: 2px solid #f1f5f9;
+      overflow-x: auto;
+      gap: .25rem;
+      padding: 0 1rem
+    }
+
+    .tab-bar::-webkit-scrollbar {
+      display: none
+    }
+
+    .tab-btn {
+      padding: .875rem 1.125rem;
+      font-size: .8125rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      color: #94a3b8;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -2px;
+      transition: all .15s;
+      font-family: "DM Sans", sans-serif
+    }
+
+    .tab-btn.active {
+      color: #6366f1;
+      border-bottom-color: #6366f1
+    }
+
+    .tab-btn:not(.active):hover {
+      color: #475569
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px
+    }
+  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Students - EduManage Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body >
+   <div class="min-h-screen">
+    <div id="sidebarContainer"></div>
+    <main class="min-h-screen lg:ml-[260px]">
+      <div id="topbarContainer"></div>
+      <div class="p-6 space-y-6">
+
+        <div id="statsRow" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div class="flex flex-col sm:flex-row gap-3 justify-between mb-5">
+            <div class="flex gap-2 flex-wrap">
+              <input id="searchInput" type="text" placeholder="Search name, admission no..."
+                class="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64" />
+              <select id="filterStatus"
+                class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Transferred">Transferred</option>
+              </select>
+              <select id="filterClass"
+                class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="">All Classes</option>
+              </select>
+            </div>
+            <button onclick="openAdmModal()"
+              class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg whitespace-nowrap flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Admit Student
+            </button>
+          </div>
+          <div id="tblContainer"></div>
+          <div id="pgn" class="flex justify-between items-center mt-4 text-sm text-gray-500"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Admission Modal -->
+  <div id="admModal"
+    class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="modal-box w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
+        <h3 class="text-lg font-bold text-gray-900">New Student Admission</h3>
+        <button onclick="document.getElementById('admModal').style.display='none'"
+          class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
+      </div>
+      <div class="px-6 py-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div><label class="lbl">First Name *</label><input id="m_fn" type="text" class="finput"
+              placeholder="First name" /></div>
+          <div><label class="lbl">Last Name *</label><input id="m_ln" type="text" class="finput"
+              placeholder="Last name" /></div>
+          <div><label class="lbl">Date of Birth</label><input id="m_dob" type="date" class="finput" /></div>
+          <div><label class="lbl">Gender *</label>
+            <select id="m_gnd" class="finput">
+              <option value="">Select</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div><label class="lbl">Phone</label><input id="m_ph" type="tel" class="finput" placeholder="Phone" /></div>
+          <div><label class="lbl">Email</label><input id="m_em" type="email" class="finput" placeholder="Email" /></div>
+          <div><label class="lbl">Class *</label>
+            <select id="m_cls" class="finput" onchange="loadSections()">
+              <option value="">Select class</option>
+            </select>
+          </div>
+          <div><label class="lbl">Section *</label>
+            <select id="m_sec" class="finput">
+              <option value="">Select section</option>
+            </select>
+          </div>
+          <div><label class="lbl">Father Name</label><input id="m_fa" type="text" class="finput"
+              placeholder="Father name" /></div>
+          <div><label class="lbl">Father Phone</label><input id="m_fp" type="tel" class="finput"
+              placeholder="Father phone" /></div>
+          <div><label class="lbl">Mother Name</label><input id="m_ma" type="text" class="finput"
+              placeholder="Mother name" /></div>
+          <div><label class="lbl">Blood Group</label>
+            <select id="m_bg" class="finput">
+              <option value="">Select</option>
+              <option>A+</option>
+              <option>A-</option>
+              <option>B+</option>
+              <option>B-</option>
+              <option>O+</option>
+              <option>O-</option>
+              <option>AB+</option>
+              <option>AB-</option>
+            </select>
+          </div>
+          <div><label class="lbl">Admission Type</label>
+            <select id="m_at" class="finput">
+              <option value="New">New</option>
+              <option value="Transfer">Transfer</option>
+            </select>
+          </div>
+          <div><label class="lbl">Aadhar Number</label><input id="m_aad" type="text" class="finput"
+              placeholder="12-digit Aadhar" maxlength="12" /></div>
+          <div class="sm:col-span-2"><label class="lbl">Address</label><textarea id="m_addr" rows="2"
+              class="finput resize-none" placeholder="Current address"></textarea></div>
+        </div>
+      </div>
+      <div class="flex gap-3 px-6 py-4 border-t sticky bottom-0 bg-white justify-end">
+        <button onclick="document.getElementById('admModal').style.display='none'"
+          class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200">Cancel</button>
+        <button onclick="submitAdm()"
+          class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 shadow-lg">Admit
+          Student</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detModal"
+    class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="modal-box w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
+        <h3 class="text-lg font-bold text-gray-900">Student Profile</h3>
+        <button onclick="document.getElementById('detModal').style.display='none'"
+          class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
+      </div>
+      <div id="detContent" class="px-6 py-5"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl text-white font-medium shadow-2xl">
+  </div>
+  <style>
+    .lbl {
+      display: block;
+      font-size: .875rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: .375rem
+    }
+
+    .finput {
+      width: 100%;
+      padding: .625rem .75rem;
+      border-radius: .75rem;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      font-size: .875rem;
+      outline: none;
+      transition: all .15s
+    }
+
+    .finput:focus {
+      background: #fff;
+      ring: 2px;
+      ring-color: #3b82f6;
+      border-color: #3b82f6
+    }
+  </style>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById('sidebarContainer').innerHTML = renderSidebar('students');
+    document.getElementById('topbarContainer').innerHTML = renderTopbar('Student Management', 'Manage admissions and profiles');
+    const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
+    let curPage = 1, totalPgs = 1;
+
+    async function loadStats() {
+      if (!schoolId) return;
+      try { const r = await StudentAPI.stats(schoolId, ayId); if (r?.data) { const d = r.data; document.getElementById('statsRow').innerHTML = statCard('Total', d.total || 0, '&#128104;&#8205;&#127979;', 'blue') + statCard('Male', d.by_gender?.male || 0, '&#128104;', 'indigo') + statCard('Female', d.by_gender?.female || 0, '&#128105;', 'purple') + statCard('Transferred', d.by_status?.transferred || 0, '&#128640;', 'orange'); } } catch (e) { }
+    }
+
+    async function loadClasses() {
+      if (!schoolId) return;
+      try {
+        const r = await ClassAPI.list(schoolId, ayId); const opts = (r?.data || []).map(c => `<option value="${c.id}" data-secs='${JSON.stringify(c.sections)}'>${c.name}</option>`).join('');
+        document.getElementById('filterClass').innerHTML = '<option value="">All Classes</option>' + opts;
+        document.getElementById('m_cls').innerHTML = '<option value="">Select class</option>' + opts;
+      } catch (e) { }
+    }
+
+    function loadSections() {
+      const el = document.getElementById('m_cls'), secEl = document.getElementById('m_sec');
+      const opt = el.options[el.selectedIndex];
+      secEl.innerHTML = '<option value="">Select section</option>';
+      if (!opt || !opt.dataset.secs) return;
+      JSON.parse(opt.dataset.secs).forEach(s => secEl.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+    }
+
+    async function loadStudents(page = 1) {
+      if (!schoolId) { document.getElementById('tblContainer').innerHTML = '<div class="text-center py-12 text-gray-400"><div class="text-4xl mb-2">&#9888;</div><p>Configure school first</p></div>'; return; }
+      const params = { school_id: schoolId, page, per_page: 15 };
+      if (ayId) params.academic_year_id = ayId;
+      const srch = document.getElementById('searchInput').value.trim();
+      const stat = document.getElementById('filterStatus').value;
+      const cls = document.getElementById('filterClass').value;
+      if (srch) params.search = srch; if (stat) params.admission_status = stat; if (cls) params.classroom_id = cls;
+      try {
+        const res = await StudentAPI.list(params); const students = res?.data || []; const meta = res?.meta || {};
+        totalPgs = meta.total_pages || 1; curPage = meta.page || 1;
+        const hdrs = ['Adm No', 'Name', 'Class/Sec', 'Gender', 'Father', 'Phone', 'Status', 'Actions'];
+        const rows = students.map(s => `
+      <td class="px-4 py-3 font-mono text-xs text-gray-500">${s.admission_no || '-'}</td>
+      <td class="px-4 py-3"><div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-bold text-xs flex-shrink-0">${s.first_name.charAt(0).toUpperCase()}</div>
+        <div><div class="font-medium text-gray-900 text-sm">${s.full_name}</div><div class="text-xs text-gray-400">${s.student_id || ''}</div></div>
+      </div></td>
+      <td class="px-4 py-3 text-sm text-gray-600">${s.classroom_name || '-'}${s.section_name ? ' / ' + s.section_name : ''}</td>
+      <td class="px-4 py-3 text-sm text-gray-600">${s.gender || '-'}</td>
+      <td class="px-4 py-3 text-sm text-gray-600">${s.father_name || '-'}</td>
+      <td class="px-4 py-3 text-sm text-gray-600">${s.phone || s.father_phone || '-'}</td>
+      <td class="px-4 py-3">${tdBadge(s.admission_status, s.admission_status === 'Active' ? 'green' : s.admission_status === 'Transferred' ? 'orange' : 'gray')}</td>
+      <td class="px-4 py-3"><div class="flex gap-1">
+        <button onclick="viewStudent('${s.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="View">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </button>
+        <button onclick="delStudent('${s.id}','${s.full_name.replace(/'/g, "\'")}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Delete">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>
+      </div></td>
+    `);
+        document.getElementById('tblContainer').innerHTML = buildTable(hdrs, rows, 'No students found. Admit your first student!');
+        document.getElementById('pgn').innerHTML = meta.total ? `<span>Showing ${(curPage - 1) * 15 + 1}–${Math.min(curPage * 15, meta.total)} of ${meta.total}</span><div class="flex gap-2"><button onclick="loadStudents(${curPage - 1})" ${curPage <= 1 ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg border disabled:opacity-40 text-sm">&#8592;</button><span class="px-3 py-1.5 text-sm">${curPage}/${totalPgs}</span><button onclick="loadStudents(${curPage + 1})" ${curPage >= totalPgs ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg border disabled:opacity-40 text-sm">&#8594;</button></div>` : '';
+      } catch (e) { document.getElementById('tblContainer').innerHTML = `<div class="text-center py-12 text-red-400"><p>Error: ${e.message}</p></div>`; }
+    }
+
+    async function viewStudent(id) {
+      try {
+        const res = await StudentAPI.get(id); const s = res.data;
+        document.getElementById('detContent').innerHTML = `
+      <div class="flex items-center gap-4 pb-5 border-b mb-5">
+        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">${s.first_name.charAt(0).toUpperCase()}</div>
+        <div><h4 class="text-xl font-bold">${s.full_name}</h4><p class="text-gray-500 text-sm">${s.admission_no} · ${s.classroom_name || ''} ${s.section_name || ''}</p></div>
+      </div>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="space-y-2">
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Gender:</span><span class="font-medium">${s.gender || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">DOB:</span><span class="font-medium">${formatDate(s.date_of_birth)}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Phone:</span><span class="font-medium">${s.phone || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Blood Grp:</span><span class="font-medium">${s.medical_info?.blood_group || '-'}</span></div>
+        </div>
+        <div class="space-y-2">
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Father:</span><span class="font-medium">${s.parent_info?.father_name || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Father Ph:</span><span class="font-medium">${s.parent_info?.father_phone || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Mother:</span><span class="font-medium">${s.parent_info?.mother_name || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Adm Date:</span><span class="font-medium">${formatDate(s.admission_date)}</span></div>
+        </div>
+      </div>
+      <div class="mt-5 flex gap-3">
+        <button onclick="genTC('${id}','${s.full_name.replace(/'/g, "\'")}')" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl text-sm font-medium hover:bg-orange-200">Generate TC</button>
+      </div>`;
+        document.getElementById('detModal').style.display = 'flex';
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function genTC(id, name) {
+      if (!confirm('Generate TC for ' + name + '?')) return;
+      try { const r = await StudentAPI.generateTC(id, { conduct: 'Good', fee_clearance: false }); showToast('TC ' + r.data.tc_number + ' generated!'); document.getElementById('detModal').style.display = 'none'; loadStudents(curPage); }
+      catch (e) { showToast('TC failed: ' + e.message, 'error'); }
+    }
+
+    async function delStudent(id, name) {
+      if (!confirm('Deactivate "' + name + '"?')) return;
+      try { await StudentAPI.delete(id); showToast('Student deactivated'); loadStudents(curPage); loadStats(); }
+      catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function openAdmModal() {
+      document.querySelectorAll('#admModal input,#admModal select,#admModal textarea').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; });
+      document.getElementById('admModal').style.display = 'flex';
+    }
+
+    async function submitAdm() {
+      if (!schoolId) { showToast('Configure school first', 'error'); return; }
+      const fn = document.getElementById('m_fn').value.trim(), ln = document.getElementById('m_ln').value.trim();
+      const gnd = document.getElementById('m_gnd').value, cls = document.getElementById('m_cls').value, sec = document.getElementById('m_sec').value;
+      if (!fn || !ln || !gnd || !cls || !sec) { showToast('Fill all required fields (*)', 'error'); return; }
+      try {
+        const r = await StudentAPI.create({
+          first_name: fn, last_name: ln, gender: gnd,
+          date_of_birth: document.getElementById('m_dob').value ? new Date(document.getElementById('m_dob').value).toISOString() : null,
+          phone: document.getElementById('m_ph').value || null, email: document.getElementById('m_em').value || null,
+          current_address: document.getElementById('m_addr').value || null,
+          aadhar_number: document.getElementById('m_aad').value || null,
+          school_id: schoolId, academic_year_id: ayId || '',
+          classroom_id: cls, section_id: sec,
+          admission_type: document.getElementById('m_at').value,
+          parent_info: { father_name: document.getElementById('m_fa').value, father_phone: document.getElementById('m_fp').value, mother_name: document.getElementById('m_ma').value },
+          medical_info: { blood_group: document.getElementById('m_bg').value || null }
+        });
+        showToast('Admitted! No: ' + r.data.admission_no);
+        document.getElementById('admModal').style.display = 'none';
+        loadStudents(1); loadStats();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    const dbLoad = debounce(() => loadStudents(1));
+    document.getElementById('searchInput').addEventListener('input', dbLoad);
+    document.getElementById('filterStatus').addEventListener('change', () => loadStudents(1));
+    document.getElementById('filterClass').addEventListener('change', () => loadStudents(1));
+    loadStats(); loadClasses(); loadStudents();
+  </script>
+</body>
+
+</html>

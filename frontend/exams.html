@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: "DM Sans", sans-serif;
+      background: #f0f2f8;
+      color: #1e293b
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .font-outfit {
+      font-family: "Outfit", sans-serif
+    }
+
+    .finput {
+      width: 100%;
+      padding: .625rem .875rem;
+      border-radius: .75rem;
+      border: 1.5px solid #e2e8f0;
+      background: #f0f2f8;
+      font-size: .875rem;
+      outline: none;
+      transition: all .15s;
+      color: #1e293b
+    }
+
+    .finput:focus {
+      background: #fff;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .12)
+    }
+
+    .lbl {
+      display: block;
+      font-size: .8125rem;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: .375rem
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(15, 23, 42, .55);
+      backdrop-filter: blur(4px)
+    }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 1.5rem;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, .22);
+      width: 100%;
+      overflow: hidden;
+      animation: modalIn .2s ease
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(.96) translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0)
+      }
+    }
+
+    .tab-bar {
+      display: flex;
+      border-bottom: 2px solid #f1f5f9;
+      overflow-x: auto;
+      gap: .25rem;
+      padding: 0 1rem
+    }
+
+    .tab-bar::-webkit-scrollbar {
+      display: none
+    }
+
+    .tab-btn {
+      padding: .875rem 1.125rem;
+      font-size: .8125rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      color: #94a3b8;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -2px;
+      transition: all .15s;
+      font-family: "DM Sans", sans-serif
+    }
+
+    .tab-btn.active {
+      color: #6366f1;
+      border-bottom-color: #6366f1
+    }
+
+    .tab-btn:not(.active):hover {
+      color: #475569
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px
+    }
+  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Examinations - EduManage Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .finput {
+      width: 100%;
+      padding: .625rem .75rem;
+      border-radius: .75rem;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      font-size: .875rem;
+      outline: none
+    }
+
+    .finput:focus {
+      background: #fff;
+      border-color: #3b82f6
+    }
+
+    .lbl {
+      display: block;
+      font-size: .875rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: .375rem
+    }
+  </style>
+</head>
+
+<body>
+    <div class="min-h-screen">
+    <div id="sidebarContainer"></div>
+    <main class="min-h-screen lg:ml-[260px]">
+      <div id="topbarContainer"></div>
+      <div class="p-6 space-y-6">
+
+        <div
+          style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+          <div class="flex border-b border-gray-100 px-2 gap-1">
+            <button onclick="switchExTab(0)"
+              class="extab px-5 py-4 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">Exams</button>
+            <button onclick="switchExTab(1)"
+              class="extab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Enter
+              Marks</button>
+            <button onclick="switchExTab(2)"
+              class="extab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Results</button>
+          </div>
+
+          <!-- Exams -->
+          <div id="extab0" class="p-5">
+            <div class="flex justify-between mb-4">
+              <div class="flex gap-2">
+                <select id="examTypeFilter"
+                  class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none">
+                  <option value="">All Types</option>
+                  <option value="Unit Test">Unit Test</option>
+                  <option value="Mid Term">Mid Term</option>
+                  <option value="Final">Final</option>
+                  <option value="Pre-Board">Pre-Board</option>
+                </select>
+              </div>
+              <button onclick="document.getElementById('examModal').style.display='flex';loadExamClasses()"
+                class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg">+
+                Create Exam</button>
+            </div>
+            <div id="examTable"></div>
+          </div>
+
+          <!-- Enter Marks -->
+          <div id="extab1" class="p-5 hidden">
+            <h4 class="font-bold text-gray-900 mb-4">Enter Marks</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-5">
+              <div><label class="lbl">Exam *</label><select id="mk_exam" class="finput">
+                  <option value="">Select exam</option>
+                </select></div>
+              <div><label class="lbl">Class *</label><select id="mk_cls" class="finput" onchange="loadMarksSections()">
+                  <option value="">Select class</option>
+                </select></div>
+              <div><label class="lbl">Section *</label><select id="mk_sec" class="finput">
+                  <option value="">Select section</option>
+                </select></div>
+              <div><label class="lbl">Subject *</label><select id="mk_sub" class="finput">
+                  <option value="">Select subject</option>
+                </select></div>
+            </div>
+            <button onclick="loadStudentsForMarks()"
+              class="mb-4 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700">Load
+              Students</button>
+            <div id="marksTable"></div>
+            <div id="marksActionRow" class="hidden mt-4">
+              <button onclick="saveMarks()"
+                class="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 shadow-lg">Save
+                Marks</button>
+            </div>
+          </div>
+
+          <!-- Results -->
+          <div id="extab2" class="p-5 hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+              <div><label class="lbl">Exam *</label><select id="res_exam" class="finput">
+                  <option value="">Select exam</option>
+                </select></div>
+              <div><label class="lbl">Class *</label><select id="res_cls" class="finput"
+                  onchange="loadResultSections()">
+                  <option value="">Select class</option>
+                </select></div>
+              <div><label class="lbl">Section *</label><select id="res_sec" class="finput">
+                  <option value="">Select section</option>
+                </select></div>
+              <div class="flex items-end gap-2">
+                <button onclick="loadResults()"
+                  class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">View</button>
+                <button onclick="generateResults()"
+                  class="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700">Generate</button>
+              </div>
+            </div>
+            <div id="resultsTable"></div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Exam Modal -->
+  <div id="examModal" class="modal-overlay" style="display:none">
+    <div class="modal-box w-full max-w-md">
+      <div class="flex justify-between items-center px-6 py-4 border-b">
+        <h3 class="font-bold text-gray-900">Create Exam</h3><button
+          onclick="document.getElementById('examModal').style.display='none'"
+          class="p-2 text-gray-400 hover:text-gray-600 rounded-xl text-lg">×</button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div><label class="lbl">Exam Name *</label><input id="ex_name" class="finput"
+            placeholder="e.g. Unit Test 1, Mid Term 2024" /></div>
+        <div><label class="lbl">Exam Type *</label>
+          <select id="ex_type" class="finput">
+            <option value="">Select type</option>
+            <option value="Unit Test">Unit Test</option>
+            <option value="Mid Term">Mid Term</option>
+            <option value="Final">Final</option>
+            <option value="Pre-Board">Pre-Board</option>
+            <option value="Internal">Internal</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">Start Date</label><input id="ex_start" type="date" class="finput" /></div>
+          <div><label class="lbl">End Date</label><input id="ex_end" type="date" class="finput" /></div>
+        </div>
+        <div><label class="lbl">Classes</label>
+          <div id="exClassCheckboxes" class="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-3">
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3 px-6 py-4 border-t justify-end">
+        <button onclick="document.getElementById('examModal').style.display='none'"
+          class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
+        <button onclick="saveExam()"
+          class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl text-white font-medium shadow-2xl">
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById('sidebarContainer').innerHTML = renderSidebar('exams');
+    document.getElementById('topbarContainer').innerHTML = renderTopbar('Examinations', 'Manage exams, marks and results');
+    const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
+    let marksStudents = [];
+
+    function switchExTab(idx) {
+      document.querySelectorAll('.extab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
+      document.querySelectorAll('[id^="extab"]').forEach(t => { t.classList.toggle('hidden', parseInt(t.id.replace('extab', '')) !== idx); });
+      if (idx === 0) loadExams(); if (idx === 1) loadMarksFormData(); if (idx === 2) loadResultFormData();
+    }
+
+    async function loadExamClasses() {
+      if (!schoolId) return;
+      try { const r = await ClassAPI.list(schoolId, ayId); document.getElementById('exClassCheckboxes').innerHTML = (r?.data || []).map(c => `<label class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded-lg p-1"><input type="checkbox" value="${c.id}" class="exam-cls w-4 h-4 accent-blue-600"/><span class="text-sm text-gray-700">${c.name}</span></label>`).join(''); } catch (e) { }
+    }
+
+    async function saveExam() {
+      if (!schoolId || !ayId) { showToast('Configure school and academic year', 'error'); return; }
+      const name = document.getElementById('ex_name').value.trim(), type = document.getElementById('ex_type').value;
+      if (!name || !type) { showToast('Name and type required', 'error'); return; }
+      const clsIds = Array.from(document.querySelectorAll('.exam-cls:checked')).map(c => c.value);
+      try {
+        await ExamAPI.create({ school_id: schoolId, academic_year_id: ayId, name, exam_type: type, start_date: document.getElementById('ex_start').value ? new Date(document.getElementById('ex_start').value).toISOString() : null, end_date: document.getElementById('ex_end').value ? new Date(document.getElementById('ex_end').value).toISOString() : null, classroom_ids: clsIds });
+        showToast('Exam created!'); document.getElementById('examModal').style.display = 'none'; loadExams();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function loadExams() {
+      if (!schoolId) { document.getElementById('examTable').innerHTML = '<div class="text-center py-8 text-gray-400">Configure school first</div>'; return; }
+      const params = { school_id: schoolId }; if (ayId) params.academic_year_id = ayId;
+      const type = document.getElementById('examTypeFilter').value; if (type) params.exam_type = type;
+      try {
+        const r = await ExamAPI.list(params); const exams = r?.data || [];
+        const hdrs = ['Exam Name', 'Type', 'Classes', 'Start Date', 'End Date', 'Status', 'Actions'];
+        const rows = exams.map(e => `
+      <td class="px-4 py-3 font-medium text-gray-900 text-sm">${e.name}</td>
+      <td class="px-4 py-3">${tdBadge(e.exam_type, 'blue')}</td>
+      <td class="px-4 py-3 text-xs text-gray-500">${(e.classes || []).join(', ') || '-'}</td>
+      <td class="px-4 py-3 text-sm text-gray-600">${formatDate(e.start_date)}</td>
+      <td class="px-4 py-3 text-sm text-gray-600">${formatDate(e.end_date)}</td>
+      <td class="px-4 py-3">${tdBadge(e.status, e.status === 'Results Published' ? 'green' : e.status === 'Completed' ? 'blue' : e.status === 'Ongoing' ? 'orange' : 'gray')}</td>
+      <td class="px-4 py-3"><div class="flex gap-1">
+        <select onchange="updateExamStatus('${e.id}',this.value)" class="text-xs px-2 py-1.5 rounded-lg border border-gray-200 bg-gray-50">
+          <option value="">Change Status</option>
+          <option value="Scheduled">Scheduled</option><option value="Ongoing">Ongoing</option><option value="Completed">Completed</option><option value="Results Published">Publish Results</option>
+        </select>
+      </div></td>
+    `);
+        document.getElementById('examTable').innerHTML = buildTable(hdrs, rows, 'No exams found. Create your first exam!');
+      } catch (e) { document.getElementById('examTable').innerHTML = `<div class="text-center py-8 text-red-400">Error: ${e.message}</div>`; }
+    }
+
+    async function updateExamStatus(id, status) {
+      if (!status) return;
+      try { await ExamAPI.updateStatus(id, status); showToast('Status updated to ' + status); loadExams(); } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function loadMarksFormData() {
+      if (!schoolId) return;
+      try {
+        const [er, cr, sr] = await Promise.allSettled([ExamAPI.list({ school_id: schoolId, academic_year_id: ayId || '' }), ClassAPI.list(schoolId, ayId), SubjectAPI.list(schoolId)]);
+        if (er.status === 'fulfilled') document.getElementById('mk_exam').innerHTML = '<option value="">Select exam</option>' + (er.value?.data || []).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+        if (cr.status === 'fulfilled') { const cls = cr.value?.data || []; document.getElementById('mk_cls').innerHTML = '<option value="">Select class</option>' + cls.map(c => `<option value="${c.id}" data-secs='${JSON.stringify(c.sections)}'>${c.name}</option>`).join(''); document.getElementById('res_cls').innerHTML = document.getElementById('mk_cls').innerHTML; }
+        if (sr.status === 'fulfilled') document.getElementById('mk_sub').innerHTML = '<option value="">Select subject</option>' + (sr.value?.data || []).map(s => `<option value="${s.id}" data-max="${s.max_theory_marks}">${s.name}</option>`).join('');
+        if (er.status === 'fulfilled') document.getElementById('res_exam').innerHTML = document.getElementById('mk_exam').innerHTML;
+      } catch (e) { }
+    }
+
+    function loadMarksSections() {
+      const el = document.getElementById('mk_cls'), se = document.getElementById('mk_sec');
+      const opt = el.options[el.selectedIndex]; se.innerHTML = '<option value="">Select section</option>';
+      if (!opt?.dataset.secs) return; JSON.parse(opt.dataset.secs).forEach(s => se.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+    }
+    function loadResultSections() {
+      const el = document.getElementById('res_cls'), se = document.getElementById('res_sec');
+      const opt = el.options[el.selectedIndex]; se.innerHTML = '<option value="">Select section</option>';
+      if (!opt?.dataset.secs) return; JSON.parse(opt.dataset.secs).forEach(s => se.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+    }
+
+    async function loadStudentsForMarks() {
+      const examId = document.getElementById('mk_exam').value, clsId = document.getElementById('mk_cls').value, secId = document.getElementById('mk_sec').value, subId = document.getElementById('mk_sub').value;
+      if (!examId || !clsId || !secId || !subId) { showToast('Select all fields', 'error'); return; }
+      try {
+        const r = await StudentAPI.list({ school_id: schoolId, classroom_id: clsId, section_id: secId, per_page: 100 });
+        marksStudents = r?.data || [];
+        const subEl = document.getElementById('mk_sub'); const maxMark = subEl.options[subEl.selectedIndex]?.dataset.max || 100;
+        document.getElementById('marksTable').innerHTML = `
+      <div class="overflow-x-auto rounded-xl border border-gray-200">
+        <table class="w-full text-sm"><thead><tr class="bg-gray-50 border-b">
+          <th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">#</th>
+          <th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Student</th>
+          <th class="px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Theory (/${maxMark})</th>
+          <th class="px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Practical</th>
+          <th class="px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Absent</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          ${marksStudents.map((s, i) => `
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-gray-500 text-sm">${i + 1}</td>
+              <td class="px-4 py-3"><div class="font-medium text-gray-900 text-sm">${s.full_name}</div><div class="text-xs text-gray-400">${s.admission_no}</div></td>
+              <td class="px-4 py-3 text-center"><input type="number" id="th_${s.id}" min="0" max="${maxMark}" class="w-20 px-2 py-1.5 rounded-lg border border-gray-200 text-center text-sm" placeholder="0"/></td>
+              <td class="px-4 py-3 text-center"><input type="number" id="pr_${s.id}" min="0" class="w-20 px-2 py-1.5 rounded-lg border border-gray-200 text-center text-sm" placeholder="0"/></td>
+              <td class="px-4 py-3 text-center"><input type="checkbox" id="ab_${s.id}" class="w-4 h-4 accent-red-500"/></td>
+            </tr>`).join('')}
+        </tbody></table>
+      </div>`;
+        document.getElementById('marksActionRow').style.display = 'flex';
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function saveMarks() {
+      const examId = document.getElementById('mk_exam').value, clsId = document.getElementById('mk_cls').value, secId = document.getElementById('mk_sec').value, subId = document.getElementById('mk_sub').value;
+      const entries = marksStudents.map(s => ({ student_id: s.id, theory_marks: parseFloat(document.getElementById(`th_${s.id}`)?.value) || 0, practical_marks: parseFloat(document.getElementById(`pr_${s.id}`)?.value) || 0, is_absent: document.getElementById(`ab_${s.id}`)?.checked || false }));
+      try {
+        const r = await ExamAPI.enterMarksBulk({ school_id: schoolId, exam_id: examId, classroom_id: clsId, section_id: secId, subject_id: subId, entries });
+        showToast(`Marks saved for ${r.data.saved} students!`);
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function generateResults() {
+      const examId = document.getElementById('res_exam').value, clsId = document.getElementById('res_cls').value, secId = document.getElementById('res_sec').value;
+      if (!examId || !clsId || !secId) { showToast('Select exam, class and section', 'error'); return; }
+      try {
+        const r = await ExamAPI.generateResults(examId, clsId, secId);
+        showToast(`Results generated for ${r.data.generated} students!`); loadResults();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function loadResults() {
+      const examId = document.getElementById('res_exam').value, clsId = document.getElementById('res_cls').value, secId = document.getElementById('res_sec').value;
+      if (!examId) { showToast('Select exam', 'error'); return; }
+      const params = { exam_id: examId }; if (clsId) params.classroom_id = clsId; if (secId) params.section_id = secId;
+      try {
+        const r = await ExamAPI.getResults(params); const results = r?.data || [];
+        const hdrs = ['Rank', 'Student', 'Total', '%', 'Grade', 'CGPA', 'Status'];
+        const rows = results.map(res => `
+      <td class="px-4 py-3 text-center font-bold text-gray-700">${res.rank || '-'}</td>
+      <td class="px-4 py-3 font-medium text-gray-900 text-sm">${res.student_name || '-'}</td>
+      <td class="px-4 py-3 text-sm text-gray-700">${res.total_obtained || 0}/${res.total_max || 0}</td>
+      <td class="px-4 py-3 font-bold text-gray-900">${res.percentage || 0}%</td>
+      <td class="px-4 py-3 font-bold text-blue-600">${res.grade || '-'}</td>
+      <td class="px-4 py-3 text-sm text-gray-700">${res.cgpa || '-'}</td>
+      <td class="px-4 py-3">${tdBadge(res.result_status, res.result_status === 'Pass' ? 'green' : 'red')}</td>
+    `);
+        document.getElementById('resultsTable').innerHTML = buildTable(hdrs, rows, 'No results found. Generate results first.');
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function loadResultFormData() {
+      if (!schoolId) return;
+      try {
+        const [er, cr] = await Promise.allSettled([ExamAPI.list({ school_id: schoolId, academic_year_id: ayId || '' }), ClassAPI.list(schoolId, ayId)]);
+        if (er.status === 'fulfilled') document.getElementById('res_exam').innerHTML = '<option value="">Select exam</option>' + (er.value?.data || []).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+        if (cr.status === 'fulfilled') { const cls = cr.value?.data || []; document.getElementById('res_cls').innerHTML = '<option value="">Select class</option>' + cls.map(c => `<option value="${c.id}" data-secs='${JSON.stringify(c.sections)}'>${c.name}</option>`).join(''); }
+      } catch (e) { }
+    }
+
+    document.getElementById('examTypeFilter').addEventListener('change', loadExams);
+    loadExams();
+  </script>
+</body>
+
+</html>

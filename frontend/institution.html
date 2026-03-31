@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: "DM Sans", sans-serif;
+      background: #f0f2f8;
+      color: #1e293b
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .font-outfit {
+      font-family: "Outfit", sans-serif
+    }
+
+    .finput {
+      width: 100%;
+      padding: .625rem .875rem;
+      border-radius: .75rem;
+      border: 1.5px solid #e2e8f0;
+      background: #f0f2f8;
+      font-size: .875rem;
+      outline: none;
+      transition: all .15s;
+      color: #1e293b
+    }
+
+    .finput:focus {
+      background: #fff;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .12)
+    }
+
+    .lbl {
+      display: block;
+      font-size: .8125rem;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: .375rem
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(15, 23, 42, .55);
+      backdrop-filter: blur(4px)
+    }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 1.5rem;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, .22);
+      width: 100%;
+      overflow: hidden;
+      animation: modalIn .2s ease
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(.96) translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0)
+      }
+    }
+
+    .tab-bar {
+      display: flex;
+      border-bottom: 2px solid #f1f5f9;
+      overflow-x: auto;
+      gap: .25rem;
+      padding: 0 1rem
+    }
+
+    .tab-bar::-webkit-scrollbar {
+      display: none
+    }
+
+    .tab-btn {
+      padding: .875rem 1.125rem;
+      font-size: .8125rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      color: #94a3b8;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -2px;
+      transition: all .15s;
+      font-family: "DM Sans", sans-serif
+    }
+
+    .tab-btn.active {
+      color: #6366f1;
+      border-bottom-color: #6366f1
+    }
+
+    .tab-btn:not(.active):hover {
+      color: #475569
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px
+    }
+  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Institution - EduManage Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+ <div class="min-h-screen">
+    <div id="sidebarContainer"></div>
+   <main class="min-h-screen lg:ml-[260px]">
+      <div id="topbarContainer"></div>
+      <div class="p-6 space-y-6">
+        <style>
+          .finput {
+            width: 100%;
+            padding: .625rem .75rem;
+            border-radius: .75rem;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            font-size: .875rem;
+            outline: none
+          }
+
+          .finput:focus {
+            background: #fff;
+            border-color: #3b82f6
+          }
+
+          .lbl {
+            display: block;
+            font-size: .875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: .375rem
+          }
+        </style>
+
+        <!-- Tabs -->
+        <div
+          style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+          <div class="tab-bar">
+            <button onclick="showTab(0)"
+              class="itab px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 border-blue-600 text-blue-600">School
+              Profile</button>
+            <button onclick="showTab(1)"
+              class="itab px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700">Academic
+              Years</button>
+            <button onclick="showTab(2)"
+              class="itab px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700">Classes</button>
+            <button onclick="showTab(3)"
+              class="itab px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700">Subjects</button>
+            <button onclick="showTab(4)"
+              class="itab px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700">Grading</button>
+          </div>
+
+          <!-- School Profile Tab -->
+          <div id="tab0" class="p-6">
+            <div id="schoolDisplay">
+              <div class="text-center py-12 text-gray-400">
+                <div class="text-5xl mb-3">&#127979;</div>
+                <p class="font-semibold text-gray-600 text-lg">No school configured</p>
+                <p class="text-sm mt-1 mb-4">Set up your school profile to get started</p>
+                <button onclick="showSchoolForm()"
+                  class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700">Create School
+                  Profile</button>
+              </div>
+            </div>
+            <div id="schoolForm" class="hidden">
+              <h4 class="font-bold text-gray-900 mb-5">School Information</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label class="lbl">School Name *</label><input id="s_name" type="text" class="finput"
+                    placeholder="e.g. Delhi Public School" /></div>
+                <div><label class="lbl">School Code *</label><input id="s_code" type="text" class="finput"
+                    placeholder="e.g. DPS001" /></div>
+                <div><label class="lbl">Affiliation Board</label>
+                  <select id="s_board" class="finput">
+                    <option value="">Select board</option>
+                    <option>CBSE</option>
+                    <option>ICSE</option>
+                    <option>State Board</option>
+                    <option>IB</option>
+                  </select>
+                </div>
+                <div><label class="lbl">School Type</label>
+                  <select id="s_type" class="finput">
+                    <option>Private</option>
+                    <option>Government</option>
+                    <option>Aided</option>
+                    <option>International</option>
+                  </select>
+                </div>
+                <div><label class="lbl">Phone</label><input id="s_ph" type="tel" class="finput"
+                    placeholder="School phone" /></div>
+                <div><label class="lbl">Email</label><input id="s_em" type="email" class="finput"
+                    placeholder="School email" /></div>
+                <div><label class="lbl">Website</label><input id="s_web" type="url" class="finput"
+                    placeholder="https://yourschool.com" /></div>
+                <div><label class="lbl">Established Year</label><input id="s_yr" type="number" class="finput"
+                    placeholder="2000" min="1800" max="2024" /></div>
+                <div><label class="lbl">Affiliation Number</label><input id="s_affno" type="text" class="finput"
+                    placeholder="Affiliation number" /></div>
+                <div><label class="lbl">Currency</label><select id="s_cur" class="finput">
+                    <option value="INR">INR (&#8377;)</option>
+                    <option value="USD">USD ($)</option>
+                  </select></div>
+                <div class="sm:col-span-2"><label class="lbl">Address</label><textarea id="s_addr" rows="2"
+                    class="finput resize-none" placeholder="School address"></textarea></div>
+                <div class="sm:col-span-2"><label class="lbl">Tagline</label><input id="s_tag" type="text"
+                    class="finput" placeholder="School tagline/motto" /></div>
+              </div>
+              <div class="flex gap-3 mt-6">
+                <button onclick="saveSchool()"
+                  class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg text-sm">Save
+                  School</button>
+                <button
+                  onclick="document.getElementById('schoolForm').style.display='none';document.getElementById('schoolDisplay').style.display='flex'"
+                  class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Academic Years Tab -->
+          <div id="tab1" class="p-6 hidden">
+            <div class="flex justify-between items-center mb-5">
+              <h4 class="font-bold text-gray-900">Academic Years</h4>
+              <button onclick="document.getElementById('ayModal').style.display='flex'"
+                class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add
+                Year</button>
+            </div>
+            <div id="ayList"></div>
+          </div>
+
+          <!-- Classes Tab -->
+          <div id="tab2" class="p-6 hidden">
+            <div class="flex justify-between items-center mb-5">
+              <h4 class="font-bold text-gray-900">Classes &amp; Sections</h4>
+              <button onclick="document.getElementById('clsModal').style.display='flex'"
+                class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add
+                Class</button>
+            </div>
+            <div id="clsList"></div>
+          </div>
+
+          <!-- Subjects Tab -->
+          <div id="tab3" class="p-6 hidden">
+            <div class="flex justify-between items-center mb-5">
+              <h4 class="font-bold text-gray-900">Subjects</h4>
+              <button onclick="document.getElementById('subModal').style.display='flex'"
+                class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add
+                Subject</button>
+            </div>
+            <div id="subList"></div>
+          </div>
+
+          <!-- Grading Tab -->
+          <div id="tab4" class="p-6 hidden">
+            <div class="flex justify-between items-center mb-5">
+              <h4 class="font-bold text-gray-900">Grading System</h4>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-6">
+              <h5 class="font-semibold text-gray-700 mb-4">Standard CBSE Grading (A+ to F)</h5>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="bg-white">
+                      <th class="px-4 py-2 text-left font-semibold">Grade</th>
+                      <th class="px-4 py-2 text-left font-semibold">Min %</th>
+                      <th class="px-4 py-2 text-left font-semibold">Max %</th>
+                      <th class="px-4 py-2 text-left font-semibold">Grade Point</th>
+                    </tr>
+                  </thead>
+                  <tbody id="gradeTable" class="divide-y divide-gray-100 bg-white"></tbody>
+                </table>
+              </div>
+              <button onclick="createDefaultGrading()"
+                class="mt-4 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Save
+                Default CBSE Grading</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Academic Year Modal -->
+  <div id="ayModal" class="modal-overlay" style="display:none">
+    <div class="modal-box w-full max-w-md">
+      <div class="flex justify-between items-center px-6 py-4 border-b">
+        <h3 class="font-bold text-gray-900">Add Academic Year</h3>
+        <button onclick="document.getElementById('ayModal').style.display='none'"
+          class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div><label class="lbl">Year Name *</label><input id="ay_name" class="finput" placeholder="e.g. 2024-2025" />
+        </div>
+        <div><label class="lbl">Start Date *</label><input id="ay_start" type="date" class="finput" /></div>
+        <div><label class="lbl">End Date *</label><input id="ay_end" type="date" class="finput" /></div>
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="ay_curr"
+            class="w-4 h-4 accent-blue-600" /><span class="text-sm text-gray-700">Set as Current Year</span></label>
+      </div>
+      <div class="flex gap-3 px-6 py-4 border-t justify-end">
+        <button onclick="document.getElementById('ayModal').style.display='none'"
+          class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
+        <button onclick="saveAY()"
+          class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Class Modal -->
+  <div id="clsModal" class="modal-overlay" style="display:none">
+    <div class="modal-box w-full max-w-md">
+      <div class="flex justify-between items-center px-6 py-4 border-b">
+        <h3 class="font-bold text-gray-900">Add Class</h3>
+        <button onclick="document.getElementById('clsModal').style.display='none'"
+          class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div><label class="lbl">Class Name *</label><input id="cls_name" class="finput"
+            placeholder="e.g. Class 1 or Grade 10" /></div>
+        <div><label class="lbl">Order (for sorting)</label><input id="cls_order" type="number" class="finput"
+            placeholder="1" min="1" /></div>
+        <div><label class="lbl">Sections (comma-separated)</label><input id="cls_secs" class="finput"
+            placeholder="A, B, C" /></div>
+      </div>
+      <div class="flex gap-3 px-6 py-4 border-t justify-end">
+        <button onclick="document.getElementById('clsModal').style.display='none'"
+          class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
+        <button onclick="saveClass()"
+          class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subject Modal -->
+  <div id="subModal" class="modal-overlay" style="display:none">
+    <div class="modal-box w-full max-w-md">
+      <div class="flex justify-between items-center px-6 py-4 border-b">
+        <h3 class="font-bold text-gray-900">Add Subject</h3>
+        <button onclick="document.getElementById('subModal').style.display='none'"
+          class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div><label class="lbl">Subject Name *</label><input id="sub_name" class="finput"
+            placeholder="e.g. Mathematics" /></div>
+        <div><label class="lbl">Subject Code *</label><input id="sub_code" class="finput" placeholder="e.g. MATH001" />
+        </div>
+        <div><label class="lbl">Subject Type</label>
+          <select id="sub_type" class="finput">
+            <option value="Theory">Theory</option>
+            <option value="Practical">Practical</option>
+            <option value="Both">Both (Theory + Practical)</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">Max Theory Marks</label><input id="sub_th" type="number" class="finput" value="100" />
+          </div>
+          <div><label class="lbl">Max Practical Marks</label><input id="sub_pr" type="number" class="finput"
+              value="0" /></div>
+        </div>
+        <div><label class="lbl">Passing Marks</label><input id="sub_pass" type="number" class="finput" value="33" />
+        </div>
+        <label class="flex items-center gap-2"><input type="checkbox" id="sub_opt"
+            class="w-4 h-4 accent-blue-600" /><span class="text-sm text-gray-700">Optional Subject</span></label>
+      </div>
+      <div class="flex gap-3 px-6 py-4 border-t justify-end">
+        <button onclick="document.getElementById('subModal').style.display='none'"
+          class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
+        <button onclick="saveSubject()"
+          class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl text-white font-medium shadow-2xl">
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById('sidebarContainer').innerHTML = renderSidebar('institution');
+    document.getElementById('topbarContainer').innerHTML = renderTopbar('Institution Setup', 'School configuration and management');
+    const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
+
+    const defGrades = [{ grade: 'A+', min: 91, max: 100, gp: 10 }, { grade: 'A', min: 81, max: 90, gp: 9 }, { grade: 'B+', min: 71, max: 80, gp: 8 }, { grade: 'B', min: 61, max: 70, gp: 7 }, { grade: 'C+', min: 51, max: 60, gp: 6 }, { grade: 'C', min: 41, max: 50, gp: 5 }, { grade: 'D', min: 33, max: 40, gp: 4 }, { grade: 'F', min: 0, max: 32, gp: 0 }];
+    document.getElementById('gradeTable').innerHTML = defGrades.map(g => `<tr><td class="px-4 py-2 font-semibold text-blue-600">${g.grade}</td><td class="px-4 py-2">${g.min}</td><td class="px-4 py-2">${g.max}</td><td class="px-4 py-2">${g.gp}</td></tr>`).join('');
+
+    function showTab(idx) {
+      document.querySelectorAll('.itab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
+      document.querySelectorAll('[id^="tab"]').forEach((t, i) => { if (t.id.startsWith('tab')) t.classList.toggle('hidden', parseInt(t.id.replace('tab', '')) !== idx); });
+      if (idx === 1) loadAYs(); if (idx === 2) loadClasses(); if (idx === 3) loadSubjects();
+    }
+
+    function showSchoolForm() { document.getElementById('schoolDisplay').style.display = 'none'; document.getElementById('schoolForm').style.display = 'flex'; }
+
+    async function loadSchool() {
+      if (!schoolId) return;
+      try {
+        const r = await SchoolAPI.get(schoolId); const s = r.data;
+        document.getElementById('schoolDisplay').innerHTML = `
+      <div class="flex items-center gap-5 pb-5 border-b mb-5">
+        <div class="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 font-bold text-2xl">&#127979;</div>
+        <div><h3 class="text-xl font-bold text-gray-900">${s.name}</h3><p class="text-gray-500">${s.code} · ${s.type || ''} · ${s.affiliation_board || ''}</p></div>
+        <button onclick="showSchoolForm()" class="ml-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200">Edit</button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div class="bg-gray-50 rounded-xl p-3"><p class="text-gray-400">Phone</p><p class="font-medium mt-0.5">${s.phone || '-'}</p></div>
+        <div class="bg-gray-50 rounded-xl p-3"><p class="text-gray-400">Email</p><p class="font-medium mt-0.5">${s.email || '-'}</p></div>
+        <div class="bg-gray-50 rounded-xl p-3"><p class="text-gray-400">Website</p><p class="font-medium mt-0.5">${s.website || '-'}</p></div>
+        <div class="bg-gray-50 rounded-xl p-3"><p class="text-gray-400">Established</p><p class="font-medium mt-0.5">${s.established_year || '-'}</p></div>
+      </div>`;
+      } catch (e) { }
+    }
+
+    async function saveSchool() {
+      const name = document.getElementById('s_name').value.trim(), code = document.getElementById('s_code').value.trim();
+      if (!name || !code) { showToast('Name and Code required', 'error'); return; }
+      try {
+        const payload = { name, code, type: document.getElementById('s_type').value, affiliation_board: document.getElementById('s_board').value || null, phone: document.getElementById('s_ph').value || null, email: document.getElementById('s_em').value || null, website: document.getElementById('s_web').value || null, established_year: parseInt(document.getElementById('s_yr').value) || null, affiliation_no: document.getElementById('s_affno').value || null, currency: document.getElementById('s_cur').value, tagline: document.getElementById('s_tag').value || null };
+        const r = await SchoolAPI.create(payload);
+        localStorage.setItem('school_id', r.data.id);
+        showToast('School saved!'); document.getElementById('schoolForm').style.display = 'none'; loadSchool();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function loadAYs() {
+      if (!schoolId) { document.getElementById('ayList').innerHTML = '<p class="text-gray-400 text-sm">Save school first</p>'; return; }
+      try {
+        const r = await AcademicYearAPI.list(schoolId); const ays = r?.data || [];
+        document.getElementById('ayList').innerHTML = buildTable(['Year Name', 'Start', 'End', 'Current', ''], ays.map(y => `
+    <td class="px-4 py-3 font-semibold text-gray-900">${y.name}</td>
+    <td class="px-4 py-3 text-sm text-gray-600">${formatDate(y.start_date)}</td>
+    <td class="px-4 py-3 text-sm text-gray-600">${formatDate(y.end_date)}</td>
+    <td class="px-4 py-3">${y.is_current ? tdBadge('Current', 'green') : ''}</td>
+    <td class="px-4 py-3"><button onclick="setCurrentAY('${y.id}')" class="text-xs text-blue-600 hover:underline">Set Current</button></td>
+  `), 'No academic years yet');
+      } catch (e) { }
+    }
+
+    async function saveAY() {
+      if (!schoolId) { showToast('Save school first', 'error'); return; }
+      const name = document.getElementById('ay_name').value.trim();
+      if (!name) { showToast('Year name required', 'error'); return; }
+      try {
+        const r = await AcademicYearAPI.create({ school_id: schoolId, name, start_date: new Date(document.getElementById('ay_start').value).toISOString(), end_date: new Date(document.getElementById('ay_end').value).toISOString(), is_current: document.getElementById('ay_curr').checked });
+        if (document.getElementById('ay_curr').checked) { localStorage.setItem('ay_id', r.data.id); }
+        showToast('Academic year saved!'); document.getElementById('ayModal').style.display = 'none'; loadAYs();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function setCurrentAY(id) {
+      try { await AcademicYearAPI.setCurrent(id); localStorage.setItem('ay_id', id); showToast('Set as current year'); loadAYs(); }
+      catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function loadClasses() {
+      if (!schoolId) { document.getElementById('clsList').innerHTML = '<p class="text-gray-400 text-sm">Save school first</p>'; return; }
+      try {
+        const r = await ClassAPI.list(schoolId, ayId); const cls = r?.data || [];
+        document.getElementById('clsList').innerHTML = buildTable(['Class Name', 'Sections', ''], cls.map(c => `
+    <td class="px-4 py-3 font-semibold text-gray-900">${c.name}</td>
+    <td class="px-4 py-3"><div class="flex gap-1 flex-wrap">${(c.sections || []).map(s => `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">${s.name}</span>`).join('')}</div></td>
+    <td class="px-4 py-3 text-sm text-gray-400">${(c.sections || []).length} sections</td>
+  `), 'No classes yet');
+      } catch (e) { }
+    }
+
+    async function saveClass() {
+      if (!schoolId) { showToast('Save school first', 'error'); return; }
+      if (!ayId) { showToast('Set current academic year first', 'error'); return; }
+      const name = document.getElementById('cls_name').value.trim();
+      if (!name) { showToast('Class name required', 'error'); return; }
+      const secs = document.getElementById('cls_secs').value.split(',').map(s => s.trim()).filter(Boolean);
+      try {
+        await ClassAPI.create({ school_id: schoolId, academic_year_id: ayId, name, numeric_name: parseInt(document.getElementById('cls_order').value) || null, sections: secs });
+        showToast('Class created!'); document.getElementById('clsModal').style.display = 'none'; loadClasses();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function loadSubjects() {
+      if (!schoolId) { document.getElementById('subList').innerHTML = '<p class="text-gray-400 text-sm">Save school first</p>'; return; }
+      try {
+        const r = await SubjectAPI.list(schoolId); const subs = r?.data || [];
+        document.getElementById('subList').innerHTML = buildTable(['Name', 'Code', 'Type', 'Max Marks', 'Passing', ''], subs.map(s => `
+    <td class="px-4 py-3 font-semibold text-gray-900">${s.name}</td>
+    <td class="px-4 py-3 font-mono text-xs text-gray-500">${s.code}</td>
+    <td class="px-4 py-3">${tdBadge(s.subject_type, s.subject_type === 'Theory' ? 'blue' : s.subject_type === 'Practical' ? 'green' : 'purple')}</td>
+    <td class="px-4 py-3 text-sm text-gray-600">${s.max_theory_marks + (s.max_practical_marks ? '+' + s.max_practical_marks : '')}</td>
+    <td class="px-4 py-3 text-sm text-gray-600">${s.passing_marks}</td>
+    <td class="px-4 py-3"><button onclick="delSubject('${s.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td>
+  `), 'No subjects yet');
+      } catch (e) { }
+    }
+
+    async function saveSubject() {
+      if (!schoolId) { showToast('Save school first', 'error'); return; }
+      const name = document.getElementById('sub_name').value.trim(), code = document.getElementById('sub_code').value.trim();
+      if (!name || !code) { showToast('Name and code required', 'error'); return; }
+      try {
+        await SubjectAPI.create({ school_id: schoolId, name, code, subject_type: document.getElementById('sub_type').value, max_theory_marks: parseFloat(document.getElementById('sub_th').value) || 100, max_practical_marks: parseFloat(document.getElementById('sub_pr').value) || 0, passing_marks: parseFloat(document.getElementById('sub_pass').value) || 33, is_optional: document.getElementById('sub_opt').checked });
+        showToast('Subject saved!'); document.getElementById('subModal').style.display = 'none'; loadSubjects();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function delSubject(id) {
+      if (!confirm('Delete this subject?')) return;
+      try { await SubjectAPI.delete(id); showToast('Subject deleted'); loadSubjects(); } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function createDefaultGrading() {
+      if (!schoolId) { showToast('Save school first', 'error'); return; }
+      const scales = [{ grade: 'A+', min_marks: 91, max_marks: 100, grade_point: 10, remarks: 'Outstanding' }, { grade: 'A', min_marks: 81, max_marks: 90, grade_point: 9, remarks: 'Excellent' }, { grade: 'B+', min_marks: 71, max_marks: 80, grade_point: 8, remarks: 'Very Good' }, { grade: 'B', min_marks: 61, max_marks: 70, grade_point: 7, remarks: 'Good' }, { grade: 'C+', min_marks: 51, max_marks: 60, grade_point: 6, remarks: 'Average' }, { grade: 'C', min_marks: 41, max_marks: 50, grade_point: 5, remarks: 'Below Average' }, { grade: 'D', min_marks: 33, max_marks: 40, grade_point: 4, remarks: 'Pass' }, { grade: 'F', min_marks: 0, max_marks: 32, grade_point: 0, remarks: 'Fail' }];
+      try { await GradingAPI.create({ school_id: schoolId, name: 'CBSE Standard Grading', grading_type: 'Marks', is_default: true, scales }); showToast('Default grading system saved!'); }
+      catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    loadSchool();
+  </script>
+</body>
+
+</html>

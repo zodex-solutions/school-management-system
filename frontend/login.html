@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EduManage Pro — Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",sans-serif;min-height:100vh;overflow:hidden;background:#030712}
+h1,h2,h3{font-family:"Outfit",sans-serif}
+.bg-canvas{position:fixed;inset:0;z-index:0}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.35;animation:float 8s ease-in-out infinite}
+.orb-1{width:600px;height:600px;background:radial-gradient(#6366f1,#4f46e5);top:-200px;left:-100px;animation-delay:0s}
+.orb-2{width:500px;height:500px;background:radial-gradient(#a855f7,#7c3aed);bottom:-150px;right:-100px;animation-delay:-3s}
+.orb-3{width:300px;height:300px;background:radial-gradient(#06b6d4,#0284c7);top:30%;left:30%;animation-delay:-5s}
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(20px,-20px) scale(1.05)}66%{transform:translate(-15px,15px) scale(.97)}}
+.grid-pattern{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:50px 50px}
+.glass-card{background:rgba(255,255,255,.04);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);border-radius:1.75rem;box-shadow:0 0 0 1px rgba(255,255,255,.04),0 32px 64px rgba(0,0,0,.5)}
+.field-wrap{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:.875rem;transition:all .2s;display:flex;align-items:center;gap:.75rem;padding:0 1rem}
+.field-wrap:focus-within{background:rgba(255,255,255,.1);border-color:rgba(99,102,241,.7);box-shadow:0 0 0 3px rgba(99,102,241,.2)}
+.field-wrap svg{color:rgba(255,255,255,.3);flex-shrink:0;width:1.125rem;height:1.125rem}
+.field-wrap input{background:none;border:none;outline:none;color:#fff;font-size:.9375rem;font-family:"DM Sans",sans-serif;width:100%;padding:.875rem 0}
+.field-wrap input::placeholder{color:rgba(255,255,255,.25)}
+.btn-login{width:100%;padding:1rem;background:linear-gradient(135deg,#6366f1 0%,#7c3aed 50%,#6366f1 100%);background-size:200% auto;border:none;border-radius:.875rem;color:#fff;font-size:.9375rem;font-family:"Outfit",sans-serif;font-weight:700;cursor:pointer;transition:all .25s;box-shadow:0 0 20px rgba(99,102,241,.4);letter-spacing:.02em}
+.btn-login:hover{background-position:right center;box-shadow:0 0 30px rgba(99,102,241,.6);transform:translateY(-1px)}
+.btn-login:active{transform:translateY(0);box-shadow:0 0 15px rgba(99,102,241,.4)}
+.demo-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:.625rem;padding:.5rem 1rem;cursor:pointer;transition:all .15s;text-align:center}
+.demo-chip:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)}
+.feature-item{display:flex;align-items:center;gap:.75rem;padding:.625rem 0}
+.feature-dot{width:.375rem;height:.375rem;background:#6366f1;border-radius:50%;flex-shrink:0}
+.error-box{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:.75rem;padding:.875rem 1rem;color:#fca5a5;font-size:.875rem;display:none}
+.spinner{width:1.125rem;height:1.125rem;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stat-chip{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:.75rem;padding:.625rem .875rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="bg-canvas">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="grid-pattern"></div>
+</div>
+
+<div style="position:relative;z-index:1;min-height:100vh;display:flex">
+  <!-- Left side — Branding -->
+  <div class="hidden lg:flex flex-col justify-between p-12" style="width:52%;background:transparent">
+    <div class="flex items-center gap-3">
+      <div style="width:2.75rem;height:2.75rem;background:linear-gradient(135deg,#6366f1,#a855f7);border-radius:1rem;display:flex;align-items:center;justify-content:center">
+        <svg style="width:1.375rem;height:1.375rem;color:white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+      </div>
+      <span style="font-family:Outfit,sans-serif;font-weight:800;font-size:1.25rem;color:#fff">EduManage Pro</span>
+    </div>
+
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:999px;padding:.375rem .875rem;margin-bottom:1.5rem">
+        <div style="width:.5rem;height:.5rem;background:#6366f1;border-radius:50%;animation:pulse 2s infinite"></div>
+        <span style="font-size:.8125rem;color:rgba(255,255,255,.7);font-weight:500">v3.0 — 19 Modules Active</span>
+      </div>
+      <h1 style="font-size:3.5rem;font-weight:900;line-height:1.1;color:#fff;margin-bottom:1.25rem">
+        Complete School<br/>
+        <span style="background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Management<br/>System</span>
+      </h1>
+      <p style="color:rgba(255,255,255,.5);font-size:1rem;line-height:1.7;max-width:420px">
+        Everything you need to run a modern school — from admissions to payroll, in one beautiful platform.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:2rem;max-width:400px">
+        <div class="stat-chip"><div style="font-family:Outfit,sans-serif;font-size:1.75rem;font-weight:800;color:#fff">19</div><div style="font-size:.75rem;color:rgba(255,255,255,.4)">Modules</div></div>
+        <div class="stat-chip"><div style="font-family:Outfit,sans-serif;font-size:1.75rem;font-weight:800;color:#fff">100%</div><div style="font-size:.75rem;color:rgba(255,255,255,.4)">Working</div></div>
+        <div class="stat-chip"><div style="font-family:Outfit,sans-serif;font-size:1.75rem;font-weight:800;color:#fff">API</div><div style="font-size:.75rem;color:rgba(255,255,255,.4)">FastAPI Backend</div></div>
+        <div class="stat-chip"><div style="font-family:Outfit,sans-serif;font-size:1.75rem;font-weight:800;color:#fff">DB</div><div style="font-size:.75rem;color:rgba(255,255,255,.4)">MongoDB</div></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+      ${['Students','Staff','Fees','Attendance','Library','Hostel','Payroll','Certificates','Parent Portal'].map(m =>
+        `<span style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.5rem;padding:.25rem .75rem;font-size:.75rem;color:rgba(255,255,255,.5)">${m}</span>`
+      ).join('')}
+    </div>
+  </div>
+
+  <!-- Right side — Login Card -->
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem">
+    <div class="glass-card" style="width:100%;max-width:440px;padding:2.5rem">
+
+      <!-- Mobile logo -->
+      <div class="lg:hidden flex items-center gap-3 mb-8">
+        <div style="width:2.5rem;height:2.5rem;background:linear-gradient(135deg,#6366f1,#a855f7);border-radius:.875rem;display:flex;align-items:center;justify-content:center">
+          <svg style="width:1.25rem;height:1.25rem;color:white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+          </svg>
+        </div>
+        <span style="font-family:Outfit,sans-serif;font-weight:800;color:#fff;font-size:1.125rem">EduManage Pro</span>
+      </div>
+
+      <h2 style="font-size:1.75rem;font-weight:800;color:#fff;margin-bottom:.5rem">Welcome back 👋</h2>
+      <p style="color:rgba(255,255,255,.4);font-size:.9375rem;margin-bottom:2rem">Sign in to your school dashboard</p>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div style="display:flex;flex-direction:column;gap:1rem;margin-top:.5rem">
+        <div>
+          <label style="display:block;font-size:.8125rem;font-weight:600;color:rgba(255,255,255,.5);margin-bottom:.5rem;letter-spacing:.04em;text-transform:uppercase">Username or Email</label>
+          <div class="field-wrap">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="username" placeholder="admin" autocomplete="username"/>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:.8125rem;font-weight:600;color:rgba(255,255,255,.5);margin-bottom:.5rem;letter-spacing:.04em;text-transform:uppercase">Password</label>
+          <div class="field-wrap">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
+          </div>
+        </div>
+
+        <button class="btn-login" id="loginBtn" onclick="doLogin()">
+          <div style="display:flex;align-items:center;justify-content:center;gap:.625rem">
+            <span id="loginText">Sign In</span>
+            <div class="spinner" id="loginSpinner"></div>
+            <svg id="loginArrow" style="width:1.125rem;height:1.125rem" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+      </div>
+
+      <div style="margin-top:1.75rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.08)">
+        <p style="font-size:.8125rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:.875rem;text-transform:uppercase;letter-spacing:.06em">Quick Demo Login</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.625rem">
+          <div class="demo-chip" onclick="fill('admin','admin123')">
+            <div style="font-size:1.25rem;margin-bottom:.25rem">👑</div>
+            <div style="font-size:.8125rem;font-weight:700;color:rgba(255,255,255,.7)">Admin</div>
+            <div style="font-size:.6875rem;color:rgba(255,255,255,.3)">admin / admin123</div>
+          </div>
+          <div class="demo-chip" onclick="fill('teacher1','teacher123')">
+            <div style="font-size:1.25rem;margin-bottom:.25rem">👨‍🏫</div>
+            <div style="font-size:.8125rem;font-weight:700;color:rgba(255,255,255,.7)">Teacher</div>
+            <div style="font-size:.6875rem;color:rgba(255,255,255,.3)">teacher1 / teacher123</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.25rem;text-align:center">
+        <button onclick="showSetup()" style="background:none;border:none;cursor:pointer;font-size:.8125rem;color:rgba(255,255,255,.3);text-decoration:underline;text-decoration-style:dotted">First time? Setup guide</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Setup Modal -->
+<div id="setupModal" style="display:none;position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,.7);backdrop-filter:blur(8px)">
+  <div style="background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:1.5rem;width:100%;max-width:520px;overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.6)">
+    <div style="padding:1.5rem;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center">
+      <h3 style="font-family:Outfit,sans-serif;font-weight:800;color:#fff;font-size:1.125rem">🚀 First Time Setup</h3>
+      <button onclick="document.getElementById('setupModal').style.display='none'" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;width:2rem;height:2rem;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.125rem">×</button>
+    </div>
+    <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1rem">
+      ${[
+        ['1', '#6366f1', 'Start Backend', 'cd backend && pip install -r requirements.txt && uvicorn main:app --reload'],
+        ['2', '#10b981', 'Create Admin', 'POST /api/v1/auth/register with {"username":"admin","email":"admin@school.com","password":"admin123","full_name":"Admin","is_superadmin":true}'],
+        ['3', '#f59e0b', 'Login & Setup', 'Go to Institution → Create School → Academic Year → Classes'],
+      ].map(([num, color, title, desc]) => `
+        <div style="display:flex;gap:1rem;padding:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:1rem">
+          <div style="width:2rem;height:2rem;background:${color}20;border:1px solid ${color}40;border-radius:.625rem;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-weight:800;color:${color};flex-shrink:0">${num}</div>
+          <div><div style="font-weight:700;color:#fff;margin-bottom:.375rem">${title}</div><code style="font-size:.75rem;color:rgba(255,255,255,.4);word-break:break-all">${desc}</code></div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,.08)">
+      <button onclick="document.getElementById('setupModal').style.display='none'" style="width:100%;padding:.875rem;background:linear-gradient(135deg,#6366f1,#7c3aed);border:none;border-radius:.875rem;color:#fff;font-family:Outfit,sans-serif;font-weight:700;font-size:.9375rem;cursor:pointer">Got it!</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+if (localStorage.getItem('access_token')) location.href = '/dashboard';
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+function fill(u,p){ document.getElementById('username').value=u; document.getElementById('password').value=p; }
+function showSetup(){ document.getElementById('setupModal').style.display='flex'; }
+
+async function doLogin(){
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value;
+  if (!u||!p){ showErr('Username and password required'); return; }
+  const btn=document.getElementById('loginBtn'), sp=document.getElementById('loginSpinner'), lt=document.getElementById('loginText'), arr=document.getElementById('loginArrow');
+  document.getElementById('errorBox').style.display='none';
+  btn.disabled=true; sp.style.display='block'; lt.textContent='Signing in'; arr.style.display='none';
+  try{
+    const res = await AuthAPI.login(u,p);
+    if(res&&res.success){
+      Auth.setAuth(res.data.access_token, res.data.user);
+      lt.textContent='Success!'; btn.style.background='linear-gradient(135deg,#10b981,#059669)';
+      setTimeout(()=>location.href='/dashboard', 400);
+    } else showErr(res?.message||'Login failed');
+  }catch(e){ showErr(e.message||'Cannot connect to server. Make sure backend is running.'); }
+  finally{ btn.disabled=false; sp.style.display='none'; lt.textContent='Sign In'; arr.style.display=''; }
+}
+function showErr(m){ const b=document.getElementById('errorBox'); b.textContent=m; b.style.display='block'; }
+</script>
+</body>
+</html>

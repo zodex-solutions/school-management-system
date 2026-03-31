@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Dashboard — EduManage Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: "DM Sans", sans-serif;
+      background: #f8fafc
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .font-outfit {
+      font-family: "Outfit", sans-serif
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px
+    }
+
+    .finput {
+      width: 100%;
+      padding: .625rem .875rem;
+      border-radius: .75rem;
+      border: 1.5px solid #e2e8f0;
+      background: #f8fafc;
+      font-size: .875rem;
+      outline: none;
+      transition: all .15s
+    }
+
+    .finput:focus {
+      background: #fff;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .12)
+    }
+
+    .tab-btn {
+      padding: .875rem 1.125rem;
+      font-size: .8125rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      color: #94a3b8;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -2px;
+      transition: all .15s
+    }
+
+    .tab-btn.active {
+      color: #6366f1;
+      border-bottom-color: #6366f1
+    }
+
+    .module-card {
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      cursor: pointer;
+      transition: all .2s;
+      border: 1.5px solid;
+      text-decoration: none
+    }
+
+    .module-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, .08)
+    }
+
+    .quick-btn {
+      display: flex;
+      align-items: center;
+      gap: .875rem;
+      padding: .875rem 1rem;
+      border-radius: .875rem;
+      text-decoration: none;
+      transition: all .15s;
+      border: 1.5px solid #f1f5f9
+    }
+
+    .quick-btn:hover {
+      border-color: #e0e7ff;
+      background: #f5f3ff;
+      transform: translateX(3px)
+    }
+  </style>
+</head>
+
+<body>
+  <div class="min-h-screen">
+    <div id="sidebarContainer"></div>
+    <main class="min-h-screen lg:ml-[260px]">
+      <div id="topbarContainer"></div>
+      <div class="p-6 space-y-6">
+
+        <!-- Welcome Banner -->
+        <div
+          style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 50%,#4f46e5 100%);background-size:200% auto;border-radius:1.5rem;padding:1.75rem 2rem;position:relative;overflow:hidden;animation:shimmer 4s linear infinite">
+          <style>
+            @keyframes shimmer {
+              0% {
+                background-position: 0% 50%
+              }
+
+              50% {
+                background-position: 100% 50%
+              }
+
+              100% {
+                background-position: 0% 50%
+              }
+            }
+          </style>
+          <div
+            style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:rgba(255,255,255,.06);border-radius:50%">
+          </div>
+          <div
+            style="position:absolute;bottom:-60px;right:80px;width:120px;height:120px;background:rgba(255,255,255,.04);border-radius:50%">
+          </div>
+          <div style="position:relative;display:flex;justify-content:space-between;align-items:center;flex-wrap:gap">
+            <div>
+              <p style="color:rgba(255,255,255,.65);font-size:.875rem;font-weight:500">Good morning,</p>
+              <h2 id="welcomeName"
+                style="color:#fff;font-family:Outfit,sans-serif;font-size:1.875rem;font-weight:800;margin:.25rem 0 .375rem">
+                Admin 👋</h2>
+              <p id="welcomeDate" style="color:rgba(255,255,255,.55);font-size:.875rem"></p>
+            </div>
+            <div class="hidden sm:flex gap-3">
+              <a href="/students"
+                style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:.875rem;padding:.625rem 1.125rem;color:#fff;font-size:.875rem;font-weight:600;text-decoration:none;backdrop-filter:blur(8px);transition:all .15s"
+                onmouseover="this.style.background='rgba(255,255,255,.2)'"
+                onmouseout="this.style.background='rgba(255,255,255,.12)'">+ Admit Student</a>
+              <a href="/reports"
+                style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:.875rem;padding:.625rem 1.125rem;color:#fff;font-size:.875rem;font-weight:600;text-decoration:none;backdrop-filter:blur(8px);transition:all .15s"
+                onmouseover="this.style.background='rgba(255,255,255,.2)'"
+                onmouseout="this.style.background='rgba(255,255,255,.12)'">📊 Reports</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div id="statsGrid" class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          ${['','','',''].map(()=>`<div
+            style="background:#fff;border-radius:1.25rem;padding:1.25rem;border:1.5px solid #f1f5f9;animation:pulse 1.5s infinite">
+            <div style="height:.75rem;background:#f1f5f9;border-radius:999px;width:60%;margin-bottom:.875rem"></div>
+            <div style="height:2rem;background:#f1f5f9;border-radius:.5rem;width:40%"></div>
+          </div>`).join('')}
+        </div>
+
+        <!-- Middle row -->
+        <div class="grid lg:grid-cols-3 gap-5">
+          <!-- Quick Actions -->
+          <div style="background:#fff;border-radius:1.25rem;padding:1.5rem;border:1.5px solid #f1f5f9">
+            <h3 id="qaTitle" class="font-outfit"
+              style="font-weight:700;color:#0f172a;margin-bottom:1.25rem;font-size:1rem"></h3>
+            <div id="quickActions" class="space-y-2"></div>
+          </div>
+
+          <!-- Recent Students -->
+          <div style="background:#fff;border-radius:1.25rem;padding:1.5rem;border:1.5px solid #f1f5f9">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+              <h3 class="font-outfit" style="font-weight:700;color:#0f172a;font-size:1rem">👨‍🎓 Recent Students</h3>
+              <a href="/students" style="font-size:.8125rem;color:#6366f1;font-weight:600;text-decoration:none">View all
+                →</a>
+            </div>
+            <div id="recentStudents"
+              style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:#94a3b8;text-align:center">
+              <div style="font-size:2.5rem;margin-bottom:.75rem">👨‍🎓</div>
+              <p style="font-size:.875rem">No students yet</p>
+            </div>
+          </div>
+
+          <!-- Fee Summary -->
+          <div style="background:#fff;border-radius:1.25rem;padding:1.5rem;border:1.5px solid #f1f5f9">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+              <h3 class="font-outfit" style="font-weight:700;color:#0f172a;font-size:1rem">💰 Fee Summary</h3>
+              <a href="/fees" style="font-size:.8125rem;color:#6366f1;font-weight:600;text-decoration:none">Details
+                →</a>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:.875rem;margin-bottom:.5rem">
+                  <span style="color:#64748b">Collection Progress</span>
+                  <span id="fsRate" style="font-weight:700;color:#0f172a">0%</span>
+                </div>
+                <div style="background:#f1f5f9;border-radius:999px;height:.625rem;overflow:hidden">
+                  <div id="fsBar"
+                    style="height:100%;width:0%;background:linear-gradient(90deg,#10b981,#06b6d4);border-radius:999px;transition:width .6s ease">
+                  </div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-top:.75rem">
+                <div
+                  style="background:#f0fdf4;border-radius:.875rem;padding:.875rem;text-align:center;border:1px solid #bbf7d0">
+                  <div id="fsCollected"
+                    style="font-family:Outfit,sans-serif;font-weight:800;font-size:1.0625rem;color:#15803d">₹0</div>
+                  <div style="font-size:.6875rem;color:#16a34a;font-weight:600;margin-top:.25rem">Collected</div>
+                </div>
+                <div
+                  style="background:#fef2f2;border-radius:.875rem;padding:.875rem;text-align:center;border:1px solid #fecaca">
+                  <div id="fsDue"
+                    style="font-family:Outfit,sans-serif;font-weight:800;font-size:1.0625rem;color:#b91c1c">₹0</div>
+                  <div style="font-size:.6875rem;color:#dc2626;font-weight:600;margin-top:.25rem">Pending</div>
+                </div>
+                <div
+                  style="background:#eff6ff;border-radius:.875rem;padding:.875rem;text-align:center;border:1px solid #bfdbfe">
+                  <div id="fsTotalBilled"
+                    style="font-family:Outfit,sans-serif;font-weight:800;font-size:1.0625rem;color:#1d4ed8">₹0</div>
+                  <div style="font-size:.6875rem;color:#2563eb;font-weight:600;margin-top:.25rem">Total</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- All Modules Grid -->
+        <div>
+          <h3 class="font-outfit" style="font-weight:800;color:#0f172a;font-size:1.25rem;margin-bottom:1.25rem">All
+            Modules</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" id="moduleGrid"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById('sidebarContainer').innerHTML = renderSidebar('dashboard');
+    document.getElementById('topbarContainer').innerHTML = renderTopbar('Dashboard', 'School overview and quick actions');
+    const schoolId = localStorage.getItem('school_id');
+    const ayId = localStorage.getItem('ay_id');
+    const user = getUser();
+    document.getElementById('welcomeName').textContent = (user?.full_name || 'Admin') + ' 👋';
+    document.getElementById('welcomeDate').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    // Quick actions
+    const actions = [
+      { icon: getIcon('student'), label: 'Admit New Student', href: '/students', color: '#6366f1' },
+      { icon: getIcon('calendar'), label: 'Mark Attendance', href: '/attendance', color: '#10b981' },
+      { icon: getIcon('money'), label: 'Collect Fee', href: '/fees', color: '#f59e0b' },
+      { icon: getIcon('exam'), label: 'Enter Exam Marks', href: '/exams', color: '#ef4444' },
+      { icon: getIcon('staff'), label: 'Add Staff Member', href: '/staff', color: '#8b5cf6' },
+      { icon: getIcon('certificate'), label: 'Issue Certificate', href: '/certificates', color: '#0ea5e9' },
+    ];
+    document.getElementById('quickActions').innerHTML = actions.map(a =>
+      `<a href="${a.href}" class="quick-btn">
+    <div style="width:2.25rem;height:2.25rem;background:${a.color}15;border-radius:.625rem;display:flex;align-items:center;justify-content:center;font-size:1.125rem;flex-shrink:0">${a.icon}</div>
+    <span style="font-size:.875rem;font-weight:600;color:#374151">${a.label}</span>
+    <svg style="width:1rem;height:1rem;color:#d1d5db;margin-left:auto;flex-shrink:0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
+  </a>`
+    ).join('');
+
+    // Module grid
+    const modules = [
+      { icon: '🏫', label: 'Institution', href: '/institution', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
+      { icon: '👨‍🎓', label: 'Students', href: '/students', bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
+      { icon: '👨‍🏫', label: 'Staff & HR', href: '/staff', bg: '#fefce8', border: '#fef08a', text: '#a16207' },
+      { icon: '📚', label: 'Academics', href: '/academics', bg: '#faf5ff', border: '#e9d5ff', text: '#7e22ce' },
+      { icon: '📝', label: 'Exams', href: '/exams', bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' },
+      { icon: '💰', label: 'Fees', href: '/fees', bg: '#fff7ed', border: '#fed7aa', text: '#c2410c' },
+      { icon: '📅', label: 'Attendance', href: '/attendance', bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46' },
+      { icon: '🚌', label: 'Transport', href: '/transport', bg: '#f0fdfa', border: '#99f6e4', text: '#0f766e' },
+      { icon: '📖', label: 'Library', href: '/library', bg: '#eef2ff', border: '#c7d2fe', text: '#4338ca' },
+      { icon: '📦', label: 'Inventory', href: '/inventory', bg: '#f7fee7', border: '#d9f99d', text: '#3f6212' },
+      { icon: '🏥', label: 'Health', href: '/health', bg: '#fdf2f8', border: '#fbcfe8', text: '#be185d' },
+      { icon: '💬', label: 'Communication', href: '/communication', bg: '#faf5ff', border: '#e9d5ff', text: '#6b21a8' },
+      { icon: '📊', label: 'Reports', href: '/reports', bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af' },
+      { icon: '🏠', label: 'Hostel', href: '/hostel', bg: '#fefce8', border: '#fef08a', text: '#92400e' },
+      { icon: '💼', label: 'Payroll', href: '/payroll', bg: '#f0fdf4', border: '#bbf7d0', text: '#14532d' },
+      { icon: '🎓', label: 'Admissions', href: '/admissions', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412' },
+      { icon: '📜', label: 'Certificates', href: '/certificates', bg: '#faf5ff', border: '#ddd6fe', text: '#5b21b6' },
+      { icon: '👨‍👩‍👧', label: 'Parents', href: '/parent-portal', bg: '#fdf2f8', border: '#f9a8d4', text: '#9d174d' },
+    ];
+    document.getElementById('moduleGrid').innerHTML = modules.map(m =>
+      `<a href="${m.href}" class="module-card" style="background:${m.bg};border-color:${m.border}">
+    <div style="font-size:1.75rem">${m.icon}</div>
+    <div style="font-family:Outfit,sans-serif;font-size:.875rem;font-weight:700;color:${m.text}">${m.label}</div>
+  </a>`
+    ).join('');
+
+    async function load() {
+      if (!schoolId) {
+        document.getElementById('statsGrid').innerHTML = `<div style="grid-column:span 4;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:2px dashed #fcd34d;border-radius:1.25rem;padding:2.5rem;text-align:center">
+      <div style="font-size:3rem;margin-bottom:.75rem">🏫</div>
+      <p style="font-family:Outfit,sans-serif;font-weight:800;color:#92400e;font-size:1.25rem">School not configured yet</p>
+      <p style="color:#b45309;margin:.5rem 0 1.25rem;font-size:.9375rem">Set up your school to start managing</p>
+      <a href="/institution" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:.75rem 2rem;border-radius:.875rem;font-family:Outfit,sans-serif;font-weight:700;text-decoration:none;box-shadow:0 4px 12px rgba(245,158,11,.4)">Setup School →</a>
+    </div>`;
+        return;
+      }
+      try {
+        const [d, f, s] = await Promise.allSettled([SchoolAPI.dashboard(schoolId), FeesAPI.getSummary(schoolId), StudentAPI.list({ school_id: schoolId, per_page: 5 })]);
+        if (d.status === 'fulfilled' && d.value?.data) {
+          const ds = d.value.data;
+          document.getElementById('statsGrid').innerHTML =
+            statCard('Total Students', ds.total_students || 0, getIcon('student'), 'blue') +
+            statCard('Total Staff', ds.total_staff || 0, getIcon('staff'), 'green') +
+            statCard('Total Classes', ds.total_classes || 0, getIcon('calendar'), 'purple') +
+            statCard('Fee Pending', ds.pending_fees || 0, getIcon('money'), 'orange');
+        }
+        if (f.status === 'fulfilled' && f.value?.data) {
+          const fs = f.value.data;
+          document.getElementById('fsTotalBilled').textContent = formatCurrency(fs.total_billed || 0);
+          document.getElementById('fsCollected').textContent = formatCurrency(fs.total_collected || 0);
+          document.getElementById('fsDue').textContent = formatCurrency(fs.total_due || 0);
+          document.getElementById('fsRate').textContent = (fs.collection_rate || 0) + '%';
+          document.getElementById('fsBar').style.width = (fs.collection_rate || 0) + '%';
+        }
+        if (s.status === 'fulfilled' && s.value?.data?.length > 0) {
+          document.getElementById('recentStudents').innerHTML = s.value.data.map(st =>
+            `<div style="display:flex;align-items:center;gap:.875rem;padding:.75rem .5rem;border-bottom:1px solid #f8fafc">
+          <div style="width:2.5rem;height:2.5rem;border-radius:.875rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-family:Outfit,sans-serif;font-weight:700;font-size:.875rem;flex-shrink:0">${st.first_name.charAt(0).toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <p style="font-weight:600;color:#1e293b;font-size:.9375rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st.full_name}</p>
+            <p style="font-size:.75rem;color:#94a3b8">${st.classroom || ''} ${st.admission_no ? '• ' + st.admission_no : ''}</p>
+          </div>
+        </div>`
+          ).join('');
+        }
+      } catch (e) { console.error(e) }
+    }
+    load();
+
+    function getIcon(name, size = 18) {
+      const icons = {
+        student: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`,
+        staff: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0113 0"/></svg>`,
+        calendar: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`,
+        money: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5"/></svg>`,
+        exam: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16"/><line x1="8" y1="13" x2="16" y2="13"/></svg>`,
+        certificate: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6v20h12V8z"/></svg>`,
+        chart: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="20" x2="6" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/></svg>`,
+        lightning: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>`,
+        building: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="18" height="20"/></svg>`
+      };
+      return icons[name] || '';
+    }
+
+    document.getElementById("qaTitle").innerHTML =
+      getIcon('lightning') + " Quick Actions";
+  </script>
+</body>
+
+</html>
