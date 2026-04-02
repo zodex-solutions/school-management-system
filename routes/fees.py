@@ -5,6 +5,7 @@ from datetime import datetime
 from models.fees import FeeCategory, FeeStructure, FeeInvoice, PaymentTransaction, FeeDiscount
 from models.institution import School, AcademicYear, ClassRoom, User
 from models.student import Student
+from models.transport import TransportRoute
 from utils.auth import get_current_user
 from utils.helpers import success_response, generate_invoice_no, generate_transaction_no
 
@@ -107,10 +108,41 @@ class InvoiceCreate(BaseModel):
     student_id: str
     academic_year_id: str
     fee_structure_id: Optional[str] = None
-    items: List[dict]
+    items: List[dict] = []
     due_date: Optional[datetime] = None
     discount_amount: float = 0
     remarks: Optional[str] = None
+    include_transport: bool = False
+    transport_months: List[str] = []
+
+
+def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str]):
+    built_items = list(items or [])
+
+    if fee_structure_id:
+        structure = FeeStructure.objects.get(id=fee_structure_id)
+        for item in structure.items:
+            built_items.append({
+                "category": item.category_name,
+                "description": item.category_name,
+                "amount": item.amount
+            })
+
+    selected_months = transport_months or (student.transport_months or [])
+    if include_transport and student.transport_route and selected_months:
+        route = TransportRoute.objects(id=student.transport_route).first()
+        monthly_fee = route.fee_per_month if route else (student.transport_fee_per_month or 0)
+        if monthly_fee > 0:
+            built_items.append({
+                "category": "Transport Fee",
+                "description": f"Transport Fee ({', '.join(selected_months)})",
+                "amount": monthly_fee * len(selected_months),
+                "monthly_fee": monthly_fee,
+                "months": selected_months,
+                "route_name": route.route_name if route else student.transport_route_name
+            })
+
+    return built_items, selected_months
 
 
 @router.post("/invoice")
@@ -120,14 +152,25 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
     ay = AcademicYear.objects.get(id=data.academic_year_id)
     
     invoice_no = generate_invoice_no(school.code)
-    gross = sum(item['amount'] for item in data.items)
+    items, selected_months = _build_invoice_items(
+        student,
+        data.fee_structure_id,
+        data.items,
+        data.include_transport,
+        data.transport_months
+    )
+    if not items:
+        raise HTTPException(400, "Add at least one fee item or select a fee structure")
+    gross = sum(item['amount'] for item in items)
     net = gross - data.discount_amount
     
     invoice = FeeInvoice(
         school=school, student=student, academic_year=ay,
         invoice_no=invoice_no,
         due_date=data.due_date,
-        items=data.items,
+        items=items,
+        transport_months=selected_months,
+        transport_route=student.transport_route_name,
         gross_amount=gross,
         discount_amount=data.discount_amount,
         net_amount=net,
@@ -139,7 +182,9 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
     return success_response({
         "id": str(invoice.id),
         "invoice_no": invoice_no,
-        "net_amount": net
+        "net_amount": net,
+        "gross_amount": gross,
+        "items": items
     }, "Invoice created successfully")
 
 

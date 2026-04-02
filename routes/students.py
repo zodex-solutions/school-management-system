@@ -4,6 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 from models.student import Student, TransferCertificate
 from models.institution import School, AcademicYear, ClassRoom, Section, User
+from models.transport import TransportRoute, StudentTransport, Vehicle
 from utils.auth import get_current_user
 from utils.helpers import (
     success_response, paginate_query, generate_admission_no,
@@ -29,19 +30,82 @@ class StudentAdmission(BaseModel):
     email: Optional[str] = None
     current_address: Optional[str] = None
     permanent_address: Optional[str] = None
+    current_address_details: Optional[dict] = None
+    permanent_address_details: Optional[dict] = None
     school_id: str
     academic_year_id: str
     classroom_id: str
     section_id: str
+    branch_code: Optional[str] = None
+    branch_name: Optional[str] = None
     admission_date: Optional[datetime] = None
     admission_type: str = "New"
+    registration_type: str = "Manual"
     parent_info: Optional[dict] = None
     medical_info: Optional[dict] = None
     previous_school: Optional[dict] = None
     uses_transport: bool = False
+    transport_route_id: Optional[str] = None
+    transport_area: Optional[str] = None
+    bus_stop: Optional[str] = None
+    bus_no: Optional[str] = None
+    transport_months: List[str] = []
+    migration: bool = False
+    lateral_entry: bool = False
     in_hostel: bool = False
     extra_activities: List[str] = []
     remarks: Optional[str] = None
+    referral_type: Optional[str] = None
+    referral_number: Optional[str] = None
+    referral_email: Optional[str] = None
+
+
+def _normalize_address_text(address: Optional[dict], fallback: Optional[str] = None) -> Optional[str]:
+    if fallback:
+        return fallback
+    if not address:
+        return None
+    parts = [address.get(key) for key in ["address", "village_area", "post_office", "city", "state", "pin_code"]]
+    return ", ".join([part for part in parts if part])
+
+
+def _sync_student_transport(student: Student, route_id: Optional[str], payload: StudentAdmission):
+    StudentTransport.objects(student=student, is_active=True).update(is_active=False)
+    if not (payload.uses_transport and route_id):
+        student.update(
+            uses_transport=False,
+            transport_route=None,
+            transport_route_name=None,
+            transport_fee_per_month=0
+        )
+        return None
+
+    route = TransportRoute.objects.get(id=route_id)
+    vehicle = Vehicle.objects(route=route, is_active=True).first()
+    assignment = StudentTransport(
+        school=student.school,
+        student=student,
+        route=route,
+        vehicle=vehicle,
+        pickup_stop=payload.bus_stop,
+        drop_stop=payload.bus_stop,
+        pickup_time=route.morning_departure,
+        drop_time=route.afternoon_departure,
+        academic_year=student.academic_year.name if student.academic_year else None,
+        fee_per_month=route.fee_per_month
+    )
+    assignment.save()
+    student.update(
+        uses_transport=True,
+        transport_route=str(route.id),
+        transport_route_name=route.route_name,
+        transport_area=payload.transport_area,
+        bus_stop=payload.bus_stop,
+        bus_no=payload.bus_no or (vehicle.vehicle_no if vehicle else None),
+        transport_fee_per_month=route.fee_per_month,
+        transport_months=payload.transport_months or []
+    )
+    return route
 
 
 @router.post("")
@@ -71,18 +135,32 @@ async def admit_student(data: StudentAdmission, current_user: User = Depends(get
         aadhar_number=data.aadhar_number,
         phone=data.phone,
         email=data.email,
-        current_address=data.current_address,
-        permanent_address=data.permanent_address,
+        current_address=_normalize_address_text(data.current_address_details, data.current_address),
+        permanent_address=_normalize_address_text(data.permanent_address_details, data.permanent_address),
+        current_address_details=data.current_address_details,
+        permanent_address_details=data.permanent_address_details,
         school=school,
         academic_year=ay,
         classroom=classroom,
         section=section,
+        branch_code=data.branch_code,
+        branch_name=data.branch_name,
         admission_date=data.admission_date or datetime.utcnow(),
         admission_type=data.admission_type,
+        registration_type=data.registration_type,
         uses_transport=data.uses_transport,
+        transport_area=data.transport_area,
+        bus_stop=data.bus_stop,
+        bus_no=data.bus_no,
+        transport_months=data.transport_months,
+        migration=data.migration,
+        lateral_entry=data.lateral_entry,
         in_hostel=data.in_hostel,
         extra_activities=data.extra_activities,
-        remarks=data.remarks
+        remarks=data.remarks,
+        referral_type=data.referral_type,
+        referral_number=data.referral_number,
+        referral_email=data.referral_email
     )
     
     if data.parent_info:
@@ -94,12 +172,17 @@ async def admit_student(data: StudentAdmission, current_user: User = Depends(get
         student.medical_info = MedicalInfo(**data.medical_info)
     
     student.save()
+    route = None
+    if data.transport_route_id:
+        route = _sync_student_transport(student, data.transport_route_id, data)
+        student.reload()
     
     return success_response({
         "id": str(student.id),
         "admission_no": student.admission_no,
         "student_id": student.student_id,
-        "full_name": student.full_name
+        "full_name": student.full_name,
+        "transport_route_name": route.route_name if route else None
     }, "Student admitted successfully")
 
 
@@ -174,11 +257,13 @@ async def list_students(
             "date_of_birth": s.date_of_birth.isoformat() if s.date_of_birth else None,
             "classroom": s.classroom.name if s.classroom else None,
             "section": s.section.name if s.section else None,
+            "branch_name": s.branch_name,
             "admission_status": s.admission_status,
             "phone": s.phone,
             "photo": s.photo,
             "father_name": s.parent_info.father_name if s.parent_info else None,
             "father_phone": s.parent_info.father_phone if s.parent_info else None,
+            "route_name": s.transport_route_name,
         })
     
     return success_response(result, meta={
@@ -209,7 +294,11 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
             "email": student.email,
             "current_address": student.current_address,
             "permanent_address": student.permanent_address,
+            "current_address_details": student.current_address_details or {},
+            "permanent_address_details": student.permanent_address_details or {},
             "photo": student.photo,
+            "branch_code": student.branch_code,
+            "branch_name": student.branch_name,
             "classroom_id": str(student.classroom.id) if student.classroom else None,
             "classroom_name": student.classroom.name if student.classroom else None,
             "section_id": str(student.section.id) if student.section else None,
@@ -217,11 +306,24 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
             "academic_year": student.academic_year.name if student.academic_year else None,
             "admission_date": student.admission_date.isoformat() if student.admission_date else None,
             "admission_type": student.admission_type,
+            "registration_type": student.registration_type,
             "admission_status": student.admission_status,
             "uses_transport": student.uses_transport,
+            "transport_route": student.transport_route,
+            "transport_route_name": student.transport_route_name,
+            "transport_area": student.transport_area,
+            "bus_stop": student.bus_stop,
+            "bus_no": student.bus_no,
+            "transport_fee_per_month": student.transport_fee_per_month,
+            "transport_months": student.transport_months or [],
+            "migration": student.migration,
+            "lateral_entry": student.lateral_entry,
             "in_hostel": student.in_hostel,
             "extra_activities": student.extra_activities,
             "remarks": student.remarks,
+            "referral_type": student.referral_type,
+            "referral_number": student.referral_number,
+            "referral_email": student.referral_email,
             "parent_info": {
                 "father_name": student.parent_info.father_name if student.parent_info else None,
                 "father_phone": student.parent_info.father_phone if student.parent_info else None,
@@ -277,6 +379,12 @@ async def update_student(student_id: str, data: dict, current_user: User = Depen
                 data['section'] = section
             except Section.DoesNotExist:
                 pass
+
+        route_id = data.pop('transport_route_id', None)
+        if 'current_address_details' in data and 'current_address' not in data:
+            data['current_address'] = _normalize_address_text(data.get('current_address_details'))
+        if 'permanent_address_details' in data and 'permanent_address' not in data:
+            data['permanent_address'] = _normalize_address_text(data.get('permanent_address_details'))
         
         student.update(**data)
         
@@ -291,6 +399,24 @@ async def update_student(student_id: str, data: dict, current_user: User = Depen
             student.reload()
             student.medical_info = MedicalInfo(**medical_info)
             student.save()
+
+        student.reload()
+        if route_id is not None:
+            payload = StudentAdmission(
+                first_name=student.first_name,
+                last_name=student.last_name,
+                gender=student.gender,
+                school_id=str(student.school.id),
+                academic_year_id=str(student.academic_year.id),
+                classroom_id=str(student.classroom.id),
+                section_id=str(student.section.id),
+                uses_transport=data.get('uses_transport', student.uses_transport),
+                transport_area=data.get('transport_area', student.transport_area),
+                bus_stop=data.get('bus_stop', student.bus_stop),
+                bus_no=data.get('bus_no', student.bus_no),
+                transport_months=data.get('transport_months', student.transport_months or [])
+            )
+            _sync_student_transport(student, route_id, payload)
         
         return success_response(message="Student updated successfully")
     except Student.DoesNotExist:
@@ -332,8 +458,8 @@ async def upload_student_document(
     try:
         student = Student.objects.get(id=student_id)
         file_path = await save_upload_file(file, "student_documents")
-        from models.student import Document as DocModel
-        doc = DocModel(doc_type=doc_type, doc_number=doc_number, file_path=file_path)
+        from models.student import StudentDocument
+        doc = StudentDocument(doc_type=doc_type, doc_number=doc_number, file_path=file_path)
         student.reload()
         student.documents.append(doc)
         student.save()

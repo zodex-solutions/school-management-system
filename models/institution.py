@@ -67,6 +67,7 @@ class SocialLinks(EmbeddedDocument):
 class Branch(EmbeddedDocument):
     name = StringField(required=True)
     code = StringField(required=True)
+    logo = StringField()
     address = EmbeddedDocumentField(Address)
     phone = StringField()
     email = StringField()
@@ -81,7 +82,7 @@ class School(Document):
     tagline = StringField()
     affiliation_no = StringField()
     affiliation_board = StringField(choices=[
-        "CBSE", "ICSE", "State Board", "IB", "IGCSE", "Other"
+       "RBSE", "CBSE", "ICSE", "State Board", "IB", "IGCSE", "Other"
     ])
     established_year = IntField()
     type = StringField(choices=["Government", "Private", "Aided", "International"], default="Private")

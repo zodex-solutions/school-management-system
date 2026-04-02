@@ -189,16 +189,17 @@
           <!-- School Profile Tab -->
           <div id="tab0" class="p-6">
             <div id="schoolDisplay">
-              <div class="text-center py-12 text-gray-400">
+              <!-- <div class="text-center py-12 text-gray-400">
                 <div class="text-5xl mb-3">&#127979;</div>
                 <p class="font-semibold text-gray-600 text-lg">No school configured</p>
                 <p class="text-sm mt-1 mb-4">Set up your school profile to get started</p>
                 <button onclick="showSchoolForm()"
                   class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700">Create School
                   Profile</button>
-              </div>
+              </div> -->
             </div>
-            <div id="schoolForm" class="hidden">
+            
+            <div id="schoolForm" class="hidde" style="display:flex; flex-direction: column;"> 
               <h4 class="font-bold text-gray-900 mb-5">School Information</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><label class="lbl">School Name *</label><input id="s_name" type="text" class="finput"
@@ -230,6 +231,8 @@
                     placeholder="https://yourschool.com" /></div>
                 <div><label class="lbl">Established Year</label><input id="s_yr" type="number" class="finput"
                     placeholder="2000" min="1800" max="2024" /></div>
+                <div><label class="lbl">School Logo URL</label><input id="s_logo" type="url" class="finput"
+                    placeholder="https://example.com/logo.png" /></div>
                 <div><label class="lbl">Affiliation Number</label><input id="s_affno" type="text" class="finput"
                     placeholder="Affiliation number" /></div>
                 <div><label class="lbl">Currency</label><select id="s_cur" class="finput">
@@ -240,6 +243,44 @@
                     class="finput resize-none" placeholder="School address"></textarea></div>
                 <div class="sm:col-span-2"><label class="lbl">Tagline</label><input id="s_tag" type="text"
                     class="finput" placeholder="School tagline/motto" /></div>
+              </div>
+              <div class="mt-6">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="font-semibold text-gray-900">Branch Setup</h5>
+                  <span class="text-xs text-gray-500">Admin can manage up to 3 branches</span>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                  <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                    <h6 class="font-semibold text-gray-900">Branch 1</h6>
+                    <input id="b1_name" class="finput" placeholder="Branch name" />
+                    <input id="b1_code" class="finput" placeholder="Branch code" />
+                    <input id="b1_logo" class="finput" placeholder="Branch logo URL" />
+                    <input id="b1_phone" class="finput" placeholder="Phone" />
+                    <input id="b1_email" class="finput" placeholder="Email" />
+                    <input id="b1_principal" class="finput" placeholder="Principal name" />
+                    <textarea id="b1_addr" rows="2" class="finput resize-none" placeholder="Branch address"></textarea>
+                  </div>
+                  <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                    <h6 class="font-semibold text-gray-900">Branch 2</h6>
+                    <input id="b2_name" class="finput" placeholder="Branch name" />
+                    <input id="b2_code" class="finput" placeholder="Branch code" />
+                    <input id="b2_logo" class="finput" placeholder="Branch logo URL" />
+                    <input id="b2_phone" class="finput" placeholder="Phone" />
+                    <input id="b2_email" class="finput" placeholder="Email" />
+                    <input id="b2_principal" class="finput" placeholder="Principal name" />
+                    <textarea id="b2_addr" rows="2" class="finput resize-none" placeholder="Branch address"></textarea>
+                  </div>
+                  <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                    <h6 class="font-semibold text-gray-900">Branch 3</h6>
+                    <input id="b3_name" class="finput" placeholder="Branch name" />
+                    <input id="b3_code" class="finput" placeholder="Branch code" />
+                    <input id="b3_logo" class="finput" placeholder="Branch logo URL" />
+                    <input id="b3_phone" class="finput" placeholder="Phone" />
+                    <input id="b3_email" class="finput" placeholder="Email" />
+                    <input id="b3_principal" class="finput" placeholder="Principal name" />
+                    <textarea id="b3_addr" rows="2" class="finput resize-none" placeholder="Branch address"></textarea>
+                  </div>
+                </div>
               </div>
               <div class="flex gap-3 mt-6">
                 <button onclick="saveSchool()"
@@ -427,13 +468,59 @@
 
     function showSchoolForm() { document.getElementById('schoolDisplay').style.display = 'none'; document.getElementById('schoolForm').style.display = 'flex'; }
 
+    function setBranchForm(branches = []) {
+      for (let i = 1; i <= 3; i++) {
+        const b = branches[i - 1] || {};
+        document.getElementById(`b${i}_name`).value = b.name || '';
+        document.getElementById(`b${i}_code`).value = b.code || '';
+        document.getElementById(`b${i}_logo`).value = b.logo || '';
+        document.getElementById(`b${i}_phone`).value = b.phone || '';
+        document.getElementById(`b${i}_email`).value = b.email || '';
+        document.getElementById(`b${i}_principal`).value = b.principal || '';
+        document.getElementById(`b${i}_addr`).value = b.address?.line1 || '';
+      }
+    }
+
+    function collectBranches() {
+      const branches = [];
+      for (let i = 1; i <= 3; i++) {
+        const name = document.getElementById(`b${i}_name`).value.trim();
+        const code = document.getElementById(`b${i}_code`).value.trim();
+        if (!name || !code) continue;
+        branches.push({
+          name,
+          code,
+          logo: document.getElementById(`b${i}_logo`).value.trim() || null,
+          phone: document.getElementById(`b${i}_phone`).value.trim() || null,
+          email: document.getElementById(`b${i}_email`).value.trim() || null,
+          principal: document.getElementById(`b${i}_principal`).value.trim() || null,
+          address: { line1: document.getElementById(`b${i}_addr`).value.trim() || null }
+        });
+      }
+      return branches;
+    }
+
     async function loadSchool() {
       if (!schoolId) return;
       try {
         const r = await SchoolAPI.get(schoolId); const s = r.data;
+        document.getElementById('s_name').value = s.name || '';
+        document.getElementById('s_code').value = s.code || '';
+        document.getElementById('s_board').value = s.affiliation_board || '';
+        document.getElementById('s_type').value = s.type || 'Private';
+        document.getElementById('s_ph').value = s.phone || '';
+        document.getElementById('s_em').value = s.email || '';
+        document.getElementById('s_web').value = s.website || '';
+        document.getElementById('s_yr').value = s.established_year || '';
+        document.getElementById('s_logo').value = s.logo || '';
+        document.getElementById('s_affno').value = s.affiliation_no || '';
+        document.getElementById('s_cur').value = s.currency || 'INR';
+        document.getElementById('s_addr').value = s.address?.line1 || '';
+        document.getElementById('s_tag').value = s.tagline || '';
+        setBranchForm(s.branches || []);
         document.getElementById('schoolDisplay').innerHTML = `
       <div class="flex items-center gap-5 pb-5 border-b mb-5">
-        <div class="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 font-bold text-2xl">&#127979;</div>
+        <div class="w-16 h-16 bg-blue-100 rounded-2xl overflow-hidden flex items-center justify-center text-blue-600 font-bold text-2xl">${s.logo ? `<img src="${s.logo}" alt="School Logo" class="w-full h-full object-cover"/>` : '&#127979;'}</div>
         <div><h3 class="text-xl font-bold text-gray-900">${s.name}</h3><p class="text-gray-500">${s.code} · ${s.type || ''} · ${s.affiliation_board || ''}</p></div>
         <button onclick="showSchoolForm()" class="ml-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200">Edit</button>
       </div>
@@ -442,6 +529,21 @@
         <div class="bg-gray-50 rounded-xl p-3"><p class="text-gray-400">Email</p><p class="font-medium mt-0.5">${s.email || '-'}</p></div>
         <div class="bg-gray-50 rounded-xl p-3"><p class="text-gray-400">Website</p><p class="font-medium mt-0.5">${s.website || '-'}</p></div>
         <div class="bg-gray-50 rounded-xl p-3"><p class="text-gray-400">Established</p><p class="font-medium mt-0.5">${s.established_year || '-'}</p></div>
+      </div>
+      <div class="mt-5">
+        <h4 class="font-semibold text-gray-900 mb-3">Branches</h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">${(s.branches || []).length ? (s.branches || []).map(b => `
+          <div class="rounded-2xl border border-gray-200 p-4 bg-white">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center">${b.logo ? `<img src="${b.logo}" alt="${b.name}" class="w-full h-full object-cover"/>` : '<span class="text-lg">&#127979;</span>'}</div>
+              <div><div class="font-semibold text-gray-900">${b.name}</div><div class="text-xs text-gray-500">${b.code}</div></div>
+            </div>
+            <div class="text-sm text-gray-600 space-y-1">
+              <div>${b.phone || '-'}</div>
+              <div>${b.email || '-'}</div>
+              <div>${b.principal || '-'}</div>
+            </div>
+          </div>`).join('') : '<div class="text-sm text-gray-400">No branches configured</div>'}</div>
       </div>`;
       } catch (e) { }
     }
@@ -450,9 +552,30 @@
       const name = document.getElementById('s_name').value.trim(), code = document.getElementById('s_code').value.trim();
       if (!name || !code) { showToast('Name and Code required', 'error'); return; }
       try {
-        const payload = { name, code, type: document.getElementById('s_type').value, affiliation_board: document.getElementById('s_board').value || null, phone: document.getElementById('s_ph').value || null, email: document.getElementById('s_em').value || null, website: document.getElementById('s_web').value || null, established_year: parseInt(document.getElementById('s_yr').value) || null, affiliation_no: document.getElementById('s_affno').value || null, currency: document.getElementById('s_cur').value, tagline: document.getElementById('s_tag').value || null };
-        const r = await SchoolAPI.create(payload);
-        localStorage.setItem('school_id', r.data.id);
+        const payload = {
+          name,
+          code,
+          type: document.getElementById('s_type').value,
+          affiliation_board: document.getElementById('s_board').value || null,
+          phone: document.getElementById('s_ph').value || null,
+          email: document.getElementById('s_em').value || null,
+          website: document.getElementById('s_web').value || null,
+          established_year: parseInt(document.getElementById('s_yr').value) || null,
+          logo: document.getElementById('s_logo').value || null,
+          affiliation_no: document.getElementById('s_affno').value || null,
+          currency: document.getElementById('s_cur').value,
+          tagline: document.getElementById('s_tag').value || null,
+          address: { line1: document.getElementById('s_addr').value || null },
+          branches: collectBranches()
+        };
+        if (schoolId) {
+          await SchoolAPI.update(schoolId, payload);
+        } else {
+          const r = await SchoolAPI.create(payload);
+          localStorage.setItem('school_id', r.data.id);
+          location.reload();
+          return;
+        }
         showToast('School saved!'); document.getElementById('schoolForm').style.display = 'none'; loadSchool();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }

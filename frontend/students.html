@@ -181,68 +181,175 @@
   <!-- Admission Modal -->
   <div id="admModal"
     class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="modal-box w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="modal-box w-full max-w-5xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
         <h3 class="text-lg font-bold text-gray-900">New Student Admission</h3>
         <button onclick="document.getElementById('admModal').style.display='none'"
           class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
       </div>
       <div class="px-6 py-5">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><label class="lbl">First Name *</label><input id="m_fn" type="text" class="finput"
-              placeholder="First name" /></div>
-          <div><label class="lbl">Last Name *</label><input id="m_ln" type="text" class="finput"
-              placeholder="Last name" /></div>
-          <div><label class="lbl">Date of Birth</label><input id="m_dob" type="date" class="finput" /></div>
-          <div><label class="lbl">Gender *</label>
-            <select id="m_gnd" class="finput">
-              <option value="">Select</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
+        <div class="space-y-6">
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-3">Basic Details</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div><label class="lbl">Profile Pic</label><input id="m_photo" type="file" accept="image/*" class="finput" /></div>
+              <div><label class="lbl">Registration Type</label>
+                <select id="m_reg_type" class="finput">
+                  <option value="Manual">Manual</option>
+                  <option value="Online">Online</option>
+                </select>
+              </div>
+              <div><label class="lbl">Branch</label>
+                <select id="m_branch" class="finput">
+                  <option value="">Main School</option>
+                </select>
+              </div>
+              <div><label class="lbl">Admission Type</label>
+                <select id="m_at" class="finput">
+                  <option value="New">New</option>
+                  <option value="Transfer">Transfer</option>
+                  <option value="Re-Admission">Re-Admission</option>
+                </select>
+              </div>
+              <div><label class="lbl">First Name *</label><input id="m_fn" type="text" class="finput" placeholder="First name" /></div>
+              <div><label class="lbl">Middle Name</label><input id="m_mn" type="text" class="finput" placeholder="Middle name" /></div>
+              <div><label class="lbl">Last Name *</label><input id="m_ln" type="text" class="finput" placeholder="Last name" /></div>
+              <div><label class="lbl">Gender *</label>
+                <select id="m_gnd" class="finput">
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div><label class="lbl">Date of Birth</label><input id="m_dob" type="date" class="finput" /></div>
+              <div><label class="lbl">Phone</label><input id="m_ph" type="tel" class="finput" placeholder="Phone" /></div>
+              <div><label class="lbl">Email</label><input id="m_em" type="email" class="finput" placeholder="Email" /></div>
+              <div><label class="lbl">Aadhar Number</label><input id="m_aad" type="text" class="finput" placeholder="12-digit Aadhar" maxlength="12" /></div>
+              <div><label class="lbl">Religion</label><input id="m_rel" type="text" class="finput" placeholder="Religion" /></div>
+              <div><label class="lbl">Caste</label><input id="m_caste" type="text" class="finput" placeholder="Caste" /></div>
+              <div><label class="lbl">Nationality</label><input id="m_nat" type="text" class="finput" value="Indian" /></div>
+              <div><label class="lbl">Blood Group</label>
+                <select id="m_bg" class="finput">
+                  <option value="">Select</option>
+                  <option>A+</option>
+                  <option>A-</option>
+                  <option>B+</option>
+                  <option>B-</option>
+                  <option>O+</option>
+                  <option>O-</option>
+                  <option>AB+</option>
+                  <option>AB-</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div><label class="lbl">Phone</label><input id="m_ph" type="tel" class="finput" placeholder="Phone" /></div>
-          <div><label class="lbl">Email</label><input id="m_em" type="email" class="finput" placeholder="Email" /></div>
-          <div><label class="lbl">Class *</label>
-            <select id="m_cls" class="finput" onchange="loadSections()">
-              <option value="">Select class</option>
-            </select>
+
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-3">Academic Details / Transport</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div><label class="lbl">Class/Course *</label>
+                <select id="m_cls" class="finput" onchange="loadSections()">
+                  <option value="">Select class</option>
+                </select>
+              </div>
+              <div><label class="lbl">Section *</label>
+                <select id="m_sec" class="finput">
+                  <option value="">Select section</option>
+                </select>
+              </div>
+              <div><label class="lbl">Area</label><input id="m_transport_area" type="text" class="finput" placeholder="Area" /></div>
+              <div><label class="lbl">Route</label>
+                <select id="m_route" class="finput" onchange="updateRouteMeta()">
+                  <option value="">Select route</option>
+                </select>
+              </div>
+              <div><label class="lbl">Bus Stop</label><input id="m_bus_stop" type="text" class="finput" placeholder="Bus stop" /></div>
+              <div><label class="lbl">Bus No</label><input id="m_bus_no" type="text" class="finput" placeholder="Bus no" /></div>
+              <div><label class="lbl">Charge / Month</label><input id="m_charge" type="number" class="finput" placeholder="0" readonly /></div>
+              <div><label class="lbl">Referral Type</label>
+                <select id="m_ref_type" class="finput" onchange="toggleReferralFields()">
+                  <option value="">Select</option>
+                  <option value="Referral">Referral</option>
+                  <option value="Walk-In">Walk-In</option>
+                  <option value="Campaign">Campaign</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div id="ref_num_wrap" class="hidden"><label class="lbl">Referral Number</label><input id="m_ref_num" type="text" class="finput" placeholder="Referral number" /></div>
+              <div id="ref_email_wrap" class="hidden"><label class="lbl">Referral Email</label><input id="m_ref_email" type="email" class="finput" placeholder="Referral email" /></div>
+            </div>
+            <div class="flex flex-wrap gap-4 mt-4 text-sm text-gray-700">
+              <label class="flex items-center gap-2"><input id="m_migration" type="checkbox" class="w-4 h-4 accent-blue-600" />Migration</label>
+              <label class="flex items-center gap-2"><input id="m_lateral" type="checkbox" class="w-4 h-4 accent-blue-600" />Lateral Entry</label>
+            </div>
+            <div class="mt-4">
+              <label class="lbl">For Months</label>
+              <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 text-sm text-gray-700">
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Apr" />Apr</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="May" />May</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Jun" />Jun</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Jul" />Jul</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Aug" />Aug</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Sep" />Sep</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Oct" />Oct</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Nov" />Nov</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Dec" />Dec</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Jan" />Jan</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Feb" />Feb</label>
+                <label class="flex items-center gap-2"><input type="checkbox" class="m_month w-4 h-4 accent-blue-600" value="Mar" />Mar</label>
+              </div>
+            </div>
           </div>
-          <div><label class="lbl">Section *</label>
-            <select id="m_sec" class="finput">
-              <option value="">Select section</option>
-            </select>
+
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-3">Parent / Guardian</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div><label class="lbl">Father Name</label><input id="m_fa" type="text" class="finput" placeholder="Father name" /></div>
+              <div><label class="lbl">Father Phone</label><input id="m_fp" type="tel" class="finput" placeholder="Father phone" /></div>
+              <div><label class="lbl">Father Email</label><input id="m_fe" type="email" class="finput" placeholder="Father email" /></div>
+              <div><label class="lbl">Father Occupation</label><input id="m_fo" type="text" class="finput" placeholder="Occupation" /></div>
+              <div><label class="lbl">Mother Name</label><input id="m_ma" type="text" class="finput" placeholder="Mother name" /></div>
+              <div><label class="lbl">Mother Phone</label><input id="m_mp" type="tel" class="finput" placeholder="Mother phone" /></div>
+              <div><label class="lbl">Guardian Name</label><input id="m_guard" type="text" class="finput" placeholder="Guardian name" /></div>
+              <div><label class="lbl">Guardian Phone</label><input id="m_guard_ph" type="tel" class="finput" placeholder="Guardian phone" /></div>
+            </div>
           </div>
-          <div><label class="lbl">Father Name</label><input id="m_fa" type="text" class="finput"
-              placeholder="Father name" /></div>
-          <div><label class="lbl">Father Phone</label><input id="m_fp" type="tel" class="finput"
-              placeholder="Father phone" /></div>
-          <div><label class="lbl">Mother Name</label><input id="m_ma" type="text" class="finput"
-              placeholder="Mother name" /></div>
-          <div><label class="lbl">Blood Group</label>
-            <select id="m_bg" class="finput">
-              <option value="">Select</option>
-              <option>A+</option>
-              <option>A-</option>
-              <option>B+</option>
-              <option>B-</option>
-              <option>O+</option>
-              <option>O-</option>
-              <option>AB+</option>
-              <option>AB-</option>
-            </select>
+
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-semibold text-gray-900">Present Address</h4>
+              <label class="flex items-center gap-2 text-sm text-gray-700"><input id="same_addr" type="checkbox" class="w-4 h-4 accent-blue-600" onchange="copyPresentAddress()" />Same as Present Address</label>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="lg:col-span-2"><label class="lbl">Address</label><input id="pres_address" type="text" class="finput" placeholder="Address" /></div>
+              <div><label class="lbl">Village/Area</label><input id="pres_village" type="text" class="finput" placeholder="Village / Area" /></div>
+              <div><label class="lbl">State</label><input id="pres_state" type="text" class="finput" placeholder="State" /></div>
+              <div><label class="lbl">Post Office</label><input id="pres_post" type="text" class="finput" placeholder="Post office" /></div>
+              <div><label class="lbl">Pin Code</label><input id="pres_pin" type="text" class="finput" placeholder="Pin code" /></div>
+              <div><label class="lbl">City</label><input id="pres_city" type="text" class="finput" placeholder="City" /></div>
+              <div><label class="lbl">Phone No</label><input id="pres_phone" type="text" class="finput" placeholder="Phone no" /></div>
+            </div>
           </div>
-          <div><label class="lbl">Admission Type</label>
-            <select id="m_at" class="finput">
-              <option value="New">New</option>
-              <option value="Transfer">Transfer</option>
-            </select>
+
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-3">Permanent Address</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="lg:col-span-2"><label class="lbl">Address</label><input id="perm_address" type="text" class="finput" placeholder="Address" /></div>
+              <div><label class="lbl">Village/Area</label><input id="perm_village" type="text" class="finput" placeholder="Village / Area" /></div>
+              <div><label class="lbl">State</label><input id="perm_state" type="text" class="finput" placeholder="State" /></div>
+              <div><label class="lbl">Post Office</label><input id="perm_post" type="text" class="finput" placeholder="Post office" /></div>
+              <div><label class="lbl">Pin Code</label><input id="perm_pin" type="text" class="finput" placeholder="Pin code" /></div>
+              <div><label class="lbl">City</label><input id="perm_city" type="text" class="finput" placeholder="City" /></div>
+              <div><label class="lbl">Phone No</label><input id="perm_phone" type="text" class="finput" placeholder="Phone no" /></div>
+            </div>
           </div>
-          <div><label class="lbl">Aadhar Number</label><input id="m_aad" type="text" class="finput"
-              placeholder="12-digit Aadhar" maxlength="12" /></div>
-          <div class="sm:col-span-2"><label class="lbl">Address</label><textarea id="m_addr" rows="2"
-              class="finput resize-none" placeholder="Current address"></textarea></div>
+
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-3">Remarks</h4>
+            <textarea id="m_remarks" rows="3" class="finput resize-none" placeholder="Optional remarks"></textarea>
+          </div>
         </div>
       </div>
       <div class="flex gap-3 px-6 py-4 border-t sticky bottom-0 bg-white justify-end">
@@ -305,6 +412,8 @@
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Student Management', 'Manage admissions and profiles');
     const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
     let curPage = 1, totalPgs = 1;
+    let routeCache = [];
+    let branchCache = [];
 
     async function loadStats() {
       if (!schoolId) return;
@@ -318,6 +427,61 @@
         document.getElementById('filterClass').innerHTML = '<option value="">All Classes</option>' + opts;
         document.getElementById('m_cls').innerHTML = '<option value="">Select class</option>' + opts;
       } catch (e) { }
+    }
+
+    async function loadSchoolMeta() {
+      if (!schoolId) return;
+      try {
+        const r = await SchoolAPI.get(schoolId);
+        branchCache = r?.data?.branches || [];
+        const branchOpts = '<option value="">Main School</option>' + branchCache.map(b => `<option value="${b.code}" data-name="${b.name}">${b.name}</option>`).join('');
+        document.getElementById('m_branch').innerHTML = branchOpts;
+      } catch (e) { }
+    }
+
+    async function loadRoutes() {
+      if (!schoolId) return;
+      try {
+        const r = await TransportAPI.getRoutes(schoolId);
+        routeCache = r?.data || [];
+        document.getElementById('m_route').innerHTML = '<option value="">Select route</option>' + routeCache.map(rt => `<option value="${rt.id}">${rt.route_name}</option>`).join('');
+      } catch (e) { }
+    }
+
+    function updateRouteMeta() {
+      const route = routeCache.find(r => r.id === document.getElementById('m_route').value);
+      document.getElementById('m_charge').value = route ? route.fee_per_month || 0 : '';
+      if (route && !document.getElementById('m_bus_stop').value && route.stops?.length) {
+        document.getElementById('m_bus_stop').value = route.stops[0].name || '';
+      }
+      if (route && !document.getElementById('m_transport_area').value) {
+        document.getElementById('m_transport_area').value = route.start_point || '';
+      }
+    }
+
+    function toggleReferralFields() {
+      const show = document.getElementById('m_ref_type').value === 'Referral';
+      document.getElementById('ref_num_wrap').classList.toggle('hidden', !show);
+      document.getElementById('ref_email_wrap').classList.toggle('hidden', !show);
+    }
+
+    function collectAddress(prefix) {
+      return {
+        address: document.getElementById(`${prefix}_address`).value || null,
+        village_area: document.getElementById(`${prefix}_village`).value || null,
+        post_office: document.getElementById(`${prefix}_post`).value || null,
+        city: document.getElementById(`${prefix}_city`).value || null,
+        state: document.getElementById(`${prefix}_state`).value || null,
+        pin_code: document.getElementById(`${prefix}_pin`).value || null,
+        phone_no: document.getElementById(`${prefix}_phone`).value || null
+      };
+    }
+
+    function copyPresentAddress() {
+      if (!document.getElementById('same_addr').checked) return;
+      ['address', 'village', 'post', 'city', 'state', 'pin', 'phone'].forEach(field => {
+        document.getElementById(`perm_${field}`).value = document.getElementById(`pres_${field}`).value;
+      });
     }
 
     function loadSections() {
@@ -346,7 +510,7 @@
         <div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-bold text-xs flex-shrink-0">${s.first_name.charAt(0).toUpperCase()}</div>
         <div><div class="font-medium text-gray-900 text-sm">${s.full_name}</div><div class="text-xs text-gray-400">${s.student_id || ''}</div></div>
       </div></td>
-      <td class="px-4 py-3 text-sm text-gray-600">${s.classroom_name || '-'}${s.section_name ? ' / ' + s.section_name : ''}</td>
+      <td class="px-4 py-3 text-sm text-gray-600">${s.classroom_name || s.classroom || '-'}${(s.section_name || s.section) ? ' / ' + (s.section_name || s.section) : ''}</td>
       <td class="px-4 py-3 text-sm text-gray-600">${s.gender || '-'}</td>
       <td class="px-4 py-3 text-sm text-gray-600">${s.father_name || '-'}</td>
       <td class="px-4 py-3 text-sm text-gray-600">${s.phone || s.father_phone || '-'}</td>
@@ -371,7 +535,7 @@
         document.getElementById('detContent').innerHTML = `
       <div class="flex items-center gap-4 pb-5 border-b mb-5">
         <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">${s.first_name.charAt(0).toUpperCase()}</div>
-        <div><h4 class="text-xl font-bold">${s.full_name}</h4><p class="text-gray-500 text-sm">${s.admission_no} · ${s.classroom_name || ''} ${s.section_name || ''}</p></div>
+        <div><h4 class="text-xl font-bold">${s.full_name}</h4><p class="text-gray-500 text-sm">${s.admission_no} · ${s.branch_name || 'Main School'} · ${s.classroom_name || ''} ${s.section_name || ''}</p></div>
       </div>
       <div class="grid grid-cols-2 gap-4 text-sm">
         <div class="space-y-2">
@@ -385,6 +549,18 @@
           <div class="flex gap-2"><span class="text-gray-400 w-24">Father Ph:</span><span class="font-medium">${s.parent_info?.father_phone || '-'}</span></div>
           <div class="flex gap-2"><span class="text-gray-400 w-24">Mother:</span><span class="font-medium">${s.parent_info?.mother_name || '-'}</span></div>
           <div class="flex gap-2"><span class="text-gray-400 w-24">Adm Date:</span><span class="font-medium">${formatDate(s.admission_date)}</span></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4 text-sm mt-4">
+        <div class="space-y-2">
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Route:</span><span class="font-medium">${s.transport_route_name || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Bus Stop:</span><span class="font-medium">${s.bus_stop || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Months:</span><span class="font-medium">${(s.transport_months || []).join(', ') || '-'}</span></div>
+        </div>
+        <div class="space-y-2">
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Referral:</span><span class="font-medium">${s.referral_type || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Reg Type:</span><span class="font-medium">${s.registration_type || '-'}</span></div>
+          <div class="flex gap-2"><span class="text-gray-400 w-24">Address:</span><span class="font-medium">${s.current_address || '-'}</span></div>
         </div>
       </div>
       <div class="mt-5 flex gap-3">
@@ -408,6 +584,8 @@
 
     function openAdmModal() {
       document.querySelectorAll('#admModal input,#admModal select,#admModal textarea').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; });
+      document.getElementById('m_nat').value = 'Indian';
+      toggleReferralFields();
       document.getElementById('admModal').style.display = 'flex';
     }
 
@@ -417,18 +595,56 @@
       const gnd = document.getElementById('m_gnd').value, cls = document.getElementById('m_cls').value, sec = document.getElementById('m_sec').value;
       if (!fn || !ln || !gnd || !cls || !sec) { showToast('Fill all required fields (*)', 'error'); return; }
       try {
+        const branchEl = document.getElementById('m_branch');
+        const branchOpt = branchEl.options[branchEl.selectedIndex];
+        const routeId = document.getElementById('m_route').value || null;
+        const months = Array.from(document.querySelectorAll('.m_month:checked')).map(el => el.value);
         const r = await StudentAPI.create({
-          first_name: fn, last_name: ln, gender: gnd,
+          first_name: fn, middle_name: document.getElementById('m_mn').value || null, last_name: ln, gender: gnd,
           date_of_birth: document.getElementById('m_dob').value ? new Date(document.getElementById('m_dob').value).toISOString() : null,
           phone: document.getElementById('m_ph').value || null, email: document.getElementById('m_em').value || null,
-          current_address: document.getElementById('m_addr').value || null,
+          religion: document.getElementById('m_rel').value || null,
+          caste: document.getElementById('m_caste').value || null,
+          nationality: document.getElementById('m_nat').value || 'Indian',
           aadhar_number: document.getElementById('m_aad').value || null,
           school_id: schoolId, academic_year_id: ayId || '',
           classroom_id: cls, section_id: sec,
+          branch_code: branchEl.value || null,
+          branch_name: branchOpt?.dataset?.name || null,
           admission_type: document.getElementById('m_at').value,
-          parent_info: { father_name: document.getElementById('m_fa').value, father_phone: document.getElementById('m_fp').value, mother_name: document.getElementById('m_ma').value },
-          medical_info: { blood_group: document.getElementById('m_bg').value || null }
+          registration_type: document.getElementById('m_reg_type').value,
+          parent_info: {
+            father_name: document.getElementById('m_fa').value || null,
+            father_phone: document.getElementById('m_fp').value || null,
+            father_email: document.getElementById('m_fe').value || null,
+            father_occupation: document.getElementById('m_fo').value || null,
+            mother_name: document.getElementById('m_ma').value || null,
+            mother_phone: document.getElementById('m_mp').value || null,
+            guardian_name: document.getElementById('m_guard').value || null,
+            guardian_phone: document.getElementById('m_guard_ph').value || null
+          },
+          medical_info: { blood_group: document.getElementById('m_bg').value || null },
+          current_address_details: collectAddress('pres'),
+          permanent_address_details: collectAddress('perm'),
+          uses_transport: !!routeId,
+          transport_route_id: routeId,
+          transport_area: document.getElementById('m_transport_area').value || null,
+          bus_stop: document.getElementById('m_bus_stop').value || null,
+          bus_no: document.getElementById('m_bus_no').value || null,
+          transport_months: months,
+          migration: document.getElementById('m_migration').checked,
+          lateral_entry: document.getElementById('m_lateral').checked,
+          referral_type: document.getElementById('m_ref_type').value || null,
+          referral_number: document.getElementById('m_ref_num').value || null,
+          referral_email: document.getElementById('m_ref_email').value || null,
+          remarks: document.getElementById('m_remarks').value || null
         });
+        const photo = document.getElementById('m_photo').files[0];
+        if (photo) {
+          const fd = new FormData();
+          fd.append('file', photo);
+          await StudentAPI.uploadPhoto(r.data.id, fd);
+        }
         showToast('Admitted! No: ' + r.data.admission_no);
         document.getElementById('admModal').style.display = 'none';
         loadStudents(1); loadStats();
@@ -439,7 +655,7 @@
     document.getElementById('searchInput').addEventListener('input', dbLoad);
     document.getElementById('filterStatus').addEventListener('change', () => loadStudents(1));
     document.getElementById('filterClass').addEventListener('change', () => loadStudents(1));
-    loadStats(); loadClasses(); loadStudents();
+    loadStats(); loadClasses(); loadSchoolMeta(); loadRoutes(); loadStudents();
   </script>
 </body>
 

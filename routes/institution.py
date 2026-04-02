@@ -26,14 +26,47 @@ class SchoolCreate(BaseModel):
     email: Optional[str] = None
     website: Optional[str] = None
     currency: str = "INR"
+    logo: Optional[str] = None
     address: Optional[dict] = None
+    branches: List[dict] = []
+
+
+def _build_address(data: Optional[dict]):
+    if not data:
+        return None
+    from models.institution import Address
+    return Address(**data)
+
+
+def _build_branches(branches: List[dict]):
+    from models.institution import Branch
+    if len(branches or []) > 3:
+        raise HTTPException(400, "Maximum 3 branches are allowed per school")
+    result = []
+    for branch in branches or []:
+        address = _build_address(branch.get("address"))
+        result.append(Branch(
+            name=branch.get("name"),
+            code=branch.get("code"),
+            logo=branch.get("logo"),
+            address=address,
+            phone=branch.get("phone"),
+            email=branch.get("email"),
+            principal=branch.get("principal"),
+            is_active=branch.get("is_active", True)
+        ))
+    return result
 
 
 @router.post("/school")
 async def create_school(data: SchoolCreate, current_user: User = Depends(get_current_user)):
     if School.objects(code=data.code).first():
         raise HTTPException(400, "School code already exists")
-    school = School(**data.model_dump())
+    payload = data.model_dump()
+    payload["address"] = _build_address(payload.get("address"))
+    payload["branches"] = _build_branches(payload.get("branches", []))
+    payload["is_multi_branch"] = len(payload["branches"]) > 0
+    school = School(**payload)
     school.save()
     return success_response({"id": str(school.id), "name": school.name}, "School created successfully")
 
@@ -46,7 +79,8 @@ async def list_schools(current_user: User = Depends(get_current_user)):
         result.append({
             "id": str(s.id), "name": s.name, "code": s.code,
             "type": s.type, "affiliation_board": s.affiliation_board,
-            "phone": s.phone, "email": s.email, "logo": s.logo
+            "phone": s.phone, "email": s.email, "logo": s.logo,
+            "branch_count": len(s.branches or [])
         })
     return success_response(result)
 
@@ -65,6 +99,11 @@ async def update_school(school_id: str, data: dict, current_user: User = Depends
     try:
         school = School.objects.get(id=school_id)
         data.pop('id', None)
+        if 'address' in data:
+            data['address'] = _build_address(data.get('address'))
+        if 'branches' in data:
+            data['branches'] = _build_branches(data.get('branches', []))
+            data['is_multi_branch'] = len(data['branches']) > 0
         data['updated_at'] = datetime.utcnow()
         school.update(**data)
         return success_response(message="School updated successfully")

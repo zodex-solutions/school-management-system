@@ -82,6 +82,8 @@ class Student(Document):
     email = StringField()
     current_address = StringField()
     permanent_address = StringField()
+    current_address_details = DictField()
+    permanent_address_details = DictField()
 
     # Photos
     photo = StringField()
@@ -91,6 +93,9 @@ class Student(Document):
     academic_year = ReferenceField(AcademicYear, required=True)
     classroom = ReferenceField(ClassRoom, required=True)
     section = ReferenceField(Section, required=True)
+    branch_code = StringField()
+    branch_name = StringField()
+    registration_type = StringField(choices=["Online", "Manual"], default="Manual")
 
     # Admission
     admission_date = DateTimeField(default=datetime.utcnow)
@@ -118,6 +123,14 @@ class Student(Document):
     # Transport
     uses_transport = BooleanField(default=False)
     transport_route = StringField()
+    transport_route_name = StringField()
+    transport_area = StringField()
+    bus_stop = StringField()
+    bus_no = StringField()
+    transport_fee_per_month = FloatField(default=0)
+    transport_months = ListField(StringField())
+    migration = BooleanField(default=False)
+    lateral_entry = BooleanField(default=False)
 
     # Hostel
     in_hostel = BooleanField(default=False)
@@ -126,6 +139,9 @@ class Student(Document):
     # Additional
     extra_activities = ListField(StringField())
     remarks = StringField()
+    referral_type = StringField()
+    referral_number = StringField()
+    referral_email = StringField()
 
     # System
     user_account = ReferenceField('User')
