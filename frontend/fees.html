@@ -340,15 +340,16 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       const items = [];
       descs.forEach((d, i) => { if (d.value.trim() && amts[i]?.value) { items.push({ category: d.value.trim(), description: d.value.trim(), amount: parseFloat(amts[i].value) }); } });
       const feeStructureId = document.getElementById('inv_structure').value || null;
+      const includeTransport = document.getElementById('inv_transport_toggle').checked;
       const transportMonths = Array.from(document.querySelectorAll('.inv_month:checked')).map(el => el.value);
-      if (!items.length && !feeStructureId) { showToast('Add at least one fee item or choose a fee structure', 'error'); return; }
+      if (!items.length && !feeStructureId && !includeTransport) { showToast('Choose fee structure, add fee item, or include transport fee', 'error'); return; }
       try {
         const r = await FeesAPI.createInvoice({
           school_id: schoolId,
           student_id: studId,
           academic_year_id: ayId,
           fee_structure_id: feeStructureId,
-          include_transport: document.getElementById('inv_transport_toggle').checked,
+          include_transport: includeTransport,
           transport_months: transportMonths,
           items,
           due_date: document.getElementById('inv_due').value ? new Date(document.getElementById('inv_due').value).toISOString() : null,

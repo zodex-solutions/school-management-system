@@ -168,6 +168,8 @@
       <div id="topbarContainer"></div>
       <div class="p-6 space-y-6">
 
+        <div id="attendanceSummaryCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
         <div
           style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
           <div class="flex border-b border-gray-100 px-2 gap-1">
@@ -219,7 +221,7 @@
           <!-- View Records -->
           <div id="atab1" class="p-6 hidden">
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-5">
-              <div><label class="lbl">Class</label><select id="view_cls" class="finput">
+              <div><label class="lbl">Class</label><select id="view_cls" class="finput" onchange="loadViewSections()">
                   <option value="">Select class</option>
                 </select></div>
               <div><label class="lbl">Section</label><select id="view_sec" class="finput">
@@ -303,7 +305,8 @@
     requireAuth();
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('attendance');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Attendance Management', 'Track student and staff attendance');
-    const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
+    let schoolId = localStorage.getItem('school_id');
+    const ayId = localStorage.getItem('ay_id');
     let loadedStudents = [];
 
     // Set today
@@ -314,6 +317,27 @@
       document.querySelectorAll('.atab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
       document.querySelectorAll('[id^="atab"]').forEach(t => { t.classList.toggle('hidden', parseInt(t.id.replace('atab', '')) !== idx); });
       if (idx === 3) loadHolidays();
+    }
+
+    function renderAttendanceSummary(summary = {}) {
+      const student = summary.students || {};
+      const staff = summary.staff || {};
+      document.getElementById('attendanceSummaryCards').innerHTML =
+        statCard('Students Present', student.present || 0, '&#9989;', 'green') +
+        statCard('Students Absent', student.absent || 0, '&#10060;', 'red') +
+        statCard('Students Late', student.late || 0, '&#9203;', 'orange') +
+        statCard('Staff Present', staff.present || 0, '&#128104;&#8205;&#127979;', 'blue');
+    }
+
+    async function loadAttendanceSummary() {
+      if (!schoolId) return;
+      try {
+        const selectedDate = document.getElementById('att_date')?.value || today;
+        const r = await AttendanceAPI.getSummary(schoolId, selectedDate);
+        renderAttendanceSummary(r?.data || {});
+      } catch (e) {
+        renderAttendanceSummary({});
+      }
     }
 
     async function loadClassesForAtt() {
@@ -333,12 +357,21 @@
       JSON.parse(opt.dataset.secs).forEach(s => se.innerHTML += `<option value="${s.id}">${s.name}</option>`);
     }
 
+    function loadViewSections() {
+      const el = document.getElementById('view_cls'), se = document.getElementById('view_sec');
+      const opt = el.options[el.selectedIndex];
+      se.innerHTML = '<option value="">Select section</option>';
+      if (!opt || !opt.dataset.secs) return;
+      JSON.parse(opt.dataset.secs).forEach(s => se.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+    }
+
     async function loadStudentsForAtt() {
       const clsId = document.getElementById('att_cls').value, secId = document.getElementById('att_sec').value;
       if (!clsId || !secId) { showToast('Select class and section', 'error'); return; }
       try {
         const r = await StudentAPI.list({ school_id: schoolId, classroom_id: clsId, section_id: secId, per_page: 100 });
         loadedStudents = r?.data || [];
+        Object.keys(attStatus).forEach(key => delete attStatus[key]);
         if (!loadedStudents.length) { document.getElementById('attStudentList').innerHTML = '<p class="text-gray-400 text-sm py-4 text-center">No students in this section</p>'; return; }
         document.getElementById('attStudentList').innerHTML = `
       <div class="overflow-x-auto rounded-xl border border-gray-200">
@@ -361,6 +394,24 @@
           </tbody>
         </table>
       </div>`;
+        const selectedDate = document.getElementById('att_date').value;
+        if (selectedDate) {
+          try {
+            const existing = await AttendanceAPI.getStudent({ school_id: schoolId, classroom_id: clsId, section_id: secId, date: selectedDate });
+            const existingAttendance = existing?.data?.[0];
+            if (existingAttendance?.records?.length) {
+              existingAttendance.records.forEach(rec => {
+                if (!rec.student_id) return;
+                attStatus[rec.student_id] = rec.status;
+                const activeBtn = document.querySelector(`[data-student="${rec.student_id}"][data-status="${rec.status}"]`);
+                if (activeBtn) setStatus(rec.student_id, rec.status, activeBtn);
+                const remarkInput = document.getElementById(`rem_${rec.student_id}`);
+                if (remarkInput) remarkInput.value = rec.remarks || '';
+              });
+              showToast('Existing attendance loaded', 'info');
+            }
+          } catch (e) { }
+        }
         document.getElementById('attActionRow').style.display = 'flex';
         updateSummary();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
@@ -400,10 +451,12 @@
     async function submitAttendance() {
       const clsId = document.getElementById('att_cls').value, secId = document.getElementById('att_sec').value, date = document.getElementById('att_date').value;
       if (!clsId || !secId || !date) { showToast('Select class, section and date', 'error'); return; }
+      if (!ayId) { showToast('Set current academic year first', 'error'); return; }
       const records = loadedStudents.map(s => ({ student_id: s.id, status: attStatus[s.id] || 'Absent', remarks: document.getElementById(`rem_${s.id}`)?.value || null }));
       try {
         const r = await AttendanceAPI.markStudent({ school_id: schoolId, academic_year_id: ayId || '', classroom_id: clsId, section_id: secId, date: new Date(date).toISOString(), records });
         showToast(`Attendance saved! P:${r.data.present} A:${r.data.absent}`);
+        loadAttendanceSummary();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
@@ -466,6 +519,7 @@
       try {
         await AttendanceAPI.markStaff({ school_id: schoolId, date: new Date(date).toISOString(), records });
         showToast('Staff attendance saved!');
+        loadAttendanceSummary();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
@@ -494,7 +548,11 @@
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
-    loadClassesForAtt();
+    (async function initAttendancePage() {
+      schoolId = await initializeSchoolContext() || schoolId;
+      await loadClassesForAtt();
+      await loadAttendanceSummary();
+    })();
   </script>
 </body>
 

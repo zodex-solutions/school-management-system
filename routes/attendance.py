@@ -237,6 +237,46 @@ async def get_student_attendance_report(
     })
 
 
+@router.get("/summary/{school_id}")
+async def get_attendance_summary(
+    school_id: str,
+    date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    school = School.objects.get(id=school_id)
+    target_date = datetime.fromisoformat(date).replace(hour=0, minute=0, second=0, microsecond=0) if date else datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    student_atts = StudentAttendance.objects(school=school, date=target_date)
+    staff_att = StaffAttendance.objects(school=school, date=target_date).first()
+
+    total_students_marked = sum(att.total_students or 0 for att in student_atts)
+    total_present = sum(att.present_count or 0 for att in student_atts)
+    total_absent = sum(att.absent_count or 0 for att in student_atts)
+    total_late = sum(att.late_count or 0 for att in student_atts)
+
+    staff_present = staff_att.present_count if staff_att else 0
+    staff_absent = staff_att.absent_count if staff_att else 0
+    staff_on_leave = staff_att.on_leave_count if staff_att else 0
+    total_staff_marked = staff_att.total_staff if staff_att else 0
+
+    return success_response({
+        "date": target_date.isoformat(),
+        "students": {
+            "total_marked": total_students_marked,
+            "present": total_present,
+            "absent": total_absent,
+            "late": total_late,
+            "attendance_percentage": round(total_present / total_students_marked * 100, 2) if total_students_marked else 0
+        },
+        "staff": {
+            "total_marked": total_staff_marked,
+            "present": staff_present,
+            "absent": staff_absent,
+            "on_leave": staff_on_leave
+        }
+    })
+
+
 # ─── Staff Attendance ─────────────────────────────────────────────────────────
 
 class StaffAttRecord(BaseModel):

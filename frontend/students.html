@@ -832,6 +832,9 @@
     function openAdmModal() {
       document.querySelectorAll('#admModal input,#admModal select,#admModal textarea').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; });
       document.getElementById('m_nat').value = 'Indian';
+      document.getElementById('m_class_fee').value = '';
+      document.getElementById('m_total_fee').value = '';
+      document.getElementById('m_charge').value = '';
       toggleReferralFields();
       document.getElementById('admModal').style.display = 'flex';
     }

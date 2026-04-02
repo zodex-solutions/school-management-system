@@ -278,6 +278,7 @@ const AttendanceAPI = {
   markStudents:   (d)   => API.post('/attendance/student/mark', d),
   getStudent:     (p)   => API.get('/attendance/student', p),
   getStudentAtt:  (p)   => API.get('/attendance/student', p),
+  getSummary:     (sid, date) => API.get(`/attendance/summary/${sid}`, { date }),
   markStaff:      (d)   => API.post('/attendance/staff/mark', d),
   getStaffAtt:    (p)   => API.get('/attendance/staff', p),
   getHolidays:    (sid) => API.get('/attendance/holiday', { school_id: sid }),
