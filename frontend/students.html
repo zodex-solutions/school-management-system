@@ -157,6 +157,10 @@
                 <option value="Active">Active</option>
                 <option value="Transferred">Transferred</option>
               </select>
+              <select id="filterBranch"
+                class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="">All Branches</option>
+              </select>
               <select id="filterClass"
                 class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 <option value="">All Classes</option>
@@ -249,7 +253,7 @@
             <h4 class="font-semibold text-gray-900 mb-3">Academic Details / Transport</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div><label class="lbl">Class/Course *</label>
-                <select id="m_cls" class="finput" onchange="loadSections()">
+                <select id="m_cls" class="finput" onchange="loadSections(); updateFeePreview()">
                   <option value="">Select class</option>
                 </select>
               </div>
@@ -267,6 +271,8 @@
               <div><label class="lbl">Bus Stop</label><input id="m_bus_stop" type="text" class="finput" placeholder="Bus stop" /></div>
               <div><label class="lbl">Bus No</label><input id="m_bus_no" type="text" class="finput" placeholder="Bus no" /></div>
               <div><label class="lbl">Charge / Month</label><input id="m_charge" type="number" class="finput" placeholder="0" readonly /></div>
+              <div><label class="lbl">Class Fee</label><input id="m_class_fee" type="number" class="finput" placeholder="0" readonly /></div>
+              <div><label class="lbl">Total Fee</label><input id="m_total_fee" type="number" class="finput" placeholder="0" readonly /></div>
               <div><label class="lbl">Referral Type</label>
                 <select id="m_ref_type" class="finput" onchange="toggleReferralFields()">
                   <option value="">Select</option>
@@ -365,7 +371,7 @@
   <!-- Detail Modal -->
   <div id="detModal"
     class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="modal-box w-full max-w-xl max-h-[90vh] overflow-y-auto">
+    <div class="modal-box w-full max-w-6xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
         <h3 class="text-lg font-bold text-gray-900">Student Profile</h3>
         <button onclick="document.getElementById('detModal').style.display='none'"
@@ -410,39 +416,50 @@
     requireAuth();
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('students');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Student Management', 'Manage admissions and profiles');
-    const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
+    const studentPageParams = new URLSearchParams(window.location.search);
+    const ayId = localStorage.getItem('ay_id');
+    let currentSchoolId = localStorage.getItem('school_id') || '';
     let curPage = 1, totalPgs = 1;
     let routeCache = [];
     let branchCache = [];
+    let selectedBranchCode = studentPageParams.get('branch_code') || '';
 
     async function loadStats() {
-      if (!schoolId) return;
-      try { const r = await StudentAPI.stats(schoolId, ayId); if (r?.data) { const d = r.data; document.getElementById('statsRow').innerHTML = statCard('Total', d.total || 0, '&#128104;&#8205;&#127979;', 'blue') + statCard('Male', d.by_gender?.male || 0, '&#128104;', 'indigo') + statCard('Female', d.by_gender?.female || 0, '&#128105;', 'purple') + statCard('Transferred', d.by_status?.transferred || 0, '&#128640;', 'orange'); } } catch (e) { }
+      if (!currentSchoolId) return;
+      try {
+        const r = await StudentAPI.stats(currentSchoolId, ayId, selectedBranchCode);
+        if (r?.data) {
+          const d = r.data;
+          document.getElementById('statsRow').innerHTML = statCard('Total', d.total || 0, '&#128104;&#8205;&#127979;', 'blue') + statCard('Male', d.by_gender?.male || 0, '&#128104;', 'indigo') + statCard('Female', d.by_gender?.female || 0, '&#128105;', 'purple') + statCard('Transferred', d.by_status?.transferred || 0, '&#128640;', 'orange');
+        }
+      } catch (e) { }
     }
 
     async function loadClasses() {
-      if (!schoolId) return;
+      if (!currentSchoolId) return;
       try {
-        const r = await ClassAPI.list(schoolId, ayId); const opts = (r?.data || []).map(c => `<option value="${c.id}" data-secs='${JSON.stringify(c.sections)}'>${c.name}</option>`).join('');
+        const r = await ClassAPI.list(currentSchoolId, ayId); const opts = (r?.data || []).map(c => `<option value="${c.id}" data-fee="${c.class_fee || 0}" data-secs='${JSON.stringify(c.sections)}'>${c.name}</option>`).join('');
         document.getElementById('filterClass').innerHTML = '<option value="">All Classes</option>' + opts;
         document.getElementById('m_cls').innerHTML = '<option value="">Select class</option>' + opts;
       } catch (e) { }
     }
 
     async function loadSchoolMeta() {
-      if (!schoolId) return;
+      if (!currentSchoolId) return;
       try {
-        const r = await SchoolAPI.get(schoolId);
+        const r = await SchoolAPI.get(currentSchoolId);
         branchCache = r?.data?.branches || [];
         const branchOpts = '<option value="">Main School</option>' + branchCache.map(b => `<option value="${b.code}" data-name="${b.name}">${b.name}</option>`).join('');
         document.getElementById('m_branch').innerHTML = branchOpts;
+        document.getElementById('filterBranch').innerHTML = '<option value="">All Branches</option>' + branchCache.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+        if (selectedBranchCode) document.getElementById('filterBranch').value = selectedBranchCode;
       } catch (e) { }
     }
 
     async function loadRoutes() {
-      if (!schoolId) return;
+      if (!currentSchoolId) return;
       try {
-        const r = await TransportAPI.getRoutes(schoolId);
+        const r = await TransportAPI.getRoutes(currentSchoolId);
         routeCache = r?.data || [];
         document.getElementById('m_route').innerHTML = '<option value="">Select route</option>' + routeCache.map(rt => `<option value="${rt.id}">${rt.route_name}</option>`).join('');
       } catch (e) { }
@@ -457,6 +474,17 @@
       if (route && !document.getElementById('m_transport_area').value) {
         document.getElementById('m_transport_area').value = route.start_point || '';
       }
+      updateFeePreview();
+    }
+
+    function updateFeePreview() {
+      const classEl = document.getElementById('m_cls');
+      const selectedClass = classEl.options[classEl.selectedIndex];
+      const classFee = parseFloat(selectedClass?.dataset?.fee || '0') || 0;
+      const transportFeePerMonth = parseFloat(document.getElementById('m_charge').value || '0') || 0;
+      const selectedMonths = document.querySelectorAll('.m_month:checked').length;
+      document.getElementById('m_class_fee').value = classFee;
+      document.getElementById('m_total_fee').value = classFee + (transportFeePerMonth * selectedMonths);
     }
 
     function toggleReferralFields() {
@@ -493,13 +521,17 @@
     }
 
     async function loadStudents(page = 1) {
-      if (!schoolId) { document.getElementById('tblContainer').innerHTML = '<div class="text-center py-12 text-gray-400"><div class="text-4xl mb-2">&#9888;</div><p>Configure school first</p></div>'; return; }
-      const params = { school_id: schoolId, page, per_page: 15 };
+      if (!currentSchoolId) { document.getElementById('tblContainer').innerHTML = '<div class="text-center py-12 text-gray-400"><div class="text-4xl mb-2">&#9888;</div><p>Configure school first</p></div>'; return; }
+      const params = { school_id: currentSchoolId, page, per_page: 15 };
       if (ayId) params.academic_year_id = ayId;
       const srch = document.getElementById('searchInput').value.trim();
       const stat = document.getElementById('filterStatus').value;
+      const branch = document.getElementById('filterBranch').value;
       const cls = document.getElementById('filterClass').value;
-      if (srch) params.search = srch; if (stat) params.admission_status = stat; if (cls) params.classroom_id = cls;
+      if (srch) params.search = srch;
+      if (stat) params.admission_status = stat;
+      if (branch) params.branch_code = branch;
+      if (cls) params.classroom_id = cls;
       try {
         const res = await StudentAPI.list(params); const students = res?.data || []; const meta = res?.meta || {};
         totalPgs = meta.total_pages || 1; curPage = meta.page || 1;
@@ -531,40 +563,255 @@
 
     async function viewStudent(id) {
       try {
-        const res = await StudentAPI.get(id); const s = res.data;
+        const res = await StudentAPI.profile(id);
+        const profile = res?.data || {};
+        const s = profile.student || {};
+        const attendance = profile.attendance_summary || {};
+        const fees = profile.fee_summary || {};
+        const results = profile.results || [];
+        const tcs = profile.transfer_certificates || [];
+        const parent = s.parent_info || {};
+        const medical = s.medical_info || {};
+        const presentAddr = s.current_address_details || {};
+        const permanentAddr = s.permanent_address_details || {};
+        const attendanceRows = (attendance.recent_records || []).length
+          ? (attendance.recent_records || []).map(rec => `
+            <tr class="border-b border-slate-100">
+              <td class="py-2 pr-3">${formatDate(rec.date)}</td>
+              <td class="py-2 pr-3">${tdBadge(rec.status, rec.status === 'Present' ? 'green' : rec.status === 'Late' ? 'yellow' : 'red')}</td>
+              <td class="py-2 text-slate-500">${rec.remarks || '-'}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="3" class="py-4 text-slate-400 text-center">No attendance records found</td></tr>';
+        const feeInvoiceRows = (fees.recent_invoices || []).length
+          ? fees.recent_invoices.map(inv => `
+            <tr class="border-b border-slate-100">
+              <td class="py-2 pr-3 font-mono text-xs">${inv.invoice_no}</td>
+              <td class="py-2 pr-3">${formatCurrency(inv.net_amount || 0)}</td>
+              <td class="py-2 pr-3">${formatCurrency(inv.balance_amount || 0)}</td>
+              <td class="py-2 pr-3">${formatDate(inv.due_date)}</td>
+              <td class="py-2">${tdBadge(inv.status, inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'yellow' : inv.status === 'Overdue' ? 'red' : 'orange')}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="5" class="py-4 text-slate-400 text-center">No invoices found</td></tr>';
+        const paymentRows = (fees.recent_payments || []).length
+          ? fees.recent_payments.map(pay => `
+            <tr class="border-b border-slate-100">
+              <td class="py-2 pr-3 font-mono text-xs">${pay.receipt_no || pay.transaction_no || '-'}</td>
+              <td class="py-2 pr-3">${formatCurrency(pay.amount || 0)}</td>
+              <td class="py-2 pr-3">${pay.payment_mode || '-'}</td>
+              <td class="py-2">${formatDate(pay.payment_date)}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="4" class="py-4 text-slate-400 text-center">No payments found</td></tr>';
+        const resultCards = results.length
+          ? results.map(result => `
+            <div class="rounded-2xl border border-slate-200 p-4 bg-slate-50">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                <div>
+                  <h5 class="font-semibold text-slate-900">${result.exam_name || 'Exam Result'}</h5>
+                  <p class="text-xs text-slate-500">${result.exam_type || '-'} · ${formatDate(result.generated_at)}</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-3 py-1 rounded-xl bg-white text-sm font-semibold text-slate-700">${result.percentage || 0}%</span>
+                  <span class="px-3 py-1 rounded-xl bg-white text-sm font-semibold text-slate-700">Grade ${result.grade || '-'}</span>
+                  <span class="px-3 py-1 rounded-xl ${result.is_pass ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'} text-sm font-semibold">${result.result_status || (result.is_pass ? 'Pass' : 'Fail')}</span>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                <div class="rounded-xl bg-white p-3"><div class="text-slate-400 text-xs">Obtained</div><div class="font-bold text-slate-900">${result.total_obtained || 0}</div></div>
+                <div class="rounded-xl bg-white p-3"><div class="text-slate-400 text-xs">Max Marks</div><div class="font-bold text-slate-900">${result.total_max || 0}</div></div>
+                <div class="rounded-xl bg-white p-3"><div class="text-slate-400 text-xs">Class Rank</div><div class="font-bold text-slate-900">${result.rank_in_class || '-'}</div></div>
+                <div class="rounded-xl bg-white p-3"><div class="text-slate-400 text-xs">Section Rank</div><div class="font-bold text-slate-900">${result.rank_in_section || '-'}</div></div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-left text-slate-500 border-b border-slate-200">
+                      <th class="py-2 pr-3">Subject</th>
+                      <th class="py-2 pr-3">Marks</th>
+                      <th class="py-2 pr-3">Grade</th>
+                      <th class="py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${(result.subjects || []).map(subject => `
+                      <tr class="border-b border-slate-100">
+                        <td class="py-2 pr-3">${subject.name || '-'}</td>
+                        <td class="py-2 pr-3">${subject.obtained || 0} / ${subject.max || 0}</td>
+                        <td class="py-2 pr-3">${subject.grade || '-'}</td>
+                        <td class="py-2">${tdBadge(subject.is_pass ? 'Pass' : 'Fail', subject.is_pass ? 'green' : 'red')}</td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>`).join('')
+          : '<div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-slate-400">No result records found</div>';
+        const documents = (s.documents || []).length
+          ? (s.documents || []).map(doc => `
+            <div class="rounded-xl border border-slate-200 p-3 bg-white">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="font-medium text-slate-900">${doc.doc_type || 'Document'}</div>
+                  <div class="text-xs text-slate-500">${doc.doc_number || 'No number'} · ${formatDate(doc.uploaded_at)}</div>
+                </div>
+                ${tdBadge(doc.is_verified ? 'Verified' : 'Pending', doc.is_verified ? 'green' : 'yellow')}
+              </div>
+            </div>`).join('')
+          : '<div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-slate-400">No documents uploaded</div>';
+        const tcContent = tcs.length
+          ? tcs.map(tc => `<div class="rounded-xl border border-slate-200 p-3 bg-white"><div class="font-medium text-slate-900">${tc.tc_number}</div><div class="text-xs text-slate-500 mt-1">Issued on ${formatDate(tc.issue_date)}</div></div>`).join('')
+          : '<div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-slate-400">No transfer certificates generated</div>';
         document.getElementById('detContent').innerHTML = `
-      <div class="flex items-center gap-4 pb-5 border-b mb-5">
-        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">${s.first_name.charAt(0).toUpperCase()}</div>
-        <div><h4 class="text-xl font-bold">${s.full_name}</h4><p class="text-gray-500 text-sm">${s.admission_no} · ${s.branch_name || 'Main School'} · ${s.classroom_name || ''} ${s.section_name || ''}</p></div>
-      </div>
-      <div class="grid grid-cols-2 gap-4 text-sm">
-        <div class="space-y-2">
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Gender:</span><span class="font-medium">${s.gender || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">DOB:</span><span class="font-medium">${formatDate(s.date_of_birth)}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Phone:</span><span class="font-medium">${s.phone || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Blood Grp:</span><span class="font-medium">${s.medical_info?.blood_group || '-'}</span></div>
+      <div class="space-y-6">
+        <div class="rounded-3xl bg-gradient-to-r from-blue-600 via-violet-600 to-indigo-600 p-6 text-white">
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div class="flex items-center gap-4">
+              ${s.photo ? `<img src="${s.photo}" alt="${s.full_name}" class="w-20 h-20 rounded-3xl object-cover border-4 border-white/20" />`
+                : `<div class="w-20 h-20 rounded-3xl bg-white/15 border border-white/20 flex items-center justify-center text-3xl font-bold">${(s.first_name || s.full_name || 'S').charAt(0).toUpperCase()}</div>`}
+              <div>
+                <h4 class="text-2xl font-bold">${s.full_name || '-'}</h4>
+                <p class="text-sm text-white/80 mt-1">${s.admission_no || '-'} · ${s.branch_name || 'Main School'} · ${s.classroom_name || '-'} ${s.section_name ? '/ ' + s.section_name : ''}</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                  <span class="px-3 py-1 rounded-xl bg-white/15 text-sm font-medium">${s.admission_status || 'Active'}</span>
+                  <span class="px-3 py-1 rounded-xl bg-white/15 text-sm font-medium">${s.registration_type || 'Manual'}</span>
+                  <span class="px-3 py-1 rounded-xl bg-white/15 text-sm font-medium">${s.academic_year || '-'}</span>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 min-w-[280px]">
+              <div class="rounded-2xl bg-white/12 p-3"><div class="text-xs text-white/70">Attendance</div><div class="text-xl font-bold mt-1">${attendance.attendance_percentage || 0}%</div></div>
+              <div class="rounded-2xl bg-white/12 p-3"><div class="text-xs text-white/70">Pending Fees</div><div class="text-xl font-bold mt-1">${formatCurrency(fees.total_due || 0)}</div></div>
+              <div class="rounded-2xl bg-white/12 p-3"><div class="text-xs text-white/70">Results</div><div class="text-xl font-bold mt-1">${results.length}</div></div>
+              <div class="rounded-2xl bg-white/12 p-3"><div class="text-xs text-white/70">Documents</div><div class="text-xl font-bold mt-1">${(s.documents || []).length}</div></div>
+            </div>
+          </div>
         </div>
-        <div class="space-y-2">
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Father:</span><span class="font-medium">${s.parent_info?.father_name || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Father Ph:</span><span class="font-medium">${s.parent_info?.father_phone || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Mother:</span><span class="font-medium">${s.parent_info?.mother_name || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Adm Date:</span><span class="font-medium">${formatDate(s.admission_date)}</span></div>
+
+        <div class="grid lg:grid-cols-3 gap-5">
+          <div class="lg:col-span-2 space-y-5">
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Personal Biodata</h5>
+              <div class="grid md:grid-cols-2 gap-3 text-sm">
+                <div><span class="text-slate-400">Gender:</span> <span class="font-medium text-slate-900">${s.gender || '-'}</span></div>
+                <div><span class="text-slate-400">DOB:</span> <span class="font-medium text-slate-900">${formatDate(s.date_of_birth)}</span></div>
+                <div><span class="text-slate-400">Phone:</span> <span class="font-medium text-slate-900">${s.phone || '-'}</span></div>
+                <div><span class="text-slate-400">Email:</span> <span class="font-medium text-slate-900">${s.email || '-'}</span></div>
+                <div><span class="text-slate-400">Religion:</span> <span class="font-medium text-slate-900">${s.religion || '-'}</span></div>
+                <div><span class="text-slate-400">Caste:</span> <span class="font-medium text-slate-900">${s.caste || '-'}</span></div>
+                <div><span class="text-slate-400">Nationality:</span> <span class="font-medium text-slate-900">${s.nationality || '-'}</span></div>
+                <div><span class="text-slate-400">Aadhar:</span> <span class="font-medium text-slate-900">${s.aadhar_number || '-'}</span></div>
+                <div><span class="text-slate-400">Blood Group:</span> <span class="font-medium text-slate-900">${medical.blood_group || '-'}</span></div>
+                <div><span class="text-slate-400">Height / Weight:</span> <span class="font-medium text-slate-900">${medical.height || '-'} / ${medical.weight || '-'}</span></div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Parent / Guardian Details</h5>
+              <div class="grid md:grid-cols-2 gap-4 text-sm">
+                <div class="space-y-2">
+                  <div><span class="text-slate-400">Father:</span> <span class="font-medium text-slate-900">${parent.father_name || '-'}</span></div>
+                  <div><span class="text-slate-400">Father Phone:</span> <span class="font-medium text-slate-900">${parent.father_phone || '-'}</span></div>
+                  <div><span class="text-slate-400">Father Email:</span> <span class="font-medium text-slate-900">${parent.father_email || '-'}</span></div>
+                  <div><span class="text-slate-400">Occupation:</span> <span class="font-medium text-slate-900">${parent.father_occupation || '-'}</span></div>
+                </div>
+                <div class="space-y-2">
+                  <div><span class="text-slate-400">Mother:</span> <span class="font-medium text-slate-900">${parent.mother_name || '-'}</span></div>
+                  <div><span class="text-slate-400">Mother Phone:</span> <span class="font-medium text-slate-900">${parent.mother_phone || '-'}</span></div>
+                  <div><span class="text-slate-400">Guardian:</span> <span class="font-medium text-slate-900">${parent.guardian_name || '-'}</span></div>
+                  <div><span class="text-slate-400">Guardian Phone:</span> <span class="font-medium text-slate-900">${parent.guardian_phone || '-'}</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Academic, Transport and Referral</h5>
+              <div class="grid md:grid-cols-2 gap-3 text-sm">
+                <div><span class="text-slate-400">Admission Date:</span> <span class="font-medium text-slate-900">${formatDate(s.admission_date)}</span></div>
+                <div><span class="text-slate-400">Admission Type:</span> <span class="font-medium text-slate-900">${s.admission_type || '-'}</span></div>
+                <div><span class="text-slate-400">Registration Type:</span> <span class="font-medium text-slate-900">${s.registration_type || '-'}</span></div>
+                <div><span class="text-slate-400">Migration / Lateral:</span> <span class="font-medium text-slate-900">${s.migration ? 'Migration' : '-'} ${s.lateral_entry ? '/ Lateral Entry' : ''}</span></div>
+                <div><span class="text-slate-400">Transport Route:</span> <span class="font-medium text-slate-900">${s.transport_route_name || '-'}</span></div>
+                <div><span class="text-slate-400">Transport Charge:</span> <span class="font-medium text-slate-900">${formatCurrency(s.transport_fee_per_month || 0)}</span></div>
+                <div><span class="text-slate-400">Area / Stop:</span> <span class="font-medium text-slate-900">${s.transport_area || '-'} / ${s.bus_stop || '-'}</span></div>
+                <div><span class="text-slate-400">Months:</span> <span class="font-medium text-slate-900">${(s.transport_months || []).join(', ') || '-'}</span></div>
+                <div><span class="text-slate-400">Referral Type:</span> <span class="font-medium text-slate-900">${s.referral_type || '-'}</span></div>
+                <div><span class="text-slate-400">Referral Contact:</span> <span class="font-medium text-slate-900">${s.referral_number || s.referral_email || '-'}</span></div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Attendance Summary</h5>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="rounded-xl bg-white p-3 border border-slate-200"><div class="text-xs text-slate-400">Working Days</div><div class="text-xl font-bold text-slate-900 mt-1">${attendance.total_working_days || 0}</div></div>
+                <div class="rounded-xl bg-white p-3 border border-slate-200"><div class="text-xs text-slate-400">Present</div><div class="text-xl font-bold text-emerald-600 mt-1">${attendance.present_days || 0}</div></div>
+                <div class="rounded-xl bg-white p-3 border border-slate-200"><div class="text-xs text-slate-400">Absent</div><div class="text-xl font-bold text-red-600 mt-1">${attendance.absent_days || 0}</div></div>
+                <div class="rounded-xl bg-white p-3 border border-slate-200"><div class="text-xs text-slate-400">Late</div><div class="text-xl font-bold text-amber-600 mt-1">${attendance.late_days || 0}</div></div>
+              </div>
+              <div class="overflow-x-auto bg-white rounded-2xl border border-slate-200 p-4">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-left text-slate-500 border-b border-slate-200">
+                      <th class="py-2 pr-3">Date</th>
+                      <th class="py-2 pr-3">Status</th>
+                      <th class="py-2">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>${attendanceRows}</tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Exam Results</h5>
+              <div class="space-y-4">${resultCards}</div>
+            </div>
+          </div>
+
+          <div class="space-y-5">
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Fees Overview</h5>
+              <div class="grid grid-cols-1 gap-3 mb-4">
+                <div class="rounded-xl bg-white p-3 border border-slate-200"><div class="text-xs text-slate-400">Total Billed</div><div class="text-lg font-bold text-slate-900 mt-1">${formatCurrency(fees.total_billed || 0)}</div></div>
+                <div class="rounded-xl bg-white p-3 border border-slate-200"><div class="text-xs text-slate-400">Total Paid</div><div class="text-lg font-bold text-emerald-600 mt-1">${formatCurrency(fees.total_paid || 0)}</div></div>
+                <div class="rounded-xl bg-white p-3 border border-slate-200"><div class="text-xs text-slate-400">Total Due</div><div class="text-lg font-bold text-red-600 mt-1">${formatCurrency(fees.total_due || 0)}</div></div>
+              </div>
+              <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 overflow-x-auto">
+                <h6 class="font-semibold text-slate-900 mb-3">Recent Invoices</h6>
+                <table class="w-full text-sm"><thead><tr class="text-left text-slate-500 border-b border-slate-200"><th class="py-2 pr-3">Invoice</th><th class="py-2 pr-3">Amount</th><th class="py-2 pr-3">Due</th><th class="py-2 pr-3">Date</th><th class="py-2">Status</th></tr></thead><tbody>${feeInvoiceRows}</tbody></table>
+              </div>
+              <div class="bg-white rounded-2xl border border-slate-200 p-4 overflow-x-auto">
+                <h6 class="font-semibold text-slate-900 mb-3">Recent Payments</h6>
+                <table class="w-full text-sm"><thead><tr class="text-left text-slate-500 border-b border-slate-200"><th class="py-2 pr-3">Receipt</th><th class="py-2 pr-3">Amount</th><th class="py-2 pr-3">Mode</th><th class="py-2">Date</th></tr></thead><tbody>${paymentRows}</tbody></table>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Address</h5>
+              <div class="space-y-4 text-sm">
+                <div class="rounded-xl bg-white p-4 border border-slate-200">
+                  <div class="font-semibold text-slate-900 mb-2">Present Address</div>
+                  <div class="text-slate-600">${[presentAddr.address, presentAddr.village_area, presentAddr.post_office, presentAddr.city, presentAddr.state, presentAddr.pin_code].filter(Boolean).join(', ') || s.current_address || '-'}</div>
+                </div>
+                <div class="rounded-xl bg-white p-4 border border-slate-200">
+                  <div class="font-semibold text-slate-900 mb-2">Permanent Address</div>
+                  <div class="text-slate-600">${[permanentAddr.address, permanentAddr.village_area, permanentAddr.post_office, permanentAddr.city, permanentAddr.state, permanentAddr.pin_code].filter(Boolean).join(', ') || s.permanent_address || '-'}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Documents</h5>
+              <div class="space-y-3">${documents}</div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+              <h5 class="text-base font-bold text-slate-900 mb-4">Transfer Certificates</h5>
+              <div class="space-y-3">${tcContent}</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="grid grid-cols-2 gap-4 text-sm mt-4">
-        <div class="space-y-2">
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Route:</span><span class="font-medium">${s.transport_route_name || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Bus Stop:</span><span class="font-medium">${s.bus_stop || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Months:</span><span class="font-medium">${(s.transport_months || []).join(', ') || '-'}</span></div>
+
+        <div class="flex gap-3">
+          <button onclick="genTC('${id}','${(s.full_name || '').replace(/'/g, "\\'")}')" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl text-sm font-medium hover:bg-orange-200">Generate TC</button>
         </div>
-        <div class="space-y-2">
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Referral:</span><span class="font-medium">${s.referral_type || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Reg Type:</span><span class="font-medium">${s.registration_type || '-'}</span></div>
-          <div class="flex gap-2"><span class="text-gray-400 w-24">Address:</span><span class="font-medium">${s.current_address || '-'}</span></div>
-        </div>
-      </div>
-      <div class="mt-5 flex gap-3">
-        <button onclick="genTC('${id}','${s.full_name.replace(/'/g, "\'")}')" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl text-sm font-medium hover:bg-orange-200">Generate TC</button>
       </div>`;
         document.getElementById('detModal').style.display = 'flex';
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
@@ -590,7 +837,7 @@
     }
 
     async function submitAdm() {
-      if (!schoolId) { showToast('Configure school first', 'error'); return; }
+      if (!currentSchoolId) { showToast('Configure school first', 'error'); return; }
       const fn = document.getElementById('m_fn').value.trim(), ln = document.getElementById('m_ln').value.trim();
       const gnd = document.getElementById('m_gnd').value, cls = document.getElementById('m_cls').value, sec = document.getElementById('m_sec').value;
       if (!fn || !ln || !gnd || !cls || !sec) { showToast('Fill all required fields (*)', 'error'); return; }
@@ -607,7 +854,7 @@
           caste: document.getElementById('m_caste').value || null,
           nationality: document.getElementById('m_nat').value || 'Indian',
           aadhar_number: document.getElementById('m_aad').value || null,
-          school_id: schoolId, academic_year_id: ayId || '',
+          school_id: currentSchoolId, academic_year_id: ayId || '',
           classroom_id: cls, section_id: sec,
           branch_code: branchEl.value || null,
           branch_name: branchOpt?.dataset?.name || null,
@@ -652,10 +899,19 @@
     }
 
     const dbLoad = debounce(() => loadStudents(1));
+    document.querySelectorAll('.m_month').forEach(el => el.addEventListener('change', updateFeePreview));
     document.getElementById('searchInput').addEventListener('input', dbLoad);
     document.getElementById('filterStatus').addEventListener('change', () => loadStudents(1));
+    document.getElementById('filterBranch').addEventListener('change', async (e) => {
+      selectedBranchCode = e.target.value || '';
+      await loadStats();
+      loadStudents(1);
+    });
     document.getElementById('filterClass').addEventListener('change', () => loadStudents(1));
-    loadStats(); loadClasses(); loadSchoolMeta(); loadRoutes(); loadStudents();
+    (async function initStudentPage() {
+      currentSchoolId = await initializeSchoolContext() || currentSchoolId;
+      loadStats(); loadClasses(); loadSchoolMeta(); loadRoutes(); loadStudents();
+    })();
   </script>
 </body>
 

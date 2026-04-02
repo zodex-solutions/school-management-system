@@ -37,6 +37,18 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       <div id="topbarContainer"></div>
       <div class="p-6 space-y-6">
 
+        <div style="background:#fff;border-radius:1.25rem;padding:1rem 1.25rem;border:1.5px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Branch Filter</p>
+            <p id="feeBranchLabel" class="text-sm font-semibold text-slate-900 mt-1">All branches in logged-in school</p>
+          </div>
+          <div class="min-w-[240px]">
+            <select id="feeBranchFilter" class="finput">
+              <option value="">All Branches</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Fee Stats -->
         <div id="feeStats" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
 
@@ -180,10 +192,59 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     requireAuth();
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('fees');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Fees Management', 'Manage fees, invoices and payments');
-    const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
+    const feePageParams = new URLSearchParams(window.location.search);
+    let schoolId = localStorage.getItem('school_id');
+    const ayId = localStorage.getItem('ay_id');
+    let schoolBranches = [];
+    let selectedBranchCode = feePageParams.get('branch_code') || '';
     let feeCats = [], feeStructCats = [];
     let invoiceStudents = {};
     let feeStructures = [];
+    const initialFeeTab = feePageParams.get('tab');
+
+    document.getElementById('feeBranchFilter').addEventListener('change', async (e) => {
+      selectedBranchCode = e.target.value || '';
+      updateFeeBranchLabel();
+      await refreshFeeViews();
+    });
+
+    function updateFeeBranchLabel() {
+      const selectedBranch = schoolBranches.find(branch => branch.code === selectedBranchCode);
+      document.getElementById('feeBranchLabel').textContent = selectedBranch
+        ? `${selectedBranch.name} branch`
+        : 'All branches in logged-in school';
+    }
+
+    async function loadFeeBranches() {
+      schoolId = await initializeSchoolContext();
+      if (!schoolId) return;
+      try {
+        const res = await SchoolAPI.get(schoolId);
+        schoolBranches = res?.data?.branches || [];
+        const filter = document.getElementById('feeBranchFilter');
+        const previous = selectedBranchCode;
+        filter.innerHTML = '<option value="">All Branches</option>' +
+          schoolBranches.map(branch => `<option value="${branch.code}">${branch.name}${branch.code ? ` (${branch.code})` : ''}</option>`).join('');
+        if (previous && schoolBranches.some(branch => branch.code === previous)) {
+          filter.value = previous;
+          selectedBranchCode = previous;
+        } else {
+          filter.value = '';
+          selectedBranchCode = '';
+        }
+      } catch (e) {
+        schoolBranches = [];
+        document.getElementById('feeBranchFilter').innerHTML = '<option value="">All Branches</option>';
+        selectedBranchCode = '';
+      }
+      updateFeeBranchLabel();
+    }
+
+    async function refreshFeeViews() {
+      await Promise.allSettled([loadFeeStats(), loadInvoices()]);
+      if (!document.getElementById('ftab1').classList.contains('hidden')) await loadPayStudents();
+      if (!document.getElementById('ftab3').classList.contains('hidden')) await loadDues();
+    }
 
     function switchFeeTab(idx) {
       document.querySelectorAll('.ftab').forEach((b, i) => {
@@ -204,7 +265,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadFeeStats() {
       if (!schoolId) return;
       try {
-        const r = await FeesAPI.getSummary(schoolId); const d = r?.data || {};
+        const r = await FeesAPI.getSummary(schoolId, selectedBranchCode); const d = r?.data || {};
         document.getElementById('feeStats').innerHTML =
           statCard('Total Billed', formatCurrency(d.total_billed || 0), '&#128179;', 'blue') +
           statCard('Collected', formatCurrency(d.total_collected || 0), '&#9989;', 'green') +
@@ -216,7 +277,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadInvStudents() {
       if (!schoolId) return;
       try {
-        const r = await StudentAPI.list({ school_id: schoolId, per_page: 200 });
+        const r = await StudentAPI.list({ school_id: schoolId, branch_code: selectedBranchCode, per_page: 200 });
         const students = r?.data || [];
         invoiceStudents = {};
         students.forEach(s => invoiceStudents[s.id] = s);
@@ -301,7 +362,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
 
     async function loadInvoices() {
       if (!schoolId) { document.getElementById('invTable').innerHTML = '<div class="text-center py-8 text-gray-400">Configure school first</div>'; return; }
-      const params = { school_id: schoolId, per_page: 20 };
+      const params = { school_id: schoolId, branch_code: selectedBranchCode, per_page: 20 };
       const stat = document.getElementById('invStatus').value; if (stat) params.status = stat;
       if (ayId) params.academic_year_id = ayId;
       try {
@@ -331,7 +392,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadPayStudents() {
       if (!schoolId) return;
       try {
-        const r = await StudentAPI.list({ school_id: schoolId, per_page: 200 });
+        const r = await StudentAPI.list({ school_id: schoolId, branch_code: selectedBranchCode, per_page: 200 });
         document.getElementById('pay_student').innerHTML = '<option value="">Select student</option>' +
           (r?.data || []).map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})</option>`).join('');
       } catch (e) {}
@@ -343,7 +404,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       document.getElementById('invoiceDetails').style.display = 'none';
       if (!studId) return;
       try {
-        const r = await FeesAPI.getInvoices({ school_id: schoolId, student_id: studId, per_page: 50 });
+        const r = await FeesAPI.getInvoices({ school_id: schoolId, student_id: studId, branch_code: selectedBranchCode, per_page: 50 });
         (r?.data || []).filter(inv => inv.status !== 'Paid').forEach(inv => {
           document.getElementById('pay_invoice').innerHTML += `<option value="${inv.id}" data-total="${inv.net_amount}" data-paid="${inv.paid_amount}" data-bal="${inv.balance_amount}">${inv.invoice_no} - Balance: ${formatCurrency(inv.balance_amount)}</option>`;
         });
@@ -425,7 +486,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadDues() {
       if (!schoolId) { document.getElementById('duesTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
       try {
-        const r = await FeesAPI.getDues(schoolId); const d = r?.data || {};
+        const r = await FeesAPI.getDues({ school_id: schoolId, branch_code: selectedBranchCode }); const d = r?.data || {};
         document.getElementById('duesTable').innerHTML = `
           <div class="grid grid-cols-3 gap-4 mb-5">
             <div class="bg-red-50 rounded-xl p-4 text-center"><div class="text-2xl font-bold text-red-600">${d.total_pending_invoices || 0}</div><div class="text-xs text-red-500 mt-0.5">Pending Invoices</div></div>
@@ -446,7 +507,11 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     }
 
     document.getElementById('invStatus').addEventListener('change', loadInvoices);
-    loadFeeStats(); loadInvoices();
+    (async () => {
+      await loadFeeBranches();
+      await refreshFeeViews();
+      if (initialFeeTab === 'dues') switchFeeTab(3);
+    })();
   </script>
 </body>
 </html>

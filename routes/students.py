@@ -5,6 +5,9 @@ from datetime import datetime
 from models.student import Student, TransferCertificate
 from models.institution import School, AcademicYear, ClassRoom, Section, User
 from models.transport import TransportRoute, StudentTransport, Vehicle
+from models.attendance import StudentAttendance
+from models.fees import FeeInvoice, PaymentTransaction
+from models.examination import Result
 from utils.auth import get_current_user
 from utils.helpers import (
     success_response, paginate_query, generate_admission_no,
@@ -192,6 +195,7 @@ async def list_students(
     academic_year_id: Optional[str] = None,
     classroom_id: Optional[str] = None,
     section_id: Optional[str] = None,
+    branch_code: Optional[str] = None,
     admission_status: Optional[str] = None,
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
@@ -225,6 +229,9 @@ async def list_students(
             query = query.filter(section=section)
         except Section.DoesNotExist:
             pass
+
+    if branch_code:
+        query = query.filter(branch_code=branch_code)
     
     if admission_status:
         query = query.filter(admission_status=admission_status)
@@ -352,6 +359,201 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
         return success_response(data)
     except Student.DoesNotExist:
         raise HTTPException(404, "Student not found")
+
+
+@router.get("/{student_id}/profile-summary")
+async def get_student_profile_summary(student_id: str, current_user: User = Depends(get_current_user)):
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        raise HTTPException(404, "Student not found")
+
+    attendance_query = StudentAttendance.objects(
+        school=student.school,
+        classroom=student.classroom,
+        section=student.section
+    ).order_by('-date')
+    total_days = 0
+    present_days = 0
+    absent_days = 0
+    late_days = 0
+    recent_attendance = []
+
+    for att in attendance_query:
+        for rec in att.records:
+            if rec.student and str(rec.student.id) == str(student.id):
+                total_days += 1
+                if rec.status == "Present":
+                    present_days += 1
+                elif rec.status == "Absent":
+                    absent_days += 1
+                elif rec.status == "Late":
+                    late_days += 1
+                    present_days += 1
+
+                if len(recent_attendance) < 10:
+                    recent_attendance.append({
+                        "date": att.date.isoformat() if att.date else None,
+                        "status": rec.status,
+                        "remarks": rec.remarks
+                    })
+                break
+
+    attendance_percentage = round((present_days / total_days * 100), 2) if total_days else 0
+
+    invoices = list(FeeInvoice.objects(student=student).order_by('-invoice_date')[:10])
+    payments = list(PaymentTransaction.objects(student=student, status="Success").order_by('-payment_date')[:10])
+    fee_summary = {
+        "total_invoices": FeeInvoice.objects(student=student).count(),
+        "total_billed": sum(inv.net_amount or 0 for inv in FeeInvoice.objects(student=student)),
+        "total_paid": sum(inv.paid_amount or 0 for inv in FeeInvoice.objects(student=student)),
+        "total_due": sum(inv.balance_amount or 0 for inv in FeeInvoice.objects(student=student)),
+        "recent_invoices": [{
+            "id": str(inv.id),
+            "invoice_no": inv.invoice_no,
+            "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
+            "due_date": inv.due_date.isoformat() if inv.due_date else None,
+            "net_amount": inv.net_amount,
+            "paid_amount": inv.paid_amount,
+            "balance_amount": inv.balance_amount,
+            "status": inv.status
+        } for inv in invoices],
+        "recent_payments": [{
+            "id": str(payment.id),
+            "transaction_no": payment.transaction_no,
+            "payment_date": payment.payment_date.isoformat() if payment.payment_date else None,
+            "amount": payment.amount,
+            "payment_mode": payment.payment_mode,
+            "receipt_no": payment.receipt_no,
+            "remarks": payment.remarks
+        } for payment in payments]
+    }
+
+    results = list(Result.objects(student=student).order_by('-generated_at')[:10])
+    result_summary = [{
+        "id": str(result.id),
+        "exam_name": result.exam.name if result.exam else None,
+        "exam_type": result.exam.exam_type if result.exam else None,
+        "generated_at": result.generated_at.isoformat() if result.generated_at else None,
+        "total_obtained": result.total_obtained_marks,
+        "total_max": result.total_max_marks,
+        "percentage": result.percentage,
+        "grade": result.overall_grade,
+        "cgpa": result.cgpa,
+        "rank_in_class": result.rank_in_class,
+        "rank_in_section": result.rank_in_section,
+        "result_status": result.result_status,
+        "is_pass": result.is_pass,
+        "subjects": [{
+            "name": subject.subject_name,
+            "obtained": subject.total_marks,
+            "max": subject.max_marks,
+            "grade": subject.grade,
+            "is_pass": subject.is_pass
+        } for subject in (result.subject_results or [])]
+    } for result in results]
+
+    tcs = list(TransferCertificate.objects(student=student).order_by('-issue_date')[:5])
+
+    student_data = {
+        "id": str(student.id),
+        "admission_no": student.admission_no,
+        "student_id": student.student_id,
+        "full_name": student.full_name,
+        "first_name": student.first_name,
+        "middle_name": student.middle_name,
+        "last_name": student.last_name,
+        "gender": student.gender,
+        "date_of_birth": student.date_of_birth.isoformat() if student.date_of_birth else None,
+        "religion": student.religion,
+        "caste": student.caste,
+        "nationality": student.nationality,
+        "aadhar_number": student.aadhar_number,
+        "phone": student.phone,
+        "email": student.email,
+        "current_address": student.current_address,
+        "permanent_address": student.permanent_address,
+        "current_address_details": student.current_address_details or {},
+        "permanent_address_details": student.permanent_address_details or {},
+        "photo": student.photo,
+        "branch_code": student.branch_code,
+        "branch_name": student.branch_name,
+        "classroom_name": student.classroom.name if student.classroom else None,
+        "section_name": student.section.name if student.section else None,
+        "academic_year": student.academic_year.name if student.academic_year else None,
+        "admission_date": student.admission_date.isoformat() if student.admission_date else None,
+        "admission_type": student.admission_type,
+        "registration_type": student.registration_type,
+        "admission_status": student.admission_status,
+        "uses_transport": student.uses_transport,
+        "transport_route_name": student.transport_route_name,
+        "transport_area": student.transport_area,
+        "bus_stop": student.bus_stop,
+        "bus_no": student.bus_no,
+        "transport_fee_per_month": student.transport_fee_per_month,
+        "transport_months": student.transport_months or [],
+        "migration": student.migration,
+        "lateral_entry": student.lateral_entry,
+        "in_hostel": student.in_hostel,
+        "extra_activities": student.extra_activities or [],
+        "remarks": student.remarks,
+        "referral_type": student.referral_type,
+        "referral_number": student.referral_number,
+        "referral_email": student.referral_email,
+        "parent_info": {
+            "father_name": student.parent_info.father_name if student.parent_info else None,
+            "father_phone": student.parent_info.father_phone if student.parent_info else None,
+            "father_email": student.parent_info.father_email if student.parent_info else None,
+            "father_occupation": student.parent_info.father_occupation if student.parent_info else None,
+            "mother_name": student.parent_info.mother_name if student.parent_info else None,
+            "mother_phone": student.parent_info.mother_phone if student.parent_info else None,
+            "mother_email": student.parent_info.mother_email if student.parent_info else None,
+            "mother_occupation": student.parent_info.mother_occupation if student.parent_info else None,
+            "guardian_name": student.parent_info.guardian_name if student.parent_info else None,
+            "guardian_phone": student.parent_info.guardian_phone if student.parent_info else None,
+            "guardian_relation": student.parent_info.guardian_relation if student.parent_info else None,
+            "guardian_address": student.parent_info.guardian_address if student.parent_info else None,
+        } if student.parent_info else None,
+        "medical_info": {
+            "blood_group": student.medical_info.blood_group if student.medical_info else None,
+            "height": student.medical_info.height if student.medical_info else None,
+            "weight": student.medical_info.weight if student.medical_info else None,
+            "allergies": student.medical_info.allergies if student.medical_info else [],
+            "medical_conditions": student.medical_info.medical_conditions if student.medical_info else [],
+            "emergency_contact": student.medical_info.emergency_contact if student.medical_info else None,
+            "doctor_name": student.medical_info.doctor_name if student.medical_info else None,
+            "doctor_phone": student.medical_info.doctor_phone if student.medical_info else None,
+        } if student.medical_info else None,
+        "documents": [
+            {
+                "doc_type": d.doc_type,
+                "doc_number": d.doc_number,
+                "file_path": d.file_path,
+                "is_verified": d.is_verified,
+                "uploaded_at": d.uploaded_at.isoformat() if d.uploaded_at else None
+            } for d in (student.documents or [])
+        ],
+        "created_at": student.created_at.isoformat() if student.created_at else None
+    }
+
+    return success_response({
+        "student": student_data,
+        "attendance_summary": {
+            "total_working_days": total_days,
+            "present_days": present_days,
+            "absent_days": absent_days,
+            "late_days": late_days,
+            "attendance_percentage": attendance_percentage,
+            "recent_records": recent_attendance
+        },
+        "fee_summary": fee_summary,
+        "results": result_summary,
+        "transfer_certificates": [{
+            "id": str(tc.id),
+            "tc_number": tc.tc_number,
+            "issue_date": tc.issue_date.isoformat() if tc.issue_date else None
+        } for tc in tcs]
+    })
 
 
 @router.put("/{student_id}")
@@ -522,6 +724,7 @@ async def get_tc(student_id: str, current_user: User = Depends(get_current_user)
 
 @router.get("/stats/summary")
 async def student_stats(school_id: str, academic_year_id: Optional[str] = None,
+                        branch_code: Optional[str] = None,
                         current_user: User = Depends(get_current_user)):
     try:
         school = School.objects.get(id=school_id)
@@ -529,6 +732,8 @@ async def student_stats(school_id: str, academic_year_id: Optional[str] = None,
         if academic_year_id:
             ay = AcademicYear.objects.get(id=academic_year_id)
             query = query.filter(academic_year=ay)
+        if branch_code:
+            query = query.filter(branch_code=branch_code)
         
         stats = {
             "total": query.count(),

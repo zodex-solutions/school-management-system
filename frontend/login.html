@@ -193,6 +193,7 @@ async function doLogin(){
     const res = await AuthAPI.login(u,p);
     if(res&&res.success){
       Auth.setAuth(res.data.access_token, res.data.user);
+      await initializeSchoolContext(true);
       lt.textContent='Success!'; btn.style.background='linear-gradient(135deg,#10b981,#059669)';
       setTimeout(()=>location.href='/dashboard', 400);
     } else showErr(res?.message||'Login failed');

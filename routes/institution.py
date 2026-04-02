@@ -174,6 +174,7 @@ class ClassRoomCreate(BaseModel):
     academic_year_id: str
     name: str
     numeric_name: Optional[int] = None
+    class_fee: float = 0
     stream_id: Optional[str] = None
     sections: List[str] = []
 
@@ -189,6 +190,7 @@ async def create_class(data: ClassRoomCreate, current_user: User = Depends(get_c
     classroom = ClassRoom(
         school=school, academic_year=ay,
         name=data.name, numeric_name=data.numeric_name,
+        class_fee=data.class_fee or 0,
         sections=data.sections
     )
     classroom.save()
@@ -219,6 +221,7 @@ async def list_classes(
             result.append({
                 "id": str(c.id), "name": c.name,
                 "numeric_name": c.numeric_name,
+                "class_fee": c.class_fee or 0,
                 "sections": [{"id": str(s.id), "name": s.name} for s in sections]
             })
         return success_response(result)
@@ -355,7 +358,7 @@ async def list_grading_systems(school_id: str, current_user: User = Depends(get_
 # ─── Dashboard Stats ──────────────────────────────────────────────────────────
 
 @router.get("/dashboard/{school_id}")
-async def get_dashboard_stats(school_id: str, current_user: User = Depends(get_current_user)):
+async def get_dashboard_stats(school_id: str, branch_code: Optional[str] = None, current_user: User = Depends(get_current_user)):
     from models.student import Student
     from models.staff import Staff
     from models.fees import FeeInvoice
@@ -365,11 +368,19 @@ async def get_dashboard_stats(school_id: str, current_user: User = Depends(get_c
         school = School.objects.get(id=school_id)
         today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         
+        student_query = Student.objects(school=school, is_active=True)
+        if branch_code:
+            student_query = student_query.filter(branch_code=branch_code)
+
+        fee_query = FeeInvoice.objects(school=school, status__in=["Pending", "Partial", "Overdue"])
+        if branch_code:
+            fee_query = fee_query.filter(student__in=list(student_query))
+
         stats = {
-            "total_students": Student.objects(school=school, is_active=True).count(),
+            "total_students": student_query.count(),
             "total_staff": Staff.objects(school=school, is_active=True).count(),
             "total_classes": ClassRoom.objects(school=school, is_active=True).count(),
-            "pending_fees": FeeInvoice.objects(school=school, status__in=["Pending", "Partial", "Overdue"]).count(),
+            "pending_fees": fee_query.count(),
             "today_student_attendance": StudentAttendance.objects(school=school, date=today).count(),
         }
         return success_response(stats)

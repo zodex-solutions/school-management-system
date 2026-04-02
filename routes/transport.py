@@ -33,12 +33,16 @@ async def create_route(data: dict, current_user: User = Depends(get_current_user
 
 
 @router.get("/route")
-async def list_routes(school_id: str, current_user: User = Depends(get_current_user)):
+async def list_routes(school_id: str, branch_code: Optional[str] = None, current_user: User = Depends(get_current_user)):
     school = School.objects.get(id=school_id)
     routes = TransportRoute.objects(school=school, is_active=True)
     result = []
     for r in routes:
-        student_count = StudentTransport.objects(route=r, is_active=True).count()
+        student_query = StudentTransport.objects(route=r, is_active=True)
+        if branch_code:
+            branch_students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
+            student_query = student_query.filter(student__in=branch_students)
+        student_count = student_query.count()
         result.append({
             "id": str(r.id),
             "route_name": r.route_name,
@@ -190,11 +194,14 @@ async def assign_student_transport(data: dict, current_user: User = Depends(get_
 
 
 @router.get("/student-transport")
-async def list_student_transport(school_id: str, route_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
+async def list_student_transport(school_id: str, route_id: Optional[str] = None, branch_code: Optional[str] = None, current_user: User = Depends(get_current_user)):
     school = School.objects.get(id=school_id)
     query = StudentTransport.objects(school=school, is_active=True)
     if route_id:
         query = query.filter(route=TransportRoute.objects.get(id=route_id))
+    if branch_code:
+        branch_students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
+        query = query.filter(student__in=branch_students)
     result = [{
         "id": str(st.id),
         "student_name": st.student.full_name if st.student else None,
@@ -248,12 +255,16 @@ async def get_maintenance(vehicle_id: str, current_user: User = Depends(get_curr
 
 
 @router.get("/stats/{school_id}")
-async def transport_stats(school_id: str, current_user: User = Depends(get_current_user)):
+async def transport_stats(school_id: str, branch_code: Optional[str] = None, current_user: User = Depends(get_current_user)):
     school = School.objects.get(id=school_id)
+    student_transport_query = StudentTransport.objects(school=school, is_active=True)
+    if branch_code:
+        branch_students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
+        student_transport_query = student_transport_query.filter(student__in=branch_students)
     return success_response({
         "total_routes": TransportRoute.objects(school=school, is_active=True).count(),
         "total_vehicles": Vehicle.objects(school=school, is_active=True).count(),
         "active_vehicles": Vehicle.objects(school=school, is_active=True, status='Active').count(),
         "total_drivers": Driver.objects(school=school, is_active=True).count(),
-        "students_using_transport": StudentTransport.objects(school=school, is_active=True).count(),
+        "students_using_transport": student_transport_query.count(),
     })

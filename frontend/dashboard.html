@@ -163,13 +163,71 @@
         </div>
 
         <!-- KPI Cards -->
-        <div id="statsGrid" class="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          ${['','','',''].map(()=>`<div
-            style="background:#fff;border-radius:1.25rem;padding:1.25rem;border:1.5px solid #f1f5f9;animation:pulse 1.5s infinite">
-            <div style="height:.75rem;background:#f1f5f9;border-radius:999px;width:60%;margin-bottom:.875rem"></div>
-            <div style="height:2rem;background:#f1f5f9;border-radius:.5rem;width:40%"></div>
-          </div>`).join('')}
+        <div style="background:#fff;border-radius:1.25rem;padding:1rem 1.25rem;border:1.5px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
+          <div>
+            <p style="font-size:.75rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Branch View</p>
+            <p id="branchContextLabel" style="font-size:.9375rem;font-weight:700;color:#0f172a;margin-top:.2rem">All branches in logged-in school</p>
+          </div>
+          <div style="min-width:240px">
+            <select id="branchFilter" class="finput">
+              <option value="">All Branches</option>
+            </select>
+          </div>
         </div>
+
+       <div id="overviewCards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+  <!-- Total Students -->
+  <div id="overviewStudentsCard" class=" rounded-2xl p-6 bg-white  border border-grey-50  hover:shadow-sm cursor-pointer transition">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-black text-sm">Total Students</p>
+        <h2 id="overviewStudentsValue" class="text-3xl font-bold text-black mt-1">0</h2>
+        <span id="overviewStudentsText" class="text-xs text-gray-500">
+          Total number of students currently enrolled
+        </span>
+      </div>
+      <div class="bg-blue-500/20 text-blue-400 p-3 rounded-xl">
+        <span id="icon-students"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Fee -->
+  <div id="overviewPendingFeeCard" class=" rounded-2xl p-6 bg-white  border border-grey-50  hover:shadow-sm cursor-pointer transition">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-black text-sm">Pending Fee</p>
+        <h2 id="overviewPendingFeeValue" class="text-3xl font-bold text-black mt-1">₹0</h2>
+        <span id="overviewPendingFeeText" class="text-xs text-gray-500">
+          Total pending fee from students
+        </span>
+      </div>
+      <div class="bg-green-500/20 text-xl text-green-400 p-2 px-4 rounded-xl">
+        ₹
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Schools -->
+  <div id="overviewStaffCard" class=" rounded-2xl p-6 bg-white  border border-grey-50  hover:shadow-sm cursor-pointer transition">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-black text-sm">Total Staff</p>
+        <h2 id="overviewStaffValue" class="text-3xl font-bold text-black mt-1">0</h2>
+        <span id="overviewStaffText" class="text-xs text-gray-500">
+          Total staff members in the system
+        </span>
+      </div>
+      <div class="bg-purple-500/20 text-purple-400 p-3 rounded-xl">
+       <span id="icon-staff"></span>
+      </div>
+    </div>
+  </div>
+
+
+
+</div>
 
         <!-- Middle row -->
         <div class="grid lg:grid-cols-3 gap-5">
@@ -183,21 +241,25 @@
           <!-- Recent Students -->
           <div style="background:#fff;border-radius:1.25rem;padding:1.5rem;border:1.5px solid #f1f5f9">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
-              <h3 class="font-outfit" style="font-weight:700;color:#0f172a;font-size:1rem">👨‍🎓 Recent Students</h3>
+              <h3 class="font-outfit flex items-center gap-2" style="font-weight:700;color:#0f172a;font-size:1rem"><span id="icon-recent-students"></span>Recent Students</h3>
               <a href="/students" style="font-size:.8125rem;color:#6366f1;font-weight:600;text-decoration:none">View all
                 →</a>
             </div>
-            <div id="recentStudents"
-              style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:#94a3b8;text-align:center">
-              <div style="font-size:2.5rem;margin-bottom:.75rem">👨‍🎓</div>
-              <p style="font-size:.875rem">No students yet</p>
-            </div>
+          <div id="recentStudents"
+  style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:#94a3b8;text-align:center">
+
+  <div id="icon-empty-students"
+       style="margin-bottom:.75rem;display:flex;align-items:center;justify-content:center">
+  </div>
+
+  <p style="font-size:.875rem">No students yet</p>
+</div>
           </div>
 
           <!-- Fee Summary -->
           <div style="background:#fff;border-radius:1.25rem;padding:1.5rem;border:1.5px solid #f1f5f9">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
-              <h3 class="font-outfit" style="font-weight:700;color:#0f172a;font-size:1rem">💰 Fee Summary</h3>
+              <h3 class="font-outfit" style="font-weight:700;color:#0f172a;font-size:1rem"> ₹ Fee Summary</h3>
               <a href="/fees" style="font-size:.8125rem;color:#6366f1;font-weight:600;text-decoration:none">Details
                 →</a>
             </div>
@@ -253,11 +315,32 @@
     requireAuth();
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('dashboard');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Dashboard', 'School overview and quick actions');
-    const schoolId = localStorage.getItem('school_id');
     const ayId = localStorage.getItem('ay_id');
     const user = getUser();
+    let schoolId = null;
+    let schoolBranches = [];
+    let selectedBranchCode = '';
     document.getElementById('welcomeName').textContent = (user?.full_name || 'Admin') + ' 👋';
     document.getElementById('welcomeDate').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('branchFilter').addEventListener('change', async (e) => {
+      selectedBranchCode = e.target.value || '';
+      updateBranchContextLabel();
+      await load();
+    });
+    document.getElementById('overviewStudentsCard').addEventListener('click', () => {
+      const url = new URL('/students', window.location.origin);
+      if (selectedBranchCode) url.searchParams.set('branch_code', selectedBranchCode);
+      window.location.href = url.pathname + url.search;
+    });
+    document.getElementById('overviewPendingFeeCard').addEventListener('click', () => {
+      const url = new URL('/fees', window.location.origin);
+      if (selectedBranchCode) url.searchParams.set('branch_code', selectedBranchCode);
+      url.searchParams.set('tab', 'dues');
+      window.location.href = url.pathname + url.search;
+    });
+    document.getElementById('overviewStaffCard').addEventListener('click', () => {
+      window.location.href = '/staff';
+    });
 
     // Quick actions
     const actions = [
@@ -268,6 +351,7 @@
       { icon: getIcon('staff'), label: 'Add Staff Member', href: '/staff', color: '#8b5cf6' },
       { icon: getIcon('certificate'), label: 'Issue Certificate', href: '/certificates', color: '#0ea5e9' },
     ];
+    
     document.getElementById('quickActions').innerHTML = actions.map(a =>
       `<a href="${a.href}" class="quick-btn">
     <div style="width:2.25rem;height:2.25rem;background:${a.color}15;border-radius:.625rem;display:flex;align-items:center;justify-content:center;font-size:1.125rem;flex-shrink:0">${a.icon}</div>
@@ -304,9 +388,75 @@
   </a>`
     ).join('');
 
+    function updateBranchContextLabel() {
+      const selectedBranch = schoolBranches.find(branch => branch.code === selectedBranchCode);
+      document.getElementById('branchContextLabel').textContent = selectedBranch
+        ? `${selectedBranch.name} branch`
+        : 'All branches in logged-in school';
+    }
+
+    function renderDashboardStats(ds = {}, fs = {}) {
+      document.getElementById('overviewStudentsValue').textContent = Number(ds.total_students || 0).toLocaleString('en-IN');
+      document.getElementById('overviewPendingFeeValue').textContent = formatCurrency(fs.total_due || 0);
+      document.getElementById('overviewStaffValue').textContent = Number(ds.total_staff || 0).toLocaleString('en-IN');
+      document.getElementById('overviewStudentsText').textContent = selectedBranchCode
+        ? 'Students enrolled in selected branch'
+        : 'Total number of students currently enrolled';
+      document.getElementById('overviewPendingFeeText').textContent = selectedBranchCode
+        ? 'Pending fee from selected branch students'
+        : 'Total pending fee from students';
+      document.getElementById('overviewStaffText').textContent = selectedBranchCode
+        ? 'Staff members visible for current school context'
+        : 'Total staff members in the system';
+    }
+
+    async function buildDashboardFallbackStats() {
+      if (!schoolId) return {};
+      const [studentStats, staffList, classList, duesSummary] = await Promise.allSettled([
+        StudentAPI.stats(schoolId, ayId, selectedBranchCode),
+        StaffAPI.list({ school_id: schoolId, per_page: 1 }),
+        ClassAPI.list(schoolId, ayId),
+        FeesAPI.getDues({ school_id: schoolId, branch_code: selectedBranchCode })
+      ]);
+
+      return {
+        total_students: studentStats.status === 'fulfilled' ? (studentStats.value?.data?.total || 0) : 0,
+        total_staff: staffList.status === 'fulfilled' ? (staffList.value?.meta?.total || (staffList.value?.data || []).length || 0) : 0,
+        total_classes: classList.status === 'fulfilled' ? ((classList.value?.data || []).length || 0) : 0,
+        pending_fees: duesSummary.status === 'fulfilled' ? (duesSummary.value?.data?.total_pending_invoices || 0) : 0
+      };
+    }
+
+    async function loadBranchOptions() {
+      if (!schoolId) return;
+      try {
+        const schoolRes = await SchoolAPI.get(schoolId);
+        schoolBranches = schoolRes?.data?.branches || [];
+        const filter = document.getElementById('branchFilter');
+        const previous = selectedBranchCode;
+        filter.innerHTML = '<option value="">All Branches</option>' +
+          schoolBranches.map(branch => `<option value="${branch.code}">${branch.name}${branch.code ? ` (${branch.code})` : ''}</option>`).join('');
+        if (previous && schoolBranches.some(branch => branch.code === previous)) {
+          filter.value = previous;
+          selectedBranchCode = previous;
+        } else {
+          filter.value = '';
+          selectedBranchCode = '';
+        }
+        updateBranchContextLabel();
+      } catch (e) {
+        schoolBranches = [];
+        document.getElementById('branchFilter').innerHTML = '<option value="">All Branches</option>';
+        selectedBranchCode = '';
+        updateBranchContextLabel();
+      }
+    }
+
     async function load() {
+      schoolId = await initializeSchoolContext();
+      renderDashboardStats({}, {});
       if (!schoolId) {
-        document.getElementById('statsGrid').innerHTML = `<div style="grid-column:span 4;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:2px dashed #fcd34d;border-radius:1.25rem;padding:2.5rem;text-align:center">
+        document.getElementById('overviewCards').innerHTML = `<div style="grid-column:span 3;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:2px dashed #fcd34d;border-radius:1.25rem;padding:2.5rem;text-align:center">
       <div style="font-size:3rem;margin-bottom:.75rem">🏫</div>
       <p style="font-family:Outfit,sans-serif;font-weight:800;color:#92400e;font-size:1.25rem">School not configured yet</p>
       <p style="color:#b45309;margin:.5rem 0 1.25rem;font-size:.9375rem">Set up your school to start managing</p>
@@ -315,15 +465,26 @@
         return;
       }
       try {
-        const [d, f, s] = await Promise.allSettled([SchoolAPI.dashboard(schoolId), FeesAPI.getSummary(schoolId), StudentAPI.list({ school_id: schoolId, per_page: 5 })]);
-        if (d.status === 'fulfilled' && d.value?.data) {
-          const ds = d.value.data;
-          document.getElementById('statsGrid').innerHTML =
-            statCard('Total Students', ds.total_students || 0, getIcon('student'), 'blue') +
-            statCard('Total Staff', ds.total_staff || 0, getIcon('staff'), 'green') +
-            statCard('Total Classes', ds.total_classes || 0, getIcon('calendar'), 'purple') +
-            statCard('Fee Pending', ds.pending_fees || 0, getIcon('money'), 'orange');
+        if (!schoolBranches.length) await loadBranchOptions();
+        const [d, f, s] = await Promise.allSettled([
+          SchoolAPI.dashboard(schoolId, selectedBranchCode),
+          FeesAPI.getSummary(schoolId, selectedBranchCode),
+          StudentAPI.list({ school_id: schoolId, branch_code: selectedBranchCode, per_page: 5 })
+        ]);
+        let statsData = d.status === 'fulfilled' ? (d.value?.data || {}) : {};
+        const hasMeaningfulStats = ['total_students', 'total_staff', 'total_classes', 'pending_fees']
+          .some(key => Number(statsData[key] || 0) > 0);
+        if (!hasMeaningfulStats) {
+          const fallbackStats = await buildDashboardFallbackStats();
+          statsData = {
+            total_students: fallbackStats.total_students ?? statsData.total_students ?? 0,
+            total_staff: fallbackStats.total_staff ?? statsData.total_staff ?? 0,
+            total_classes: fallbackStats.total_classes ?? statsData.total_classes ?? 0,
+            pending_fees: fallbackStats.pending_fees ?? statsData.pending_fees ?? 0,
+          };
         }
+        const feeSummaryData = f.status === 'fulfilled' ? (f.value?.data || {}) : {};
+        renderDashboardStats(statsData, feeSummaryData);
         if (f.status === 'fulfilled' && f.value?.data) {
           const fs = f.value.data;
           document.getElementById('fsTotalBilled').textContent = formatCurrency(fs.total_billed || 0);
@@ -332,16 +493,29 @@
           document.getElementById('fsRate').textContent = (fs.collection_rate || 0) + '%';
           document.getElementById('fsBar').style.width = (fs.collection_rate || 0) + '%';
         }
+        if (f.status !== 'fulfilled') {
+          document.getElementById('fsTotalBilled').textContent = formatCurrency(0);
+          document.getElementById('fsCollected').textContent = formatCurrency(0);
+          document.getElementById('fsDue').textContent = formatCurrency(0);
+          document.getElementById('fsRate').textContent = '0%';
+          document.getElementById('fsBar').style.width = '0%';
+        }
         if (s.status === 'fulfilled' && s.value?.data?.length > 0) {
           document.getElementById('recentStudents').innerHTML = s.value.data.map(st =>
             `<div style="display:flex;align-items:center;gap:.875rem;padding:.75rem .5rem;border-bottom:1px solid #f8fafc">
-          <div style="width:2.5rem;height:2.5rem;border-radius:.875rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-family:Outfit,sans-serif;font-weight:700;font-size:.875rem;flex-shrink:0">${st.first_name.charAt(0).toUpperCase()}</div>
+          <div style="width:2.5rem;height:2.5rem;border-radius:.875rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-family:Outfit,sans-serif;font-weight:700;font-size:.875rem;flex-shrink:0">${(st.first_name || st.full_name || 'S').charAt(0).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <p style="font-weight:600;color:#1e293b;font-size:.9375rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st.full_name}</p>
             <p style="font-size:.75rem;color:#94a3b8">${st.classroom || ''} ${st.admission_no ? '• ' + st.admission_no : ''}</p>
           </div>
         </div>`
           ).join('');
+        } else {
+          document.getElementById('recentStudents').innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:#94a3b8;text-align:center">
+              <div style="font-size:2.5rem;margin-bottom:.75rem">👨‍🎓</div>
+              <p style="font-size:.875rem">No students yet</p>
+            </div>`;
         }
       } catch (e) { console.error(e) }
     }
@@ -364,7 +538,13 @@
 
     document.getElementById("qaTitle").innerHTML =
       getIcon('lightning') + " Quick Actions";
-  </script>
+
+    document.getElementById("icon-students").innerHTML = getIcon("student", 22);
+    document.getElementById("icon-staff").innerHTML = getIcon("staff", 22);
+  document.getElementById("icon-recent-students").innerHTML = getIcon("student", 18);
+  document.getElementById("icon-empty-students").innerHTML = getIcon("student", 40);
+document.getElementById("icon-fee").innerHTML = getIcon("rupee", 22);  </script>
+
 </body>
 
 </html>

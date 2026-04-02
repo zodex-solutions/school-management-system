@@ -395,6 +395,8 @@
             placeholder="e.g. Class 1 or Grade 10" /></div>
         <div><label class="lbl">Order (for sorting)</label><input id="cls_order" type="number" class="finput"
             placeholder="1" min="1" /></div>
+        <div><label class="lbl">Class Fee (₹)</label><input id="cls_fee" type="number" class="finput"
+            placeholder="0" min="0" /></div>
         <div><label class="lbl">Sections (comma-separated)</label><input id="cls_secs" class="finput"
             placeholder="A, B, C" /></div>
       </div>
@@ -614,8 +616,9 @@
       if (!schoolId) { document.getElementById('clsList').innerHTML = '<p class="text-gray-400 text-sm">Save school first</p>'; return; }
       try {
         const r = await ClassAPI.list(schoolId, ayId); const cls = r?.data || [];
-        document.getElementById('clsList').innerHTML = buildTable(['Class Name', 'Sections', ''], cls.map(c => `
+        document.getElementById('clsList').innerHTML = buildTable(['Class Name', 'Class Fee', 'Sections', ''], cls.map(c => `
     <td class="px-4 py-3 font-semibold text-gray-900">${c.name}</td>
+    <td class="px-4 py-3 text-sm font-medium text-gray-700">${formatCurrency(c.class_fee || 0)}</td>
     <td class="px-4 py-3"><div class="flex gap-1 flex-wrap">${(c.sections || []).map(s => `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">${s.name}</span>`).join('')}</div></td>
     <td class="px-4 py-3 text-sm text-gray-400">${(c.sections || []).length} sections</td>
   `), 'No classes yet');
@@ -629,7 +632,7 @@
       if (!name) { showToast('Class name required', 'error'); return; }
       const secs = document.getElementById('cls_secs').value.split(',').map(s => s.trim()).filter(Boolean);
       try {
-        await ClassAPI.create({ school_id: schoolId, academic_year_id: ayId, name, numeric_name: parseInt(document.getElementById('cls_order').value) || null, sections: secs });
+        await ClassAPI.create({ school_id: schoolId, academic_year_id: ayId, name, numeric_name: parseInt(document.getElementById('cls_order').value) || null, class_fee: parseFloat(document.getElementById('cls_fee').value) || 0, sections: secs });
         showToast('Class created!'); document.getElementById('clsModal').style.display = 'none'; loadClasses();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }

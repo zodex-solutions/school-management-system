@@ -124,6 +124,29 @@ function debounce(fn, ms = 400) {
   let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 }
 
+async function initializeSchoolContext(forceRefresh = false) {
+  if (!Auth.isLoggedIn()) return null;
+  const currentSchoolId = localStorage.getItem('school_id');
+  try {
+    const res = await API.get('/institution/school');
+    const schools = res?.data || [];
+    if (!schools.length) {
+      localStorage.removeItem('school_id');
+      return null;
+    }
+    if (currentSchoolId && !forceRefresh) {
+      const validExisting = schools.find(s => s.id === currentSchoolId);
+      if (validExisting) return currentSchoolId;
+    }
+    const validExisting = schools.find(s => s.id === currentSchoolId);
+    const selectedId = validExisting?.id || schools[0].id;
+    localStorage.setItem('school_id', selectedId);
+    return selectedId;
+  } catch (e) {
+    return currentSchoolId || null;
+  }
+}
+
 // ─── UI Helpers ───────────────────────────────────────────────────────────────
 function statCard(title, value, icon, color, change) {
   const colors = {
@@ -200,7 +223,7 @@ const SchoolAPI = {
   getAll:       ()    => API.get('/institution/school'),
   get:          (id)  => API.get(`/institution/school/${id}`),
   update:       (id,d)=> API.put(`/institution/school/${id}`, d),
-  dashboard:    (id)  => API.get(`/institution/dashboard/${id}`),
+  dashboard:    (id, branchCode)  => API.get(`/institution/dashboard/${id}`, { branch_code: branchCode }),
   createAY:     (d)   => API.post('/institution/academic-year', d),
   listAY:       (sid) => API.get(`/institution/academic-year?school_id=${sid}`),
   setCurrentAY: (id)  => API.patch(`/institution/academic-year/${id}/set-current`, {}),
@@ -220,13 +243,14 @@ const StudentAPI = {
   create:     (d)     => API.post('/students', d),
   list:       (p)     => API.get('/students', p),
   get:        (id)    => API.get(`/students/${id}`),
+  profile:    (id)    => API.get(`/students/${id}/profile-summary`),
   update:     (id,d)  => API.put(`/students/${id}`, d),
   delete:     (id)    => API.delete(`/students/${id}`),
   uploadPhoto:(id,fd) => API.upload(`/students/${id}/upload-photo`, fd),
   uploadDoc:  (id,fd) => API.upload(`/students/${id}/upload-document`, fd),
   generateTC: (id,d)  => API.post(`/students/${id}/transfer-certificate`, d),
   getTC:      (id)    => API.get(`/students/${id}/transfer-certificate`),
-  stats:      (sid)   => API.get('/students/stats/summary', { school_id: sid }),
+  stats:      (sid, ayid, branchCode)   => API.get('/students/stats/summary', { school_id: sid, academic_year_id: ayid, branch_code: branchCode }),
 };
 
 // STAFF  → prefix: /staff
@@ -277,8 +301,8 @@ const FeesAPI = {
   collectPayment: (d)    => API.post('/fees/payment', d),  // POST /fees/payment
   getDues:        (p)    => API.get('/fees/dues', p),
   duesReport:     (p)    => API.get('/fees/dues', p),
-  getSummary:     (sid)  => API.get(`/fees/reports/summary?school_id=${sid}`),
-  stats:          (sid)  => API.get(`/fees/reports/summary?school_id=${sid}`),
+  getSummary:     (sid, branchCode)  => API.get('/fees/reports/summary', { school_id: sid, branch_code: branchCode }),
+  stats:          (sid, branchCode)  => API.get('/fees/reports/summary', { school_id: sid, branch_code: branchCode }),
 };
 
 // EXAMS  → prefix: /exams
@@ -319,7 +343,7 @@ const AcademicAPI = {
 // TRANSPORT  → prefix: /transport
 const TransportAPI = {
   createRoute:      (d)         => API.post('/transport/route', d),
-  getRoutes:        (sid)       => API.get(`/transport/route?school_id=${sid}`),
+  getRoutes:        (sid, branchCode)       => API.get('/transport/route', { school_id: sid, branch_code: branchCode }),
   updateRoute:      (id,d)      => API.put(`/transport/route/${id}`, d),
   deleteRoute:      (id)        => API.delete(`/transport/route/${id}`),
   createVehicle:    (d)         => API.post('/transport/vehicle', d),
@@ -327,10 +351,10 @@ const TransportAPI = {
   createDriver:     (d)         => API.post('/transport/driver', d),
   getDrivers:       (sid)       => API.get(`/transport/driver?school_id=${sid}`),
   assignStudent:    (d)         => API.post('/transport/student-transport', d),
-  getStudentTransport:(sid,rid) => API.get(`/transport/student-transport?school_id=${sid}${rid ? '&route_id=' + rid : ''}`),
+  getStudentTransport:(sid,rid,branchCode) => API.get('/transport/student-transport', { school_id: sid, route_id: rid, branch_code: branchCode }),
   addMaintenance:   (d)         => API.post('/transport/maintenance', d),
   getMaintenance:   (vid)       => API.get(`/transport/maintenance/${vid}`),
-  getStats:         (sid)       => API.get(`/transport/stats/${sid}`),
+  getStats:         (sid, branchCode)       => API.get(`/transport/stats/${sid}`, { branch_code: branchCode }),
 };
 
 // LIBRARY  → prefix: /library

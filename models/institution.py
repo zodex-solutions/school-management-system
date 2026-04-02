@@ -144,6 +144,7 @@ class ClassRoom(Document):
     academic_year = ReferenceField(AcademicYear, required=True)
     name = StringField(required=True)           # Class 1, Class 2 etc.
     numeric_name = IntField()                    # 1, 2, 3 for ordering
+    class_fee = FloatField(default=0)
     stream = ReferenceField(Stream)
     sections = ListField(StringField())         # ['A', 'B', 'C']
     is_active = BooleanField(default=True)

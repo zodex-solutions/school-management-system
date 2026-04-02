@@ -127,6 +127,12 @@ def _build_invoice_items(student: Student, fee_structure_id: Optional[str], item
                 "description": item.category_name,
                 "amount": item.amount
             })
+    elif student.classroom and getattr(student.classroom, "class_fee", 0):
+        built_items.append({
+            "category": "Class Fee",
+            "description": f"{student.classroom.name} Class Fee",
+            "amount": student.classroom.class_fee
+        })
 
     selected_months = transport_months or (student.transport_months or [])
     if include_transport and student.transport_route and selected_months:
@@ -193,6 +199,7 @@ async def list_invoices(
     school_id: str,
     student_id: Optional[str] = None,
     academic_year_id: Optional[str] = None,
+    branch_code: Optional[str] = None,
     status: Optional[str] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -207,6 +214,9 @@ async def list_invoices(
     if academic_year_id:
         ay = AcademicYear.objects.get(id=academic_year_id)
         query = query.filter(academic_year=ay)
+    if branch_code:
+        students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
+        query = query.filter(student__in=students)
     if status:
         query = query.filter(status=status)
     
@@ -341,6 +351,7 @@ async def record_payment(data: PaymentCreate, current_user: User = Depends(get_c
 async def get_fee_dues(
     school_id: str,
     academic_year_id: Optional[str] = None,
+    branch_code: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
     school = School.objects.get(id=school_id)
@@ -349,6 +360,9 @@ async def get_fee_dues(
     if academic_year_id:
         ay = AcademicYear.objects.get(id=academic_year_id)
         query = query.filter(academic_year=ay)
+    if branch_code:
+        students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
+        query = query.filter(student__in=students)
     
     total_due = sum(inv.balance_amount for inv in query)
     count = query.count()
@@ -372,6 +386,7 @@ async def get_fee_dues(
 async def fee_summary(
     school_id: str,
     academic_year_id: Optional[str] = None,
+    branch_code: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
     school = School.objects.get(id=school_id)
@@ -380,6 +395,9 @@ async def fee_summary(
     if academic_year_id:
         ay = AcademicYear.objects.get(id=academic_year_id)
         query = query.filter(academic_year=ay)
+    if branch_code:
+        students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
+        query = query.filter(student__in=students)
     
     total_billed = sum(inv.net_amount for inv in query)
     total_collected = sum(inv.paid_amount for inv in query)

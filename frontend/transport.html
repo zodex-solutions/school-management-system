@@ -37,6 +37,18 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       <div id="topbarContainer"></div>
       <div class="p-6 space-y-6">
 
+        <div style="background:#fff;border-radius:1.25rem;padding:1rem 1.25rem;border:1.5px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Branch Filter</p>
+            <p id="transportBranchLabel" class="text-sm font-semibold text-slate-900 mt-1">All branches in logged-in school</p>
+          </div>
+          <div class="min-w-[240px]">
+            <select id="transportBranchFilter" class="finput">
+              <option value="">All Branches</option>
+            </select>
+          </div>
+        </div>
+
         <div id="transportStats" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
 
         <div style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
@@ -235,7 +247,52 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     requireAuth();
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('transport');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Transport Management', 'Manage routes, vehicles, drivers and student transport pricing');
-    const schoolId = localStorage.getItem('school_id');
+    let schoolId = localStorage.getItem('school_id');
+    let schoolBranches = [];
+    let selectedBranchCode = '';
+
+    document.getElementById('transportBranchFilter').addEventListener('change', async (e) => {
+      selectedBranchCode = e.target.value || '';
+      updateTransportBranchLabel();
+      await refreshTransportViews();
+    });
+
+    function updateTransportBranchLabel() {
+      const selectedBranch = schoolBranches.find(branch => branch.code === selectedBranchCode);
+      document.getElementById('transportBranchLabel').textContent = selectedBranch
+        ? `${selectedBranch.name} branch`
+        : 'All branches in logged-in school';
+    }
+
+    async function loadTransportBranches() {
+      schoolId = await initializeSchoolContext();
+      if (!schoolId) return;
+      try {
+        const res = await SchoolAPI.get(schoolId);
+        schoolBranches = res?.data?.branches || [];
+        const filter = document.getElementById('transportBranchFilter');
+        const previous = selectedBranchCode;
+        filter.innerHTML = '<option value="">All Branches</option>' +
+          schoolBranches.map(branch => `<option value="${branch.code}">${branch.name}${branch.code ? ` (${branch.code})` : ''}</option>`).join('');
+        if (previous && schoolBranches.some(branch => branch.code === previous)) {
+          filter.value = previous;
+          selectedBranchCode = previous;
+        } else {
+          filter.value = '';
+          selectedBranchCode = '';
+        }
+      } catch (e) {
+        schoolBranches = [];
+        document.getElementById('transportBranchFilter').innerHTML = '<option value="">All Branches</option>';
+        selectedBranchCode = '';
+      }
+      updateTransportBranchLabel();
+    }
+
+    async function refreshTransportViews() {
+      await Promise.allSettled([loadStats(), loadRoutes()]);
+      if (!document.getElementById('ttab3').classList.contains('hidden')) await loadStudentTransport();
+    }
 
     function switchTab(idx) {
       document.querySelectorAll('.ttab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
@@ -250,7 +307,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadStats() {
       if (!schoolId) return;
       try {
-        const r = await TransportAPI.getStats(schoolId); const d = r?.data || {};
+        const r = await TransportAPI.getStats(schoolId, selectedBranchCode); const d = r?.data || {};
         document.getElementById('transportStats').innerHTML =
           statCard('Total Routes', d.total_routes || 0, '&#128652;', 'blue') +
           statCard('Total Vehicles', d.total_vehicles || 0, '&#128661;', 'green') +
@@ -262,7 +319,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadRoutes() {
       if (!schoolId) { document.getElementById('routeTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
       try {
-        const r = await TransportAPI.getRoutes(schoolId); const routes = r?.data || [];
+        const r = await TransportAPI.getRoutes(schoolId, selectedBranchCode); const routes = r?.data || [];
         const hdrs = ['Route Name', 'Code', 'Start', 'End', 'Distance', 'Morning', 'Afternoon', 'Monthly Fee', 'Students', ''];
         const rows = routes.map(rt => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${rt.route_name}</td>
@@ -302,7 +359,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadRouteOptions() {
       if (!schoolId) return;
       try {
-        const r = await TransportAPI.getRoutes(schoolId);
+        const r = await TransportAPI.getRoutes(schoolId, selectedBranchCode);
         const opts = '<option value="">Select route</option>' + (r?.data || []).map(rt => `<option value="${rt.id}">${rt.route_name}</option>`).join('');
         ['vh_route', 'st_route'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = opts; });
       } catch (e) {}
@@ -371,7 +428,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadStAssignForm() {
       if (!schoolId) return;
       try {
-        const [sr, rr] = await Promise.allSettled([StudentAPI.list({ school_id: schoolId, per_page: 200, admission_status: 'Active' }), TransportAPI.getRoutes(schoolId)]);
+        const [sr, rr] = await Promise.allSettled([StudentAPI.list({ school_id: schoolId, branch_code: selectedBranchCode, per_page: 200, admission_status: 'Active' }), TransportAPI.getRoutes(schoolId, selectedBranchCode)]);
         if (sr.status === 'fulfilled') document.getElementById('st_student').innerHTML = '<option value="">Select student</option>' + (sr.value?.data || []).map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})</option>`).join('');
         if (rr.status === 'fulfilled') document.getElementById('st_route').innerHTML = '<option value="">Select route</option>' + (rr.value?.data || []).map(r => `<option value="${r.id}">${r.route_name}</option>`).join('');
       } catch (e) {}
@@ -380,7 +437,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadStudentTransport() {
       if (!schoolId) return;
       try {
-        const r = await TransportAPI.getStudentTransport(schoolId); const data = r?.data || [];
+        const r = await TransportAPI.getStudentTransport(schoolId, null, selectedBranchCode); const data = r?.data || [];
         const hdrs = ['Student', 'Admission No', 'Route', 'Pickup Stop', 'Drop Stop', 'Pickup Time', 'Monthly Fee'];
         const rows = data.map(st => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${st.student_name || '-'}</td>
@@ -443,7 +500,10 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
-    loadStats(); loadRoutes();
+    (async () => {
+      await loadTransportBranches();
+      await refreshTransportViews();
+    })();
   </script>
 </body>
 </html>
