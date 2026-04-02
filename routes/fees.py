@@ -6,7 +6,7 @@ from models.fees import FeeCategory, FeeStructure, FeeInvoice, PaymentTransactio
 from models.institution import School, AcademicYear, ClassRoom, User
 from models.student import Student
 from models.transport import TransportRoute
-from utils.auth import get_current_user
+from utils.auth import get_current_user, resolve_school_access, resolve_branch_scope
 from utils.helpers import success_response, generate_invoice_no, generate_transaction_no
 
 router = APIRouter(prefix="/fees", tags=["Fees Management"])
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/fees", tags=["Fees Management"])
 
 @router.post("/category")
 async def create_fee_category(data: dict, current_user: User = Depends(get_current_user)):
+    data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
     school = School.objects.get(id=data['school_id'])
     cat = FeeCategory(
         school=school, name=data['name'], code=data['code'],
@@ -28,6 +29,7 @@ async def create_fee_category(data: dict, current_user: User = Depends(get_curre
 
 @router.get("/category")
 async def list_fee_categories(school_id: str, current_user: User = Depends(get_current_user)):
+    school_id = resolve_school_access(current_user, school_id)
     school = School.objects.get(id=school_id)
     cats = FeeCategory.objects(school=school, is_active=True)
     result = [{"id": str(c.id), "name": c.name, "code": c.code, "is_mandatory": c.is_mandatory} for c in cats]
@@ -49,6 +51,7 @@ class FeeStructureCreate(BaseModel):
 
 @router.post("/structure")
 async def create_fee_structure(data: FeeStructureCreate, current_user: User = Depends(get_current_user)):
+    data.school_id = resolve_school_access(current_user, data.school_id)
     school = School.objects.get(id=data.school_id)
     ay = AcademicYear.objects.get(id=data.academic_year_id)
     classroom = ClassRoom.objects.get(id=data.classroom_id)
@@ -81,6 +84,7 @@ async def list_fee_structures(
     classroom_id: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
+    school_id = resolve_school_access(current_user, school_id)
     school = School.objects.get(id=school_id)
     query = FeeStructure.objects(school=school, is_active=True)
     if academic_year_id:
@@ -153,8 +157,12 @@ def _build_invoice_items(student: Student, fee_structure_id: Optional[str], item
 
 @router.post("/invoice")
 async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_current_user)):
+    data.school_id = resolve_school_access(current_user, data.school_id)
     school = School.objects.get(id=data.school_id)
     student = Student.objects.get(id=data.student_id)
+    scoped_branch = resolve_branch_scope(current_user, None)
+    if scoped_branch and student.branch_code != scoped_branch:
+        raise HTTPException(403, "Access denied for this branch")
     ay = AcademicYear.objects.get(id=data.academic_year_id)
     
     invoice_no = generate_invoice_no(school.code)
@@ -205,6 +213,8 @@ async def list_invoices(
     per_page: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user)
 ):
+    school_id = resolve_school_access(current_user, school_id)
+    branch_code = resolve_branch_scope(current_user, branch_code)
     school = School.objects.get(id=school_id)
     query = FeeInvoice.objects(school=school)
     
@@ -248,6 +258,10 @@ async def list_invoices(
 async def get_invoice(invoice_id: str, current_user: User = Depends(get_current_user)):
     try:
         inv = FeeInvoice.objects.get(id=invoice_id)
+        resolve_school_access(current_user, str(inv.school.id) if inv.school else None)
+        scoped_branch = resolve_branch_scope(current_user, None)
+        if scoped_branch and inv.student and inv.student.branch_code != scoped_branch:
+            raise HTTPException(403, "Access denied for this branch")
         # Get transactions
         transactions = PaymentTransaction.objects(invoice=inv).order_by('-payment_date')
         
@@ -296,9 +310,13 @@ class PaymentCreate(BaseModel):
 
 @router.post("/payment")
 async def record_payment(data: PaymentCreate, current_user: User = Depends(get_current_user)):
+    data.school_id = resolve_school_access(current_user, data.school_id)
     school = School.objects.get(id=data.school_id)
     student = Student.objects.get(id=data.student_id)
     invoice = FeeInvoice.objects.get(id=data.invoice_id)
+    scoped_branch = resolve_branch_scope(current_user, None)
+    if scoped_branch and student.branch_code != scoped_branch:
+        raise HTTPException(403, "Access denied for this branch")
     
     if data.amount <= 0:
         raise HTTPException(400, "Payment amount must be positive")
@@ -354,6 +372,8 @@ async def get_fee_dues(
     branch_code: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
+    school_id = resolve_school_access(current_user, school_id)
+    branch_code = resolve_branch_scope(current_user, branch_code)
     school = School.objects.get(id=school_id)
     query = FeeInvoice.objects(school=school, status__in=["Pending", "Partial", "Overdue"])
     
@@ -389,6 +409,8 @@ async def fee_summary(
     branch_code: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
+    school_id = resolve_school_access(current_user, school_id)
+    branch_code = resolve_branch_scope(current_user, branch_code)
     school = School.objects.get(id=school_id)
     query = FeeInvoice.objects(school=school)
     

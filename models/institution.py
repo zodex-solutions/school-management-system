@@ -31,6 +31,10 @@ class User(Document):
     hashed_password = StringField(required=True)
     full_name = StringField(required=True)
     role = ReferenceField(Role)
+    assigned_school = ReferenceField('School')
+    assigned_branch_code = StringField()
+    assigned_branch_name = StringField()
+    allowed_branch_codes = ListField(StringField())
     phone = StringField()
     avatar = StringField()
     is_active = BooleanField(default=True)
@@ -41,7 +45,7 @@ class User(Document):
     
     meta = {
         'collection': 'users',
-        'indexes': ['email', 'username', 'role']
+        'indexes': ['email', 'username', 'role', 'assigned_school', 'assigned_branch_code']
     }
 
 

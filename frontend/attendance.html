@@ -3,6 +3,7 @@
 
 <head>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
@@ -319,15 +320,19 @@
       if (idx === 3) loadHolidays();
     }
 
-    function renderAttendanceSummary(summary = {}) {
-      const student = summary.students || {};
-      const staff = summary.staff || {};
-      document.getElementById('attendanceSummaryCards').innerHTML =
-        statCard('Students Present', student.present || 0, '&#9989;', 'green') +
-        statCard('Students Absent', student.absent || 0, '&#10060;', 'red') +
-        statCard('Students Late', student.late || 0, '&#9203;', 'orange') +
-        statCard('Staff Present', staff.present || 0, '&#128104;&#8205;&#127979;', 'blue');
-    }
+   function renderAttendanceSummary(summary = {}) {
+  const student = summary.students || {};
+  const staff = summary.staff || {};
+
+  document.getElementById('attendanceSummaryCards').innerHTML =
+    statCard('Students Present', student.present || 0, 'check-circle', 'green') +
+    statCard('Students Absent', student.absent || 0, 'x-circle', 'red') +
+    statCard('Students Late', student.late || 0, 'clock', 'orange') +
+    statCard('Staff Present', staff.present || 0, 'users', 'blue');
+
+  // ✅ correct
+  lucide.createIcons();
+}
 
     async function loadAttendanceSummary() {
       if (!schoolId) return;
@@ -523,6 +528,23 @@
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
+    function statCard(title, value, icon, color) {
+        return `
+          <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+            
+            <div>
+              <p class="text-sm text-gray-400">${title}</p>
+              <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+            </div>
+
+            <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+              <i data-lucide="${icon}" class="w-5 h-5"></i>
+            </div>
+
+          </div>
+        `;
+      }
+
     async function loadHolidays() {
       if (!schoolId) { document.getElementById('holList').innerHTML = '<p class="text-gray-400 text-sm">Configure school first</p>'; return; }
       try {
@@ -553,6 +575,8 @@
       await loadClassesForAtt();
       await loadAttendanceSummary();
     })();
+
+    
   </script>
 </body>
 

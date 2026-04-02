@@ -2,8 +2,11 @@
 <html lang="en">
 
 <head>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <script src="https://unpkg.com/lucide@latest"></script>
+
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
     rel="stylesheet">
@@ -174,13 +177,13 @@
           style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
           <div class="tab-bar">
             <button onclick="switchTab(0)"
-              class="prtab px-5 py-4 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap">💼
+              class="prtab px-5 py-4 text-sm flex items-center gap-2 font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap"><span data-lucide="briefcase" class="w-4 h-4"></span>
               Payroll</button>
             <button onclick="switchTab(1)"
-              class="prtab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">💰
+              class="prtab px-5 py-4 text-sm flex items-center gap-2 font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap"><span data-lucide="wallet" class="w-4 h-4"></span>
               Salary Structures</button>
             <button onclick="switchTab(2)"
-              class="prtab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">⚙️
+              class="prtab px-5 py-4 text-sm flex items-center gap-2 font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap"><span data-lucide="settings" class="w-4 h-4"></span>
               Config</button>
           </div>
 
@@ -207,10 +210,10 @@
                   class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200">Load</button>
               </div>
               <button onclick="generatePayroll()"
-                class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow-lg">⚙️
+                class="px-5 py-2.5 bg-blue-600 text-white rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-700 shadow-lg"><span data-lucide="settings" class="w-4 h-4"></span>
                 Generate Payroll</button>
               <button onclick="approveAll()"
-                class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700">✅
+                class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-emerald-700"> <span data-lucide="check-circle" class="w-4 h-4"></span>
                 Approve All</button>
             </div>
             <div id="payrollMeta" class="grid grid-cols-3 gap-4 mb-5"></div>
@@ -329,7 +332,7 @@
       <div class="flex justify-between items-center px-6 py-4 border-b">
         <h3 class="font-bold">Payslip</h3>
         <div class="flex gap-2">
-          <button onclick="window.print()" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-xs">🖨️
+          <button onclick="window.print()" class="px-3 py-2 bg-gray-100 flex items-center gap-2 text-gray-700 rounded-xl text-xs"><span data-lucide="printer" class="w-4 h-4"></span>
             Print</button>
           <button onclick="document.getElementById('payslipModal').style.display='none'"
             class="text-gray-400 hover:text-gray-600 text-xl px-2">×</button>
@@ -362,17 +365,25 @@
     }
 
     async function loadStats() {
-      if (!schoolId) return;
-      try {
-        const r = await PayrollAPI.getSummary(schoolId); const d = r?.data || {};
-        document.getElementById('payrollStats').innerHTML =
-          statCard('Total Staff', d.total_staff || 0, '👥', 'blue') +
-          statCard('Gross Payroll', formatCurrency(d.total_gross || 0), '💰', 'green') +
-          statCard('Net Payroll', formatCurrency(d.total_net || 0), '💵', 'emerald') +
-          statCard('Pending Payment', d.pending_count || 0, '⏳', 'orange');
-      } catch (e) { }
-    }
+  if (!schoolId) return;
 
+  try {
+    const r = await PayrollAPI.getSummary(schoolId);
+    const d = r?.data || {};
+
+    document.getElementById('payrollStats').innerHTML =
+      statCard('Total Staff', d.total_staff || 0, 'users', 'blue') +
+      statCard('Gross Payroll', formatCurrency(d.total_gross || 0), 'wallet', 'green') +
+      statCard('Net Payroll', formatCurrency(d.total_net || 0), 'indian-rupee', 'emerald') +
+      statCard('Pending Payment', d.pending_count || 0, 'clock', 'orange');
+
+    // 🔥 IMPORTANT
+    lucide.createIcons();
+
+  } catch (e) {
+    console.log(e);
+  }
+}
     async function loadPayroll() {
       if (!schoolId) return;
       const m = document.getElementById('payMonth').value, y = document.getElementById('payYear').value;
@@ -549,6 +560,22 @@
         showToast('Configuration saved!');
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
+    function statCard(title, value, icon, color) {
+  return `
+    <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+      
+      <div>
+        <p class="text-sm text-gray-400">${title}</p>
+        <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+      </div>
+
+      <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+        <i data-lucide="${icon}" class="w-5 h-5"></i>
+      </div>
+
+    </div>
+  `;
+}
 
     loadStats(); loadPayroll();
   </script>

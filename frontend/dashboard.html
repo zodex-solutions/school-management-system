@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Dashboard — EduManage Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&display=swap"
@@ -154,10 +155,17 @@
                 style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:.875rem;padding:.625rem 1.125rem;color:#fff;font-size:.875rem;font-weight:600;text-decoration:none;backdrop-filter:blur(8px);transition:all .15s"
                 onmouseover="this.style.background='rgba(255,255,255,.2)'"
                 onmouseout="this.style.background='rgba(255,255,255,.12)'">+ Admit Student</a>
-              <a href="/reports"
-                style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:.875rem;padding:.625rem 1.125rem;color:#fff;font-size:.875rem;font-weight:600;text-decoration:none;backdrop-filter:blur(8px);transition:all .15s"
-                onmouseover="this.style.background='rgba(255,255,255,.2)'"
-                onmouseout="this.style.background='rgba(255,255,255,.12)'">📊 Reports</a>
+             <a href="/reports"
+  style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  border-radius:.875rem;padding:.625rem 1.125rem;color:#fff;font-size:.875rem;
+  font-weight:600;text-decoration:none;backdrop-filter:blur(8px);
+  transition:all .15s;display:flex;align-items:center;gap:6px"
+  onmouseover="this.style.background='rgba(255,255,255,.2)'"
+  onmouseout="this.style.background='rgba(255,255,255,.12)'">
+
+  <span data-lucide="bar-chart-3" style="width:18px;height:18px"></span>
+  Reports
+</a>
             </div>
           </div>
         </div>
@@ -233,7 +241,7 @@
         <div class="grid lg:grid-cols-3 gap-5">
           <!-- Quick Actions -->
           <div style="background:#fff;border-radius:1.25rem;padding:1.5rem;border:1.5px solid #f1f5f9">
-            <h3 id="qaTitle" class="font-outfit"
+            <h3 id="qaTitle" class="font-outfit flex gap-2 items-center"
               style="font-weight:700;color:#0f172a;margin-bottom:1.25rem;font-size:1rem"></h3>
             <div id="quickActions" class="space-y-2"></div>
           </div>
@@ -361,29 +369,29 @@
     ).join('');
 
     // Module grid
-    const modules = [
-      { icon: '🏫', label: 'Institution', href: '/institution', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
-      { icon: '👨‍🎓', label: 'Students', href: '/students', bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
-      { icon: '👨‍🏫', label: 'Staff & HR', href: '/staff', bg: '#fefce8', border: '#fef08a', text: '#a16207' },
-      { icon: '📚', label: 'Academics', href: '/academics', bg: '#faf5ff', border: '#e9d5ff', text: '#7e22ce' },
-      { icon: '📝', label: 'Exams', href: '/exams', bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' },
-      { icon: '💰', label: 'Fees', href: '/fees', bg: '#fff7ed', border: '#fed7aa', text: '#c2410c' },
-      { icon: '📅', label: 'Attendance', href: '/attendance', bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46' },
-      { icon: '🚌', label: 'Transport', href: '/transport', bg: '#f0fdfa', border: '#99f6e4', text: '#0f766e' },
-      { icon: '📖', label: 'Library', href: '/library', bg: '#eef2ff', border: '#c7d2fe', text: '#4338ca' },
-      { icon: '📦', label: 'Inventory', href: '/inventory', bg: '#f7fee7', border: '#d9f99d', text: '#3f6212' },
-      { icon: '🏥', label: 'Health', href: '/health', bg: '#fdf2f8', border: '#fbcfe8', text: '#be185d' },
-      { icon: '💬', label: 'Communication', href: '/communication', bg: '#faf5ff', border: '#e9d5ff', text: '#6b21a8' },
-      { icon: '📊', label: 'Reports', href: '/reports', bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af' },
-      { icon: '🏠', label: 'Hostel', href: '/hostel', bg: '#fefce8', border: '#fef08a', text: '#92400e' },
-      { icon: '💼', label: 'Payroll', href: '/payroll', bg: '#f0fdf4', border: '#bbf7d0', text: '#14532d' },
-      { icon: '🎓', label: 'Admissions', href: '/admissions', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412' },
-      { icon: '📜', label: 'Certificates', href: '/certificates', bg: '#faf5ff', border: '#ddd6fe', text: '#5b21b6' },
-      { icon: '👨‍👩‍👧', label: 'Parents', href: '/parent-portal', bg: '#fdf2f8', border: '#f9a8d4', text: '#9d174d' },
-    ];
+   const modules = [
+  { icon: 'building-2', label: 'Institution', href: '/institution', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
+  { icon: 'graduation-cap', label: 'Students', href: '/students', bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
+  { icon: 'users', label: 'Staff & HR', href: '/staff', bg: '#fefce8', border: '#fef08a', text: '#a16207' },
+  { icon: 'book-open', label: 'Academics', href: '/academics', bg: '#faf5ff', border: '#e9d5ff', text: '#7e22ce' },
+  { icon: 'file-text', label: 'Exams', href: '/exams', bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' },
+  { icon: 'indian-rupee', label: 'Fees', href: '/fees', bg: '#fff7ed', border: '#fed7aa', text: '#c2410c' },
+  { icon: 'calendar-days', label: 'Attendance', href: '/attendance', bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46' },
+  { icon: 'bus', label: 'Transport', href: '/transport', bg: '#f0fdfa', border: '#99f6e4', text: '#0f766e' },
+  { icon: 'library', label: 'Library', href: '/library', bg: '#eef2ff', border: '#c7d2fe', text: '#4338ca' },
+  { icon: 'boxes', label: 'Inventory', href: '/inventory', bg: '#f7fee7', border: '#d9f99d', text: '#3f6212' },
+  { icon: 'heart-pulse', label: 'Health', href: '/health', bg: '#fdf2f8', border: '#fbcfe8', text: '#be185d' },
+  { icon: 'message-circle', label: 'Communication', href: '/communication', bg: '#faf5ff', border: '#e9d5ff', text: '#6b21a8' },
+  { icon: 'bar-chart-3', label: 'Reports', href: '/reports', bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af' },
+  { icon: 'home', label: 'Hostel', href: '/hostel', bg: '#fefce8', border: '#fef08a', text: '#92400e' },
+  { icon: 'briefcase', label: 'Payroll', href: '/payroll', bg: '#f0fdf4', border: '#bbf7d0', text: '#14532d' },
+  { icon: 'graduation-cap', label: 'Admissions', href: '/admissions', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412' },
+  { icon: 'scroll-text', label: 'Certificates', href: '/certificates', bg: '#faf5ff', border: '#ddd6fe', text: '#5b21b6' },
+  { icon: 'users-round', label: 'Parents', href: '/parent-portal', bg: '#fdf2f8', border: '#f9a8d4', text: '#9d174d' },
+];
     document.getElementById('moduleGrid').innerHTML = modules.map(m =>
       `<a href="${m.href}" class="module-card" style="background:${m.bg};border-color:${m.border}">
-    <div style="font-size:1.75rem">${m.icon}</div>
+    <div data-lucide="${m.icon}" style="width:28px;height:28px;"></div>
     <div style="font-family:Outfit,sans-serif;font-size:.875rem;font-weight:700;color:${m.text}">${m.label}</div>
   </a>`
     ).join('');
@@ -443,11 +451,12 @@
           filter.value = '';
           selectedBranchCode = '';
         }
+        selectedBranchCode = applyBranchAccessToSelect('branchFilter', selectedBranchCode);
         updateBranchContextLabel();
       } catch (e) {
         schoolBranches = [];
         document.getElementById('branchFilter').innerHTML = '<option value="">All Branches</option>';
-        selectedBranchCode = '';
+        selectedBranchCode = getScopedBranchCode('');
         updateBranchContextLabel();
       }
     }
@@ -466,10 +475,8 @@
       }
       try {
         if (!schoolBranches.length) await loadBranchOptions();
-        const [d, f, s] = await Promise.allSettled([
-          SchoolAPI.dashboard(schoolId, selectedBranchCode),
-          FeesAPI.getSummary(schoolId, selectedBranchCode),
-          StudentAPI.list({ school_id: schoolId, branch_code: selectedBranchCode, per_page: 5 })
+        const [d] = await Promise.allSettled([
+          SchoolAPI.dashboard(schoolId, selectedBranchCode)
         ]);
         let statsData = d.status === 'fulfilled' ? (d.value?.data || {}) : {};
         const hasMeaningfulStats = ['total_students', 'total_staff', 'total_classes', 'pending_fees']
@@ -483,30 +490,31 @@
             pending_fees: fallbackStats.pending_fees ?? statsData.pending_fees ?? 0,
           };
         }
-        const feeSummaryData = f.status === 'fulfilled' ? (f.value?.data || {}) : {};
+        const feeSummaryData = statsData.fee_summary || {};
         renderDashboardStats(statsData, feeSummaryData);
-        if (f.status === 'fulfilled' && f.value?.data) {
-          const fs = f.value.data;
+        if (statsData.fee_summary) {
+          const fs = statsData.fee_summary;
           document.getElementById('fsTotalBilled').textContent = formatCurrency(fs.total_billed || 0);
           document.getElementById('fsCollected').textContent = formatCurrency(fs.total_collected || 0);
           document.getElementById('fsDue').textContent = formatCurrency(fs.total_due || 0);
           document.getElementById('fsRate').textContent = (fs.collection_rate || 0) + '%';
           document.getElementById('fsBar').style.width = (fs.collection_rate || 0) + '%';
         }
-        if (f.status !== 'fulfilled') {
+        if (!statsData.fee_summary) {
           document.getElementById('fsTotalBilled').textContent = formatCurrency(0);
           document.getElementById('fsCollected').textContent = formatCurrency(0);
           document.getElementById('fsDue').textContent = formatCurrency(0);
           document.getElementById('fsRate').textContent = '0%';
           document.getElementById('fsBar').style.width = '0%';
         }
-        if (s.status === 'fulfilled' && s.value?.data?.length > 0) {
-          document.getElementById('recentStudents').innerHTML = s.value.data.map(st =>
+        const recentStudents = statsData.recent_students || [];
+        if (recentStudents.length > 0) {
+          document.getElementById('recentStudents').innerHTML = recentStudents.map(st =>
             `<div style="display:flex;align-items:center;gap:.875rem;padding:.75rem .5rem;border-bottom:1px solid #f8fafc">
           <div style="width:2.5rem;height:2.5rem;border-radius:.875rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-family:Outfit,sans-serif;font-weight:700;font-size:.875rem;flex-shrink:0">${(st.first_name || st.full_name || 'S').charAt(0).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <p style="font-weight:600;color:#1e293b;font-size:.9375rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st.full_name}</p>
-            <p style="font-size:.75rem;color:#94a3b8">${st.classroom || ''} ${st.admission_no ? '• ' + st.admission_no : ''}</p>
+            <p style="font-size:.75rem;color:#94a3b8">${st.classroom_name || st.classroom || ''} ${st.admission_no ? '• ' + st.admission_no : ''}</p>
           </div>
         </div>`
           ).join('');
@@ -520,6 +528,16 @@
       } catch (e) { console.error(e) }
     }
     load();
+    document.getElementById('moduleGrid').innerHTML = modules.map(m =>
+  `<a href="${m.href}" class="module-card" style="background:${m.bg};border-color:${m.border}">
+    <div data-lucide="${m.icon}" style="width:28px;height:28px;"></div>
+    <div style="font-family:Outfit,sans-serif;font-size:.875rem;font-weight:700;color:${m.text}">
+      ${m.label}
+    </div>
+  </a>`
+).join('');
+
+    lucide.createIcons();
 
     function getIcon(name, size = 18) {
       const icons = {

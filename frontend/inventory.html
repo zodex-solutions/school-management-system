@@ -4,6 +4,8 @@
 <head>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <script src="https://unpkg.com/lucide@latest"></script>
+
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
     rel="stylesheet">
@@ -394,12 +396,28 @@
       try {
         const r = await InventoryAPI.getStats(schoolId); const d = r?.data || {};
         document.getElementById('invStats').innerHTML =
-          statCard('Total Assets', d.total_assets || 0, '&#127970;', 'blue') +
-          statCard('Asset Value', formatCurrency(d.total_asset_value || 0), '&#128176;', 'green') +
-          statCard('Stock Items', d.total_stock_items || 0, '&#128230;', 'purple') +
-          statCard('Low Stock', d.low_stock_items || 0, '&#9888;', 'red');
+  statCard('Total Assets', d.total_assets || 0, 'building', 'blue') +
+  statCard('Asset Value', formatCurrency(d.total_asset_value || 0), 'wallet', 'green') +
+  statCard('Stock Items', d.total_stock_items || 0, 'boxes', 'purple') +
+  statCard('Low Stock', d.low_stock_items || 0, 'alert-triangle', 'red');
+
+// 🔥 IMPORTANT
+lucide.createIcons();
       } catch (e) { }
     }
+    function statCard(title, value, icon, color) {
+  return `
+    <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-400">${title}</p>
+        <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+      </div>
+      <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+        <i data-lucide="${icon}" class="w-5 h-5"></i>
+      </div>
+    </div>
+  `;
+}
 
     async function loadAssetCats() {
       if (!schoolId) return;

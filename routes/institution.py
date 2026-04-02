@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
@@ -6,8 +6,8 @@ from models.institution import (
     School, AcademicYear, ClassRoom, Section, Subject,
     SubjectMapping, GradingSystem, GradeScale, User, Role, Permission
 )
-from utils.auth import get_current_user, require_permission
-from utils.helpers import success_response, error_response, paginate_query, doc_to_dict
+from utils.auth import get_current_user, require_permission, resolve_school_access, resolve_branch_scope
+from utils.helpers import success_response, error_response, paginate_query, doc_to_dict, save_upload_file
 
 router = APIRouter(prefix="/institution", tags=["Institution"])
 
@@ -58,6 +58,48 @@ def _build_branches(branches: List[dict]):
     return result
 
 
+def _serialize_address(address):
+    if not address:
+        return None
+    return {
+        "line1": address.line1,
+        "line2": address.line2,
+        "city": address.city,
+        "state": address.state,
+        "country": address.country,
+        "pincode": address.pincode,
+    }
+
+
+def _serialize_school(school: School):
+    return {
+        "id": str(school.id),
+        "name": school.name,
+        "code": school.code,
+        "logo": school.logo,
+        "tagline": school.tagline,
+        "affiliation_no": school.affiliation_no,
+        "affiliation_board": school.affiliation_board,
+        "established_year": school.established_year,
+        "type": school.type,
+        "phone": school.phone,
+        "email": school.email,
+        "website": school.website,
+        "currency": school.currency,
+        "address": _serialize_address(school.address),
+        "branches": [{
+            "name": branch.name,
+            "code": branch.code,
+            "logo": branch.logo,
+            "phone": branch.phone,
+            "email": branch.email,
+            "principal": branch.principal,
+            "is_active": branch.is_active,
+            "address": _serialize_address(branch.address),
+        } for branch in (school.branches or [])]
+    }
+
+
 @router.post("/school")
 async def create_school(data: SchoolCreate, current_user: User = Depends(get_current_user)):
     if School.objects(code=data.code).first():
@@ -89,7 +131,7 @@ async def list_schools(current_user: User = Depends(get_current_user)):
 async def get_school(school_id: str, current_user: User = Depends(get_current_user)):
     try:
         school = School.objects.get(id=school_id)
-        return success_response(doc_to_dict(school))
+        return success_response(_serialize_school(school))
     except School.DoesNotExist:
         raise HTTPException(404, "School not found")
 
@@ -109,6 +151,15 @@ async def update_school(school_id: str, data: dict, current_user: User = Depends
         return success_response(message="School updated successfully")
     except School.DoesNotExist:
         raise HTTPException(404, "School not found")
+
+
+@router.post("/upload-logo")
+async def upload_institution_logo(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    path = await save_upload_file(file, "institution_logos")
+    return success_response({
+        "file_path": path,
+        "file_url": f"/uploads/{path}"
+    }, "Logo uploaded successfully")
 
 
 # ─── Academic Year ────────────────────────────────────────────────────────────
@@ -365,6 +416,8 @@ async def get_dashboard_stats(school_id: str, branch_code: Optional[str] = None,
     from models.attendance import StudentAttendance
     
     try:
+        school_id = resolve_school_access(current_user, school_id)
+        branch_code = resolve_branch_scope(current_user, branch_code)
         school = School.objects.get(id=school_id)
         today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         
@@ -372,9 +425,29 @@ async def get_dashboard_stats(school_id: str, branch_code: Optional[str] = None,
         if branch_code:
             student_query = student_query.filter(branch_code=branch_code)
 
+        all_invoice_query = FeeInvoice.objects(school=school)
         fee_query = FeeInvoice.objects(school=school, status__in=["Pending", "Partial", "Overdue"])
         if branch_code:
-            fee_query = fee_query.filter(student__in=list(student_query))
+            branch_students = list(student_query)
+            fee_query = fee_query.filter(student__in=branch_students)
+            all_invoice_query = all_invoice_query.filter(student__in=branch_students)
+
+        recent_students = []
+        for student in student_query.order_by('-created_at')[:5]:
+            recent_students.append({
+                "id": str(student.id),
+                "full_name": student.full_name,
+                "first_name": student.first_name,
+                "admission_no": student.admission_no,
+                "classroom": student.classroom.name if student.classroom else None,
+                "classroom_name": student.classroom.name if student.classroom else None,
+                "section_name": student.section.name if student.section else None,
+                "branch_name": student.branch_name,
+            })
+
+        total_billed = sum(inv.net_amount or 0 for inv in all_invoice_query)
+        total_collected = sum(inv.paid_amount or 0 for inv in all_invoice_query)
+        total_due = sum(inv.balance_amount or 0 for inv in all_invoice_query)
 
         stats = {
             "total_students": student_query.count(),
@@ -382,6 +455,13 @@ async def get_dashboard_stats(school_id: str, branch_code: Optional[str] = None,
             "total_classes": ClassRoom.objects(school=school, is_active=True).count(),
             "pending_fees": fee_query.count(),
             "today_student_attendance": StudentAttendance.objects(school=school, date=today).count(),
+            "fee_summary": {
+                "total_billed": total_billed,
+                "total_collected": total_collected,
+                "total_due": total_due,
+                "collection_rate": round(total_collected / total_billed * 100, 2) if total_billed > 0 else 0
+            },
+            "recent_students": recent_students
         }
         return success_response(stats)
     except School.DoesNotExist:

@@ -5,7 +5,7 @@ from datetime import datetime
 from models.transport import TransportRoute, Vehicle, Driver, StudentTransport, VehicleMaintenance
 from models.institution import School, User
 from models.student import Student
-from utils.auth import get_current_user
+from utils.auth import get_current_user, resolve_school_access, resolve_branch_scope
 from utils.helpers import success_response
 
 router = APIRouter(prefix="/transport", tags=["Transport"])
@@ -14,6 +14,7 @@ router = APIRouter(prefix="/transport", tags=["Transport"])
 # ─── Routes ──────────────────────────────────────────────────────────────────
 @router.post("/route")
 async def create_route(data: dict, current_user: User = Depends(get_current_user)):
+    data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
     school = School.objects.get(id=data['school_id'])
     route = TransportRoute(
         school=school,
@@ -34,6 +35,8 @@ async def create_route(data: dict, current_user: User = Depends(get_current_user
 
 @router.get("/route")
 async def list_routes(school_id: str, branch_code: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    school_id = resolve_school_access(current_user, school_id)
+    branch_code = resolve_branch_scope(current_user, branch_code)
     school = School.objects.get(id=school_id)
     routes = TransportRoute.objects(school=school, is_active=True)
     result = []
@@ -82,6 +85,7 @@ async def delete_route(route_id: str, current_user: User = Depends(get_current_u
 # ─── Vehicles ─────────────────────────────────────────────────────────────────
 @router.post("/vehicle")
 async def create_vehicle(data: dict, current_user: User = Depends(get_current_user)):
+    data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
     school = School.objects.get(id=data['school_id'])
     if Vehicle.objects(vehicle_no=data['vehicle_no']).first():
         raise HTTPException(400, "Vehicle number already registered")
@@ -106,6 +110,7 @@ async def create_vehicle(data: dict, current_user: User = Depends(get_current_us
 
 @router.get("/vehicle")
 async def list_vehicles(school_id: str, current_user: User = Depends(get_current_user)):
+    school_id = resolve_school_access(current_user, school_id)
     school = School.objects.get(id=school_id)
     vehicles = Vehicle.objects(school=school, is_active=True)
     result = [{
@@ -136,6 +141,7 @@ async def update_vehicle_location(vehicle_id: str, lat: float, lng: float, curre
 # ─── Drivers ──────────────────────────────────────────────────────────────────
 @router.post("/driver")
 async def create_driver(data: dict, current_user: User = Depends(get_current_user)):
+    data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
     school = School.objects.get(id=data['school_id'])
     d = Driver(
         school=school,
@@ -155,6 +161,7 @@ async def create_driver(data: dict, current_user: User = Depends(get_current_use
 
 @router.get("/driver")
 async def list_drivers(school_id: str, current_user: User = Depends(get_current_user)):
+    school_id = resolve_school_access(current_user, school_id)
     school = School.objects.get(id=school_id)
     drivers = Driver.objects(school=school, is_active=True)
     result = [{
@@ -172,8 +179,12 @@ async def list_drivers(school_id: str, current_user: User = Depends(get_current_
 # ─── Student Transport ────────────────────────────────────────────────────────
 @router.post("/student-transport")
 async def assign_student_transport(data: dict, current_user: User = Depends(get_current_user)):
+    data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
     school = School.objects.get(id=data['school_id'])
     student = Student.objects.get(id=data['student_id'])
+    scoped_branch = resolve_branch_scope(current_user, None)
+    if scoped_branch and student.branch_code != scoped_branch:
+        raise HTTPException(403, "Access denied for this branch")
     route = TransportRoute.objects.get(id=data['route_id'])
     if StudentTransport.objects(student=student, is_active=True).first():
         raise HTTPException(400, "Student already assigned to a route")
@@ -195,6 +206,8 @@ async def assign_student_transport(data: dict, current_user: User = Depends(get_
 
 @router.get("/student-transport")
 async def list_student_transport(school_id: str, route_id: Optional[str] = None, branch_code: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    school_id = resolve_school_access(current_user, school_id)
+    branch_code = resolve_branch_scope(current_user, branch_code)
     school = School.objects.get(id=school_id)
     query = StudentTransport.objects(school=school, is_active=True)
     if route_id:
@@ -218,6 +231,7 @@ async def list_student_transport(school_id: str, route_id: Optional[str] = None,
 # ─── Maintenance ─────────────────────────────────────────────────────────────
 @router.post("/maintenance")
 async def add_maintenance(data: dict, current_user: User = Depends(get_current_user)):
+    data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
     school = School.objects.get(id=data['school_id'])
     vehicle = Vehicle.objects.get(id=data['vehicle_id'])
     m = VehicleMaintenance(

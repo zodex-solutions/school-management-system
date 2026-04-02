@@ -4,6 +4,7 @@
 <head>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
     rel="stylesheet">
@@ -174,13 +175,13 @@
           style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
           <div class="tab-bar">
             <button onclick="switchTab(0)"
-              class="adtab px-5 py-4 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap">📋
+              class="adtab px-5 py-4 text-sm flex items-center gap-2 font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap"> <span data-lucide="file-text" class="w-4 h-4"></span>
               Applications</button>
             <button onclick="switchTab(1)"
-              class="adtab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">⚙️
+              class="adtab px-5 py-4 text-sm flex items-center gap-2 font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap"><span data-lucide="settings" class="w-4 h-4"></span>
               Settings</button>
             <button onclick="switchTab(2)"
-              class="adtab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">🌐
+              class="adtab px-5 py-4 flex items-center gap-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap"> <span data-lucide="globe" class="w-4 h-4"></span>
               Public Form</button>
           </div>
 
@@ -326,17 +327,24 @@
       if (i === 0) loadApplications(); if (i === 1) loadSettings(); if (i === 2) { document.getElementById('pubLink').textContent = `${location.origin}/apply.html?school=${schoolId}`; }
     }
 
-    async function loadStats() {
-      if (!schoolId) return;
-      try {
-        const r = await AdmissionsAPI.getStats(schoolId); const d = r?.data || {};
-        document.getElementById('admStats').innerHTML =
-          statCard('Total Applications', d.total_applications || 0, '📋', 'blue') +
-          statCard('Shortlisted', d.shortlisted || 0, '✅', 'green') +
-          statCard('Selected', d.selected || 0, '🎓', 'emerald') +
-          statCard('Pending Review', d.submitted || 0, '⏳', 'orange');
-      } catch (e) { }
-    }
+      async function loadStats() {
+        if (!schoolId) return;
+
+        try {
+          const r = await AdmissionsAPI.getStats(schoolId);
+          const d = r?.data || {};
+
+          document.getElementById('admStats').innerHTML =
+            statCard('Total Applications', d.total_applications || 0, 'file-text', 'blue') +
+            statCard('Shortlisted', d.shortlisted || 0, 'check-circle', 'green') +
+            statCard('Selected', d.selected || 0, 'graduation-cap', 'emerald') +
+            statCard('Pending Review', d.submitted || 0, 'clock', 'orange');
+
+          // ✅ IMPORTANT
+          lucide.createIcons();
+
+        } catch (e) { }
+      }
 
     async function loadApplications() {
       if (!schoolId) { document.getElementById('appTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
@@ -442,8 +450,23 @@
     function copyLink() {
       navigator.clipboard.writeText(document.getElementById('pubLink').textContent); showToast('Link copied to clipboard!');
     }
+    function statCard(title, value, icon, color) {
+      return `
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-400">${title}</p>
+            <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+          </div>
+          <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+            <i data-lucide="${icon}" class="w-5 h-5"></i>
+          </div>
+        </div>
+      `;
+     }
 
     loadStats(); loadApplications();
+
+
   </script>
 </body>
 

@@ -4,6 +4,7 @@
 <head>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
     rel="stylesheet">
@@ -187,7 +188,10 @@
     class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
     <div class="modal-box w-full max-w-5xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
-        <h3 class="text-lg font-bold text-gray-900">New Student Admission</h3>
+        <div>
+          <h3 id="admModalTitle" class="text-lg font-bold text-gray-900">New Student Admission</h3>
+          <p id="admModalHint" class="text-sm text-gray-500 mt-1">Add student details, transport and documents.</p>
+        </div>
         <button onclick="document.getElementById('admModal').style.display='none'"
           class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
       </div>
@@ -356,12 +360,36 @@
             <h4 class="font-semibold text-gray-900 mb-3">Remarks</h4>
             <textarea id="m_remarks" rows="3" class="finput resize-none" placeholder="Optional remarks"></textarea>
           </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-semibold text-gray-900">Student Documents</h4>
+              <button type="button" onclick="addDocumentRow()" class="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium hover:bg-blue-100">+ Add Document</button>
+            </div>
+            <div id="documentRows" class="space-y-3">
+              <div class="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1.2fr_auto] gap-3 items-end doc-row">
+                <div>
+                  <label class="lbl">Document Type</label>
+                  <input type="text" class="finput doc-type" placeholder="e.g. Birth Certificate" />
+                </div>
+                <div>
+                  <label class="lbl">Document Number</label>
+                  <input type="text" class="finput doc-number" placeholder="Optional number" />
+                </div>
+                <div>
+                  <label class="lbl">Upload File</label>
+                  <input type="file" class="finput doc-file" />
+                </div>
+                <button type="button" onclick="removeDocumentRow(this)" class="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-medium hover:bg-red-100">Remove</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="flex gap-3 px-6 py-4 border-t sticky bottom-0 bg-white justify-end">
         <button onclick="document.getElementById('admModal').style.display='none'"
           class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200">Cancel</button>
-        <button onclick="submitAdm()"
+        <button id="admSubmitBtn" onclick="submitAdm()"
           class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 shadow-lg">Admit
           Student</button>
       </div>
@@ -423,17 +451,29 @@
     let routeCache = [];
     let branchCache = [];
     let selectedBranchCode = studentPageParams.get('branch_code') || '';
+    let editingStudentId = '';
 
-    async function loadStats() {
-      if (!currentSchoolId) return;
-      try {
-        const r = await StudentAPI.stats(currentSchoolId, ayId, selectedBranchCode);
-        if (r?.data) {
-          const d = r.data;
-          document.getElementById('statsRow').innerHTML = statCard('Total', d.total || 0, '&#128104;&#8205;&#127979;', 'blue') + statCard('Male', d.by_gender?.male || 0, '&#128104;', 'indigo') + statCard('Female', d.by_gender?.female || 0, '&#128105;', 'purple') + statCard('Transferred', d.by_status?.transferred || 0, '&#128640;', 'orange');
-        }
-      } catch (e) { }
+async function loadStats() {
+  if (!currentSchoolId) return;
+
+  try {
+    const r = await StudentAPI.stats(currentSchoolId, ayId, selectedBranchCode);
+
+    if (r?.data) {
+      const d = r.data;
+
+      document.getElementById('statsRow').innerHTML =
+        statCard('Total', d.total || 0, 'users', 'blue') +
+        statCard('Male', d.by_gender?.male || 0, 'user', 'indigo') +
+        statCard('Female', d.by_gender?.female || 0, 'user-round', 'purple') +
+        statCard('Transferred', d.by_status?.transferred || 0, 'send', 'orange');
+
+      // 🔥 IMPORTANT
+      lucide.createIcons();
     }
+
+  } catch (e) {}
+}
 
     async function loadClasses() {
       if (!currentSchoolId) return;
@@ -452,7 +492,12 @@
         const branchOpts = '<option value="">Main School</option>' + branchCache.map(b => `<option value="${b.code}" data-name="${b.name}">${b.name}</option>`).join('');
         document.getElementById('m_branch').innerHTML = branchOpts;
         document.getElementById('filterBranch').innerHTML = '<option value="">All Branches</option>' + branchCache.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
-        if (selectedBranchCode) document.getElementById('filterBranch').value = selectedBranchCode;
+        selectedBranchCode = applyBranchAccessToSelect('filterBranch', selectedBranchCode);
+        const scopedFormBranch = getScopedBranchCode(document.getElementById('m_branch').value || selectedBranchCode);
+        if (scopedFormBranch && Array.from(document.getElementById('m_branch').options).some(opt => opt.value === scopedFormBranch)) {
+          document.getElementById('m_branch').value = scopedFormBranch;
+        }
+        document.getElementById('m_branch').disabled = !!getAssignedBranchCode();
       } catch (e) { }
     }
 
@@ -491,6 +536,55 @@
       const show = document.getElementById('m_ref_type').value === 'Referral';
       document.getElementById('ref_num_wrap').classList.toggle('hidden', !show);
       document.getElementById('ref_email_wrap').classList.toggle('hidden', !show);
+    }
+
+    function addDocumentRow() {
+      const row = document.createElement('div');
+      row.className = 'grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1.2fr_auto] gap-3 items-end doc-row';
+      row.innerHTML = `
+        <div>
+          <label class="lbl">Document Type</label>
+          <input type="text" class="finput doc-type" placeholder="e.g. Aadhar Card" />
+        </div>
+        <div>
+          <label class="lbl">Document Number</label>
+          <input type="text" class="finput doc-number" placeholder="Optional number" />
+        </div>
+        <div>
+          <label class="lbl">Upload File</label>
+          <input type="file" class="finput doc-file" />
+        </div>
+        <button type="button" onclick="removeDocumentRow(this)" class="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-medium hover:bg-red-100">Remove</button>`;
+      document.getElementById('documentRows').appendChild(row);
+    }
+
+    function removeDocumentRow(btn) {
+      const rows = document.querySelectorAll('#documentRows .doc-row');
+      if (rows.length === 1) {
+        rows[0].querySelectorAll('input').forEach(input => input.value = '');
+        return;
+      }
+      btn.closest('.doc-row')?.remove();
+    }
+
+    function collectDocumentRows() {
+      return Array.from(document.querySelectorAll('#documentRows .doc-row')).map(row => ({
+        docType: row.querySelector('.doc-type')?.value?.trim() || '',
+        docNumber: row.querySelector('.doc-number')?.value?.trim() || '',
+        file: row.querySelector('.doc-file')?.files?.[0] || null
+      })).filter(item => item.docType || item.docNumber || item.file);
+    }
+
+    async function uploadStudentDocuments(studentId) {
+      const docs = collectDocumentRows();
+      for (const doc of docs) {
+        if (!doc.docType || !doc.file) continue;
+        const fd = new FormData();
+        fd.append('file', doc.file);
+        fd.append('doc_type', doc.docType);
+        if (doc.docNumber) fd.append('doc_number', doc.docNumber);
+        await StudentAPI.uploadDoc(studentId, fd);
+      }
     }
 
     function collectAddress(prefix) {
@@ -550,6 +644,9 @@
       <td class="px-4 py-3"><div class="flex gap-1">
         <button onclick="viewStudent('${s.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="View">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </button>
+        <button onclick="editStudent('${s.id}')" class="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Edit">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
         </button>
         <button onclick="delStudent('${s.id}','${s.full_name.replace(/'/g, "\'")}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Delete">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -652,7 +749,10 @@
                   <div class="font-medium text-slate-900">${doc.doc_type || 'Document'}</div>
                   <div class="text-xs text-slate-500">${doc.doc_number || 'No number'} · ${formatDate(doc.uploaded_at)}</div>
                 </div>
-                ${tdBadge(doc.is_verified ? 'Verified' : 'Pending', doc.is_verified ? 'green' : 'yellow')}
+                <div class="flex items-center gap-2">
+                  ${doc.file_path ? `<a href="${doc.file_path.startsWith('/uploads/') ? doc.file_path : '/uploads/' + doc.file_path}" target="_blank" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100">View</a>` : ''}
+                  ${tdBadge(doc.is_verified ? 'Verified' : 'Pending', doc.is_verified ? 'green' : 'yellow')}
+                </div>
               </div>
             </div>`).join('')
           : '<div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-slate-400">No documents uploaded</div>';
@@ -810,6 +910,7 @@
         </div>
 
         <div class="flex gap-3">
+          <button onclick="editStudent('${id}'); document.getElementById('detModal').style.display = 'none';" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl text-sm font-medium hover:bg-blue-200">Edit Student</button>
           <button onclick="genTC('${id}','${(s.full_name || '').replace(/'/g, "\\'")}')" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl text-sm font-medium hover:bg-orange-200">Generate TC</button>
         </div>
       </div>`;
@@ -829,14 +930,181 @@
       catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
-    function openAdmModal() {
+    function resetAdmissionModal() {
       document.querySelectorAll('#admModal input,#admModal select,#admModal textarea').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; });
       document.getElementById('m_nat').value = 'Indian';
       document.getElementById('m_class_fee').value = '';
       document.getElementById('m_total_fee').value = '';
       document.getElementById('m_charge').value = '';
+      editingStudentId = '';
+      document.getElementById('admModalTitle').textContent = 'New Student Admission';
+      document.getElementById('admModalHint').textContent = 'Add student details, transport and documents.';
+      document.getElementById('admSubmitBtn').textContent = 'Admit Student';
+      document.getElementById('documentRows').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1.2fr_auto] gap-3 items-end doc-row">
+          <div>
+            <label class="lbl">Document Type</label>
+            <input type="text" class="finput doc-type" placeholder="e.g. Birth Certificate" />
+          </div>
+          <div>
+            <label class="lbl">Document Number</label>
+            <input type="text" class="finput doc-number" placeholder="Optional number" />
+          </div>
+          <div>
+            <label class="lbl">Upload File</label>
+            <input type="file" class="finput doc-file" />
+          </div>
+          <button type="button" onclick="removeDocumentRow(this)" class="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-medium hover:bg-red-100">Remove</button>
+        </div>`;
       toggleReferralFields();
+      updateFeePreview();
+    }
+
+    function openAdmModal() {
+      resetAdmissionModal();
       document.getElementById('admModal').style.display = 'flex';
+    }
+
+    function setFormValue(id, value, fallback = '') {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = value ?? fallback;
+    }
+
+    function setDateValue(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = value ? String(value).slice(0, 10) : '';
+    }
+
+    function fillAddress(prefix, data = {}) {
+      setFormValue(`${prefix}_address`, data.address);
+      setFormValue(`${prefix}_village`, data.village_area);
+      setFormValue(`${prefix}_post`, data.post_office);
+      setFormValue(`${prefix}_city`, data.city);
+      setFormValue(`${prefix}_state`, data.state);
+      setFormValue(`${prefix}_pin`, data.pin_code);
+      setFormValue(`${prefix}_phone`, data.phone_no);
+    }
+
+    async function editStudent(id) {
+      try {
+        resetAdmissionModal();
+        const res = await StudentAPI.get(id);
+        const s = res?.data || {};
+        const parent = s.parent_info || {};
+        const medical = s.medical_info || {};
+        editingStudentId = id;
+        document.getElementById('admModalTitle').textContent = 'Edit Student';
+        document.getElementById('admModalHint').textContent = 'Update biodata, branch, transport and optional new documents.';
+        document.getElementById('admSubmitBtn').textContent = 'Update Student';
+        setFormValue('m_fn', s.first_name);
+        setFormValue('m_mn', s.middle_name);
+        setFormValue('m_ln', s.last_name);
+        setFormValue('m_gnd', s.gender);
+        setDateValue('m_dob', s.date_of_birth);
+        setFormValue('m_ph', s.phone);
+        setFormValue('m_em', s.email);
+        setFormValue('m_aad', s.aadhar_number);
+        setFormValue('m_rel', s.religion);
+        setFormValue('m_caste', s.caste);
+        setFormValue('m_nat', s.nationality || 'Indian');
+        setFormValue('m_bg', medical.blood_group);
+        setFormValue('m_branch', s.branch_code);
+        setFormValue('m_at', s.admission_type || 'New');
+        setFormValue('m_reg_type', s.registration_type || 'Manual');
+        setFormValue('m_cls', s.classroom_id);
+        loadSections();
+        setFormValue('m_sec', s.section_id);
+        setFormValue('m_transport_area', s.transport_area);
+        setFormValue('m_route', s.transport_route_id);
+        setFormValue('m_bus_stop', s.bus_stop);
+        setFormValue('m_bus_no', s.bus_no);
+        setFormValue('m_ref_type', s.referral_type);
+        setFormValue('m_ref_num', s.referral_number);
+        setFormValue('m_ref_email', s.referral_email);
+        document.getElementById('m_migration').checked = !!s.migration;
+        document.getElementById('m_lateral').checked = !!s.lateral_entry;
+        document.querySelectorAll('.m_month').forEach(el => {
+          el.checked = Array.isArray(s.transport_months) && s.transport_months.includes(el.value);
+        });
+        setFormValue('m_fa', parent.father_name);
+        setFormValue('m_fp', parent.father_phone);
+        setFormValue('m_fe', parent.father_email);
+        setFormValue('m_fo', parent.father_occupation);
+        setFormValue('m_ma', parent.mother_name);
+        setFormValue('m_mp', parent.mother_phone);
+        setFormValue('m_guard', parent.guardian_name);
+        setFormValue('m_guard_ph', parent.guardian_phone);
+        fillAddress('pres', s.current_address_details || {});
+        fillAddress('perm', s.permanent_address_details || {});
+        setFormValue('m_remarks', s.remarks);
+        if (Array.isArray(s.documents) && s.documents.length) {
+          document.getElementById('documentRows').innerHTML = `
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+              Existing documents are already linked with this student. Use the fields below only for uploading additional documents.
+            </div>`;
+          addDocumentRow();
+        }
+        toggleReferralFields();
+        updateRouteMeta();
+        document.getElementById('admModal').style.display = 'flex';
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
+    function buildStudentPayload() {
+      const branchEl = document.getElementById('m_branch');
+      const branchOpt = branchEl.options[branchEl.selectedIndex];
+      const routeId = document.getElementById('m_route').value || null;
+      const months = Array.from(document.querySelectorAll('.m_month:checked')).map(el => el.value);
+      return {
+        first_name: document.getElementById('m_fn').value.trim(),
+        middle_name: document.getElementById('m_mn').value || null,
+        last_name: document.getElementById('m_ln').value.trim(),
+        gender: document.getElementById('m_gnd').value,
+        date_of_birth: document.getElementById('m_dob').value ? new Date(document.getElementById('m_dob').value).toISOString() : null,
+        phone: document.getElementById('m_ph').value || null,
+        email: document.getElementById('m_em').value || null,
+        religion: document.getElementById('m_rel').value || null,
+        caste: document.getElementById('m_caste').value || null,
+        nationality: document.getElementById('m_nat').value || 'Indian',
+        aadhar_number: document.getElementById('m_aad').value || null,
+        school_id: currentSchoolId,
+        academic_year_id: ayId || '',
+        classroom_id: document.getElementById('m_cls').value,
+        section_id: document.getElementById('m_sec').value,
+        branch_code: branchEl.value || null,
+        branch_name: branchOpt?.dataset?.name || null,
+        admission_type: document.getElementById('m_at').value,
+        registration_type: document.getElementById('m_reg_type').value,
+        parent_info: {
+          father_name: document.getElementById('m_fa').value || null,
+          father_phone: document.getElementById('m_fp').value || null,
+          father_email: document.getElementById('m_fe').value || null,
+          father_occupation: document.getElementById('m_fo').value || null,
+          mother_name: document.getElementById('m_ma').value || null,
+          mother_phone: document.getElementById('m_mp').value || null,
+          guardian_name: document.getElementById('m_guard').value || null,
+          guardian_phone: document.getElementById('m_guard_ph').value || null
+        },
+        medical_info: { blood_group: document.getElementById('m_bg').value || null },
+        current_address_details: collectAddress('pres'),
+        permanent_address_details: collectAddress('perm'),
+        uses_transport: !!routeId,
+        transport_route_id: routeId,
+        transport_area: document.getElementById('m_transport_area').value || null,
+        bus_stop: document.getElementById('m_bus_stop').value || null,
+        bus_no: document.getElementById('m_bus_no').value || null,
+        transport_months: months,
+        migration: document.getElementById('m_migration').checked,
+        lateral_entry: document.getElementById('m_lateral').checked,
+        referral_type: document.getElementById('m_ref_type').value || null,
+        referral_number: document.getElementById('m_ref_num').value || null,
+        referral_email: document.getElementById('m_ref_email').value || null,
+        remarks: document.getElementById('m_remarks').value || null
+      };
     }
 
     async function submitAdm() {
@@ -845,57 +1113,19 @@
       const gnd = document.getElementById('m_gnd').value, cls = document.getElementById('m_cls').value, sec = document.getElementById('m_sec').value;
       if (!fn || !ln || !gnd || !cls || !sec) { showToast('Fill all required fields (*)', 'error'); return; }
       try {
-        const branchEl = document.getElementById('m_branch');
-        const branchOpt = branchEl.options[branchEl.selectedIndex];
-        const routeId = document.getElementById('m_route').value || null;
-        const months = Array.from(document.querySelectorAll('.m_month:checked')).map(el => el.value);
-        const r = await StudentAPI.create({
-          first_name: fn, middle_name: document.getElementById('m_mn').value || null, last_name: ln, gender: gnd,
-          date_of_birth: document.getElementById('m_dob').value ? new Date(document.getElementById('m_dob').value).toISOString() : null,
-          phone: document.getElementById('m_ph').value || null, email: document.getElementById('m_em').value || null,
-          religion: document.getElementById('m_rel').value || null,
-          caste: document.getElementById('m_caste').value || null,
-          nationality: document.getElementById('m_nat').value || 'Indian',
-          aadhar_number: document.getElementById('m_aad').value || null,
-          school_id: currentSchoolId, academic_year_id: ayId || '',
-          classroom_id: cls, section_id: sec,
-          branch_code: branchEl.value || null,
-          branch_name: branchOpt?.dataset?.name || null,
-          admission_type: document.getElementById('m_at').value,
-          registration_type: document.getElementById('m_reg_type').value,
-          parent_info: {
-            father_name: document.getElementById('m_fa').value || null,
-            father_phone: document.getElementById('m_fp').value || null,
-            father_email: document.getElementById('m_fe').value || null,
-            father_occupation: document.getElementById('m_fo').value || null,
-            mother_name: document.getElementById('m_ma').value || null,
-            mother_phone: document.getElementById('m_mp').value || null,
-            guardian_name: document.getElementById('m_guard').value || null,
-            guardian_phone: document.getElementById('m_guard_ph').value || null
-          },
-          medical_info: { blood_group: document.getElementById('m_bg').value || null },
-          current_address_details: collectAddress('pres'),
-          permanent_address_details: collectAddress('perm'),
-          uses_transport: !!routeId,
-          transport_route_id: routeId,
-          transport_area: document.getElementById('m_transport_area').value || null,
-          bus_stop: document.getElementById('m_bus_stop').value || null,
-          bus_no: document.getElementById('m_bus_no').value || null,
-          transport_months: months,
-          migration: document.getElementById('m_migration').checked,
-          lateral_entry: document.getElementById('m_lateral').checked,
-          referral_type: document.getElementById('m_ref_type').value || null,
-          referral_number: document.getElementById('m_ref_num').value || null,
-          referral_email: document.getElementById('m_ref_email').value || null,
-          remarks: document.getElementById('m_remarks').value || null
-        });
+        const payload = buildStudentPayload();
+        const r = editingStudentId
+          ? await StudentAPI.update(editingStudentId, payload)
+          : await StudentAPI.create(payload);
+        const studentId = editingStudentId || r?.data?.id;
         const photo = document.getElementById('m_photo').files[0];
-        if (photo) {
+        if (photo && studentId) {
           const fd = new FormData();
           fd.append('file', photo);
-          await StudentAPI.uploadPhoto(r.data.id, fd);
+          await StudentAPI.uploadPhoto(studentId, fd);
         }
-        showToast('Admitted! No: ' + r.data.admission_no);
+        if (studentId) await uploadStudentDocuments(studentId);
+        showToast(editingStudentId ? 'Student updated successfully' : 'Admitted! No: ' + r.data.admission_no);
         document.getElementById('admModal').style.display = 'none';
         loadStudents(1); loadStats();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
@@ -915,6 +1145,25 @@
       currentSchoolId = await initializeSchoolContext() || currentSchoolId;
       loadStats(); loadClasses(); loadSchoolMeta(); loadRoutes(); loadStudents();
     })();
+
+    function statCard(title, value, icon, color) {
+  return `
+    <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+      
+      <div>
+        <p class="text-sm text-gray-400">${title}</p>
+        <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+      </div>
+
+      <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+        <i data-lucide="${icon}" class="w-5 h-5"></i>
+      </div>
+
+    </div>
+  `;
+}
+
+lucide.createIcons();
   </script>
 </body>
 

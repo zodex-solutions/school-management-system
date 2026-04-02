@@ -8,13 +8,20 @@ from models.transport import TransportRoute, StudentTransport, Vehicle
 from models.attendance import StudentAttendance
 from models.fees import FeeInvoice, PaymentTransaction
 from models.examination import Result
-from utils.auth import get_current_user
+from utils.auth import get_current_user, resolve_school_access, resolve_branch_scope
 from utils.helpers import (
     success_response, paginate_query, generate_admission_no,
     generate_id, generate_tc_no, save_upload_file, doc_to_dict
 )
 
 router = APIRouter(prefix="/students", tags=["Students"])
+
+
+def _ensure_student_scope(student: Student, current_user: User):
+    resolve_school_access(current_user, str(student.school.id) if student.school else None)
+    scoped_branch = resolve_branch_scope(current_user, None)
+    if scoped_branch and student.branch_code != scoped_branch:
+        raise HTTPException(403, "Access denied for this student")
 
 
 # ─── Admission ────────────────────────────────────────────────────────────────
@@ -114,6 +121,8 @@ def _sync_student_transport(student: Student, route_id: Optional[str], payload: 
 @router.post("")
 async def admit_student(data: StudentAdmission, current_user: User = Depends(get_current_user)):
     try:
+        data.school_id = resolve_school_access(current_user, data.school_id)
+        data.branch_code = resolve_branch_scope(current_user, data.branch_code)
         school = School.objects.get(id=data.school_id)
         ay = AcademicYear.objects.get(id=data.academic_year_id)
         classroom = ClassRoom.objects.get(id=data.classroom_id)
@@ -203,6 +212,8 @@ async def list_students(
     current_user: User = Depends(get_current_user)
 ):
     try:
+        school_id = resolve_school_access(current_user, school_id)
+        branch_code = resolve_branch_scope(current_user, branch_code)
         school = School.objects.get(id=school_id)
     except School.DoesNotExist:
         raise HTTPException(404, "School not found")
@@ -283,6 +294,7 @@ async def list_students(
 async def get_student(student_id: str, current_user: User = Depends(get_current_user)):
     try:
         student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
         data = {
             "id": str(student.id),
             "admission_no": student.admission_no,
@@ -365,6 +377,7 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
 async def get_student_profile_summary(student_id: str, current_user: User = Depends(get_current_user)):
     try:
         student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
     except Student.DoesNotExist:
         raise HTTPException(404, "Student not found")
 
@@ -560,6 +573,10 @@ async def get_student_profile_summary(student_id: str, current_user: User = Depe
 async def update_student(student_id: str, data: dict, current_user: User = Depends(get_current_user)):
     try:
         student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
+        if 'school_id' in data:
+            data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
+        data['branch_code'] = resolve_branch_scope(current_user, data.get('branch_code'))
         
         # Handle nested updates
         parent_info = data.pop('parent_info', None)
@@ -629,6 +646,7 @@ async def update_student(student_id: str, data: dict, current_user: User = Depen
 async def delete_student(student_id: str, current_user: User = Depends(get_current_user)):
     try:
         student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
         student.update(is_active=False)
         return success_response(message="Student record deactivated")
     except Student.DoesNotExist:
@@ -642,6 +660,7 @@ async def upload_student_photo(
 ):
     try:
         student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
         file_path = await save_upload_file(file, "student_photos")
         student.update(photo=file_path)
         return success_response({"photo": file_path}, "Photo uploaded successfully")
@@ -659,6 +678,7 @@ async def upload_student_document(
 ):
     try:
         student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
         file_path = await save_upload_file(file, "student_documents")
         from models.student import StudentDocument
         doc = StudentDocument(doc_type=doc_type, doc_number=doc_number, file_path=file_path)
@@ -687,6 +707,7 @@ async def generate_tc(
 ):
     try:
         student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
     except Student.DoesNotExist:
         raise HTTPException(404, "Student not found")
     
@@ -710,6 +731,7 @@ async def generate_tc(
 async def get_tc(student_id: str, current_user: User = Depends(get_current_user)):
     try:
         student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
         tcs = TransferCertificate.objects(student=student).order_by('-created_at')
         result = [{
             "id": str(tc.id), "tc_number": tc.tc_number,
@@ -727,6 +749,8 @@ async def student_stats(school_id: str, academic_year_id: Optional[str] = None,
                         branch_code: Optional[str] = None,
                         current_user: User = Depends(get_current_user)):
     try:
+        school_id = resolve_school_access(current_user, school_id)
+        branch_code = resolve_branch_scope(current_user, branch_code)
         school = School.objects.get(id=school_id)
         query = Student.objects(school=school, is_active=True)
         if academic_year_id:

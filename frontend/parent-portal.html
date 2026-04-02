@@ -3,6 +3,7 @@
 
 <head>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
@@ -175,16 +176,16 @@
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white">
           <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <div>
-              <h3 class="font-bold text-lg mb-1">👨‍👩‍👧 Parent Portal</h3>
+              <h3 class="font-bold text-lg mb-1 flex items-center gap-2"><span data-lucide="users" class="w-5 h-5"></span> Parent Portal</h3>
               <p class="text-blue-100 text-sm">Parents can login and track their children's progress, attendance, fees
                 and homework.</p>
             </div>
             <div class="flex gap-2 flex-wrap">
               <button onclick="copyPortalLink()"
-                class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-medium backdrop-blur-sm">📋
+                class="px-4 py-2 bg-white/20 flex items-center gap-2 hover:bg-white/30 text-white rounded-xl text-sm font-medium backdrop-blur-sm"> <span data-lucide="copy" class="w-4 h-4"></span>
                 Copy Login Link</button>
               <button onclick="openPortal()"
-                class="px-4 py-2 bg-white text-blue-700 rounded-xl text-sm font-semibold hover:bg-blue-50">🌐 Open
+                class="px-4 py-2 bg-white text-blue-700 flex items-center gap-2 rounded-xl text-sm font-semibold hover:bg-blue-50"> <span data-lucide="globe" class="w-4 h-4"></span> Open
                 Portal</button>
             </div>
           </div>
@@ -198,13 +199,13 @@
           style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
           <div class="tab-bar">
             <button onclick="switchTab(0)"
-              class="pptab px-5 py-4 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap">👥
+              class="pptab px-5 py-4 text-sm flex items-center gap-2 font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap"><span data-lucide="users" class="w-4 h-4"></span>
               Registered Parents</button>
             <button onclick="switchTab(1)"
-              class="pptab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">✉️
+              class="pptab px-5 py-4 text-sm flex items-center gap-2 font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap"> <span data-lucide="mail" class="w-4 h-4"></span>
               Messages from Parents</button>
             <button onclick="switchTab(2)"
-              class="pptab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">📱
+              class="pptab px-5 py-4 text-sm flex items-center gap-2 font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap"> <span data-lucide="smartphone" class="w-4 h-4"></span>
               Parent App Guide</button>
           </div>
 
@@ -264,12 +265,12 @@
                   <div>
                     <h5 class="font-semibold text-gray-900">What Parents Can See</h5>
                     <ul class="text-sm text-gray-600 mt-2 space-y-1">
-                      <li>✅ Daily attendance of their child</li>
-                      <li>💰 Fee dues and payment history</li>
-                      <li>📝 Homework assignments</li>
-                      <li>📊 Exam results and report cards</li>
-                      <li>📢 School notices and events</li>
-                      <li>✉️ Send messages to teachers/admin</li>
+                      <li class="flex items-center gap-2"><span data-lucide="check-circle"></span> Daily attendance of their child</li>
+                      <li class="flex items-center gap-2"><span data-lucide="indian-rupee"></span> Fee dues and payment history</li>
+                      <li class="flex items-center gap-2"><span data-lucide="file-text"></span> Homework assignments</li>
+                      <li class="flex items-center gap-2"><span data-lucide="bar-chart-3"></span> Exam results and report cards</li>
+                      <li class="flex items-center gap-2"><span data-lucide="megaphone"></span> School notices and events</li>
+                      <li class="flex items-center gap-2"><span data-lucide="mail"></span> Send messages to teachers/admin</li>
                     </ul>
                   </div>
                 </div>
@@ -288,7 +289,7 @@
               </div>
 
               <div class="bg-gray-50 rounded-xl p-4">
-                <p class="text-sm font-semibold text-gray-700 mb-2">💡 Quick WhatsApp Message Template:</p>
+                <p class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2"><span data-lucide="lightbulb" class="w-4 h-4"></span> Quick WhatsApp Message Template:</p>
                 <div class="bg-white rounded-lg p-4 border text-sm text-gray-700 font-mono leading-relaxed">
                   Dear Parents,<br /><br />
                   We are pleased to inform you that our school's <strong>Parent Portal</strong> is now live!<br /><br />
@@ -347,18 +348,36 @@
 
     let allParents = [];
 
-    async function loadParents() {
-      if (!schoolId) { document.getElementById('parentTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
-      try {
-        const r = await ParentAPI.adminGetParents(schoolId); allParents = r?.data || [];
-        document.getElementById('portalStats').innerHTML =
-          statCard('Registered Parents', allParents.length, '👨‍👩‍👧', 'blue') +
-          statCard('Active Today', allParents.filter(p => p.last_login && new Date(p.last_login) > new Date(Date.now() - 86400000)).length, '✅', 'green') +
-          statCard('Total Children', allParents.reduce((a, p) => a + (p.children?.length || 0), 0), '👦', 'orange') +
-          statCard('Portal Link', 'Share →', '🔗', 'purple');
-        renderParentTable(allParents);
-      } catch (e) { }
-    }
+   async function loadParents() {
+  if (!schoolId) {
+    document.getElementById('parentTable').innerHTML =
+      '<p class="text-gray-400 text-sm p-4">Configure school first</p>';
+    return;
+  }
+
+  try {
+    const r = await ParentAPI.adminGetParents(schoolId);
+    allParents = r?.data || [];
+
+    document.getElementById('portalStats').innerHTML =
+      statCard('Registered Parents', allParents.length, 'users', 'blue') +
+      statCard('Active Today',
+        allParents.filter(p => p.last_login && new Date(p.last_login) > new Date(Date.now() - 86400000)).length,
+        'check-circle', 'green') +
+      statCard('Total Children',
+        allParents.reduce((a, p) => a + (p.children?.length || 0), 0),
+        'baby', 'orange') +
+      statCard('Portal Link', 'Share →', 'link', 'purple');
+
+    // ✅ ADD THIS (MOST IMPORTANT)
+    lucide.createIcons();
+
+    renderParentTable(allParents);
+
+  } catch (e) {
+    console.log(e);
+  }
+}
 
     function renderParentTable(parents) {
       const hdrs = ['Parent Name', 'Relation', 'Phone', 'Email', 'Children', 'Last Login', 'Registered'];
@@ -418,6 +437,19 @@
     function openPortal() {
       window.open(portalUrl, '_blank');
     }
+    function statCard(title, value, icon, color) {
+  return `
+    <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-400">${title}</p>
+        <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+      </div>
+      <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+        <i data-lucide="${icon}" class="w-5 h-5"></i>
+      </div>
+    </div>
+  `;
+}
 
     function copyWhatsApp() {
       const msg = `Dear Parents,\n\nWe are pleased to inform you that our school's Parent Portal is now live!\n\nYou can now track your child's attendance, fees, results and more from your mobile.\n\n🔗 ${portalUrl}\n\nRegister using your child's Admission Number.\n\nRegards,\nSchool Administration`;
@@ -425,6 +457,7 @@
     }
 
     loadParents();
+      // lucide.createIcons();
   </script>
 </body>
 

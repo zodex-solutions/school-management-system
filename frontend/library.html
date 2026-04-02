@@ -3,6 +3,8 @@
 
 <head>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
@@ -360,14 +362,29 @@
       if (!schoolId) return;
       try {
         const r = await LibraryAPI.getStats(schoolId); const d = r?.data || {};
-        document.getElementById('libStats').innerHTML =
-          statCard('Total Titles', d.total_titles || 0, '&#128218;', 'blue') +
-          statCard('Available', d.available_copies || 0, '&#9989;', 'green') +
-          statCard('Issued', d.issued_copies || 0, '&#128524;', 'orange') +
-          statCard('Overdue', d.overdue_books || 0, '&#9888;', 'red');
+       document.getElementById('libStats').innerHTML =
+  statCard('Total Titles', d.total_titles || 0, 'book-open', 'blue') +
+  statCard('Available', d.available_copies || 0, 'check-circle', 'green') +
+  statCard('Issued', d.issued_copies || 0, 'book', 'orange') +
+  statCard('Overdue', d.overdue_books || 0, 'alert-triangle', 'red');
+
+// 🔥 IMPORTANT
+lucide.createIcons();
       } catch (e) { }
     }
-
+    function statCard(title, value, icon, color) {
+  return `
+    <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-400">${title}</p>
+        <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+      </div>
+      <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+        <i data-lucide="${icon}" class="w-5 h-5"></i>
+      </div>
+    </div>
+  `;
+}
     async function loadBookCats() {
       if (!schoolId) return;
       try { const r = await LibraryAPI.getCategories(schoolId); document.getElementById('bk_cat').innerHTML = '<option value="">Select category</option>' + (r?.data || []).map(c => `<option value="${c.id}">${c.name}</option>`).join(''); } catch (e) { }

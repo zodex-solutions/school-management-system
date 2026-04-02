@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 from models.staff import Staff, TeacherAssignment, LeaveType, LeaveApplication, SalarySlip
 from models.institution import School, AcademicYear, ClassRoom, Section, Subject, User
-from utils.auth import get_current_user
+from utils.auth import get_current_user, resolve_school_access
 from utils.helpers import success_response, generate_employee_id, save_upload_file
 
 router = APIRouter(prefix="/staff", tags=["Staff & HR"])
@@ -43,6 +43,7 @@ class StaffCreate(BaseModel):
 @router.post("")
 async def create_staff(data: StaffCreate, current_user: User = Depends(get_current_user)):
     try:
+        data.school_id = resolve_school_access(current_user, data.school_id)
         school = School.objects.get(id=data.school_id)
     except School.DoesNotExist:
         raise HTTPException(404, "School not found")
@@ -115,6 +116,7 @@ async def list_staff(
     current_user: User = Depends(get_current_user)
 ):
     try:
+        school_id = resolve_school_access(current_user, school_id)
         school = School.objects.get(id=school_id)
     except School.DoesNotExist:
         raise HTTPException(404, "School not found")
@@ -165,6 +167,7 @@ async def list_staff(
 async def get_staff(staff_id: str, current_user: User = Depends(get_current_user)):
     try:
         s = Staff.objects.get(id=staff_id)
+        resolve_school_access(current_user, str(s.school.id) if s.school else None)
         data = {
             "id": str(s.id),
             "employee_id": s.employee_id,
@@ -215,6 +218,7 @@ async def get_staff(staff_id: str, current_user: User = Depends(get_current_user
 async def update_staff(staff_id: str, data: dict, current_user: User = Depends(get_current_user)):
     try:
         staff = Staff.objects.get(id=staff_id)
+        resolve_school_access(current_user, str(staff.school.id) if staff.school else None)
         data.pop('id', None)
         data['updated_at'] = datetime.utcnow()
         # Recalculate gross salary if salary fields updated

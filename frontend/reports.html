@@ -4,6 +4,8 @@
 <head>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <script src="https://unpkg.com/lucide@latest"></script>
+
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
     rel="stylesheet">
@@ -184,10 +186,11 @@
           <input id="reportMonth" type="month"
             class="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none shadow-sm" />
           <button onclick="loadAllReports()"
-            class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-lg hover:bg-blue-700">🔄
+            class="px-5 py-2.5 bg-blue-600 flex items-center gap-2 text-white rounded-xl text-sm font-semibold shadow-lg hover:bg-blue-700">  <span data-lucide="refresh-cw" class="w-4 h-4"></span>
+
             Refresh All</button>
           <button onclick="window.print()"
-            class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200">🖨️
+            class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 flex items-center gap-2 bg-gray-300"><span data-lucide="printer" class="w-4 h-4"></span>
             Print</button>
         </div>
 
@@ -197,11 +200,11 @@
         <!-- Row 1: Attendance + Fee Collection -->
         <div class="grid lg:grid-cols-2 gap-5">
           <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h4 class="font-bold text-gray-900 mb-4">📅 Monthly Attendance Trend</h4>
+            <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2"><span data-lucide="calendar" class="w-4 h-4"></span>Monthly Attendance Trend</h4>
             <canvas id="attendanceChart" height="200"></canvas>
           </div>
           <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h4 class="font-bold text-gray-900 mb-4">💰 Fee Collection (Monthly)</h4>
+            <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">  <span data-lucide="wallet" class="w-4 h-4"></span> Fee Collection (Monthly)</h4>
             <canvas id="feeChart" height="200"></canvas>
           </div>
         </div>
@@ -209,11 +212,11 @@
         <!-- Row 2: Class-wise Students + Gender Distribution -->
         <div class="grid lg:grid-cols-2 gap-5">
           <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h4 class="font-bold text-gray-900 mb-4">👨‍🎓 Students Class-wise</h4>
+            <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2"><span data-lucide="users" class="w-4 h-4"></span> Students Class-wise</h4>
             <canvas id="classStudentsChart" height="220"></canvas>
           </div>
           <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h4 class="font-bold text-gray-900 mb-4">⚧ Gender Distribution</h4>
+            <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">  <span data-lucide="pie-chart" class="w-4 h-4"></span> Gender Distribution</h4>
             <div class="flex items-center justify-center h-48">
               <canvas id="genderChart" height="180"></canvas>
             </div>
@@ -223,7 +226,7 @@
         <!-- Row 3: Today's Attendance Table -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <div class="flex justify-between mb-4">
-            <h4 class="font-bold text-gray-900">📊 Today's Class-wise Attendance</h4>
+            <h4 class="font-bold text-gray-900 flex items-center gap-2">  <span data-lucide="bar-chart-3" class="w-4 h-4"></span> Today's Class-wise Attendance</h4>
             <span id="todayDate" class="text-sm text-gray-400"></span>
           </div>
           <div id="attendanceTable"></div>
@@ -232,7 +235,7 @@
         <!-- Row 4: Fee Defaulters -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <div class="flex justify-between mb-4">
-            <h4 class="font-bold text-gray-900">⚠️ Fee Defaulters</h4>
+            <h4 class="font-bold text-gray-900 flex items-center gap-2">  <span data-lucide="alert-triangle" class="w-4 h-4"></span> Fee Defaulters</h4>
             <div id="defaulterMeta" class="text-sm text-red-500 font-semibold"></div>
           </div>
           <div id="defaulterTable"></div>
@@ -240,7 +243,7 @@
 
         <!-- Row 5: Staff Attendance Summary -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h4 class="font-bold text-gray-900 mb-4">👨‍🏫 Staff Attendance Summary</h4>
+          <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">  <span data-lucide="users" class="w-4 h-4"></span> Staff Attendance Summary</h4>
           <div id="staffAttTable"></div>
         </div>
 
@@ -432,6 +435,7 @@
 
     document.getElementById('reportMonth').addEventListener('change', loadAllReports);
     loadAllReports();
+    lucide.createIcons();
   </script>
 </body>
 

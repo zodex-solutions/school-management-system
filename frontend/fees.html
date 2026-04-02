@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
@@ -232,10 +234,11 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           filter.value = '';
           selectedBranchCode = '';
         }
+        selectedBranchCode = applyBranchAccessToSelect('feeBranchFilter', selectedBranchCode);
       } catch (e) {
         schoolBranches = [];
         document.getElementById('feeBranchFilter').innerHTML = '<option value="">All Branches</option>';
-        selectedBranchCode = '';
+        selectedBranchCode = getScopedBranchCode('');
       }
       updateFeeBranchLabel();
     }
@@ -261,18 +264,40 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       if (idx === 2) loadStructures();
       if (idx === 3) loadDues();
     }
+async function loadFeeStats() {
+  if (!schoolId) return;
 
-    async function loadFeeStats() {
-      if (!schoolId) return;
-      try {
-        const r = await FeesAPI.getSummary(schoolId, selectedBranchCode); const d = r?.data || {};
-        document.getElementById('feeStats').innerHTML =
-          statCard('Total Billed', formatCurrency(d.total_billed || 0), '&#128179;', 'blue') +
-          statCard('Collected', formatCurrency(d.total_collected || 0), '&#9989;', 'green') +
-          statCard('Pending', formatCurrency(d.total_due || 0), '&#9203;', 'orange') +
-          statCard('Collection Rate', (d.collection_rate || 0) + '%', '&#128200;', 'purple');
-      } catch (e) {}
-    }
+  try {
+    const r = await FeesAPI.getSummary(schoolId, selectedBranchCode);
+    const d = r?.data || {};
+
+    document.getElementById('feeStats').innerHTML =
+      statCard('Total Billed', formatCurrency(d.total_billed || 0), 'wallet', 'blue') +
+      statCard('Collected', formatCurrency(d.total_collected || 0), 'check-circle', 'green') +
+      statCard('Pending', formatCurrency(d.total_due || 0), 'clock', 'orange') +
+      statCard('Collection Rate', (d.collection_rate || 0) + '%', 'bar-chart-3', 'purple');
+
+    // 🔥 IMPORTANT
+    lucide.createIcons();
+
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+function statCard(title, value, icon, color) {
+  return `
+    <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-400">${title}</p>
+        <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+      </div>
+      <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+        <i data-lucide="${icon}" class="w-5 h-5"></i>
+      </div>
+    </div>
+  `;
+}
 
     async function loadInvStudents() {
       if (!schoolId) return;

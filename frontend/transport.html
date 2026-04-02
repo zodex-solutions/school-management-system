@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://unpkg.com/lucide@latest"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
@@ -281,10 +282,11 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           filter.value = '';
           selectedBranchCode = '';
         }
+        selectedBranchCode = applyBranchAccessToSelect('transportBranchFilter', selectedBranchCode);
       } catch (e) {
         schoolBranches = [];
         document.getElementById('transportBranchFilter').innerHTML = '<option value="">All Branches</option>';
-        selectedBranchCode = '';
+        selectedBranchCode = getScopedBranchCode('');
       }
       updateTransportBranchLabel();
     }
@@ -304,17 +306,24 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       if (idx === 4) loadMaintVehicles();
     }
 
-    async function loadStats() {
-      if (!schoolId) return;
-      try {
-        const r = await TransportAPI.getStats(schoolId, selectedBranchCode); const d = r?.data || {};
-        document.getElementById('transportStats').innerHTML =
-          statCard('Total Routes', d.total_routes || 0, '&#128652;', 'blue') +
-          statCard('Total Vehicles', d.total_vehicles || 0, '&#128661;', 'green') +
-          statCard('Active Vehicles', d.active_vehicles || 0, '&#9989;', 'emerald') +
-          statCard('Students', d.students_using_transport || 0, '&#128104;&#8205;&#127979;', 'orange');
-      } catch (e) {}
-    }
+   async function loadStats() {
+  if (!schoolId) return;
+
+  try {
+    const r = await TransportAPI.getStats(schoolId, selectedBranchCode);
+    const d = r?.data || {};
+
+    document.getElementById('transportStats').innerHTML =
+      statCard('Total Routes', d.total_routes || 0, 'map', 'blue') +
+      statCard('Total Vehicles', d.total_vehicles || 0, 'truck', 'green') +
+      statCard('Active Vehicles', d.active_vehicles || 0, 'check-circle', 'emerald') +
+      statCard('Students', d.students_using_transport || 0, 'users', 'orange');
+
+    // 🔥 IMPORTANT
+    lucide.createIcons();
+
+  } catch (e) {}
+}
 
     async function loadRoutes() {
       if (!schoolId) { document.getElementById('routeTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
@@ -499,6 +508,23 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         showToast('Maintenance record saved!'); document.getElementById('maintModal').style.display = 'none'; loadMaintRecords(vId);
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
+
+    function statCard(title, value, icon, color) {
+  return `
+    <div class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+      
+      <div>
+        <p class="text-sm text-gray-400">${title}</p>
+        <h3 class="text-xl font-bold text-gray-900">${value}</h3>
+      </div>
+
+      <div class="p-3 rounded-xl bg-${color}-100 text-${color}-600">
+        <i data-lucide="${icon}" class="w-5 h-5"></i>
+      </div>
+
+    </div>
+  `;
+}
 
     (async () => {
       await loadTransportBranches();

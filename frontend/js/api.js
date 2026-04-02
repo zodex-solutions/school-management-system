@@ -13,6 +13,7 @@ const Auth = {
   setAuth(token, user) {
     localStorage.setItem('access_token', token);
     localStorage.setItem('user', JSON.stringify(user));
+    if (user?.assigned_school_id) localStorage.setItem('school_id', user.assigned_school_id);
   },
   clearAuth() { ['access_token','user','school_id','academic_year_id'].forEach(k => localStorage.removeItem(k)); },
   isLoggedIn:  () => !!localStorage.getItem('access_token'),
@@ -111,6 +112,37 @@ const Toast = {
 function showToast(msg, type = 'success') { Toast.show(msg, type); }
 function getUser()    { return Auth.getUser(); }
 function requireAuth() { if (!Auth.isLoggedIn()) { location.href = '/login'; return false; } return true; }
+function getAssignedBranchCode() { return getUser()?.assigned_branch_code || ''; }
+function getAllowedBranchCodes() {
+  const user = getUser() || {};
+  const assigned = user.assigned_branch_code ? [user.assigned_branch_code] : [];
+  const allowed = Array.isArray(user.allowed_branch_codes) ? user.allowed_branch_codes : [];
+  return [...new Set([...assigned, ...allowed].filter(Boolean))];
+}
+function getScopedBranchCode(requestedBranchCode = '') {
+  const assignedBranch = getAssignedBranchCode();
+  if (assignedBranch) return assignedBranch;
+  const allowedBranches = getAllowedBranchCodes();
+  if (!allowedBranches.length) return requestedBranchCode || '';
+  if (requestedBranchCode && allowedBranches.includes(requestedBranchCode)) return requestedBranchCode;
+  return allowedBranches[0];
+}
+function applyBranchAccessToSelect(selectId, requestedBranchCode = '') {
+  const el = document.getElementById(selectId);
+  if (!el) return getScopedBranchCode(requestedBranchCode);
+  const scopedBranch = getScopedBranchCode(requestedBranchCode);
+  const assignedBranch = getAssignedBranchCode();
+  const allowedBranches = getAllowedBranchCodes();
+  Array.from(el.options).forEach(opt => {
+    if (!opt.value) return;
+    if (allowedBranches.length && !allowedBranches.includes(opt.value)) opt.remove();
+  });
+  if (scopedBranch && Array.from(el.options).some(opt => opt.value === scopedBranch)) {
+    el.value = scopedBranch;
+  }
+  el.disabled = !!assignedBranch;
+  return scopedBranch;
+}
 function formatCurrency(n) {
   if (n == null || isNaN(Number(n))) return '₹0';
   return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -126,6 +158,11 @@ function debounce(fn, ms = 400) {
 
 async function initializeSchoolContext(forceRefresh = false) {
   if (!Auth.isLoggedIn()) return null;
+  const user = getUser() || {};
+  if (user.assigned_school_id) {
+    localStorage.setItem('school_id', user.assigned_school_id);
+    return user.assigned_school_id;
+  }
   const currentSchoolId = localStorage.getItem('school_id');
   try {
     const res = await API.get('/institution/school');
@@ -223,6 +260,7 @@ const SchoolAPI = {
   getAll:       ()    => API.get('/institution/school'),
   get:          (id)  => API.get(`/institution/school/${id}`),
   update:       (id,d)=> API.put(`/institution/school/${id}`, d),
+  uploadLogo:   (fd)  => API.upload('/institution/upload-logo', fd),
   dashboard:    (id, branchCode)  => API.get(`/institution/dashboard/${id}`, { branch_code: branchCode }),
   createAY:     (d)   => API.post('/institution/academic-year', d),
   listAY:       (sid) => API.get(`/institution/academic-year?school_id=${sid}`),

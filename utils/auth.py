@@ -64,6 +64,31 @@ async def get_current_superadmin(current_user: User = Depends(get_current_user))
     return current_user
 
 
+def resolve_school_access(user: User, school_id: Optional[str]) -> Optional[str]:
+    if user.is_superadmin or not getattr(user, 'assigned_school', None):
+        return school_id
+    assigned_school_id = str(user.assigned_school.id)
+    if school_id and school_id != assigned_school_id:
+        raise HTTPException(status_code=403, detail="Access denied for this school")
+    return assigned_school_id
+
+
+def resolve_branch_scope(user: User, requested_branch_code: Optional[str] = None) -> Optional[str]:
+    if user.is_superadmin:
+        return requested_branch_code
+    assigned_branch_code = getattr(user, 'assigned_branch_code', None)
+    allowed_branch_codes = list(getattr(user, 'allowed_branch_codes', []) or [])
+    if assigned_branch_code:
+        if requested_branch_code and requested_branch_code != assigned_branch_code:
+            raise HTTPException(status_code=403, detail="Access denied for this branch")
+        return assigned_branch_code
+    if allowed_branch_codes:
+        if requested_branch_code and requested_branch_code not in allowed_branch_codes:
+            raise HTTPException(status_code=403, detail="Access denied for this branch")
+        return requested_branch_code or allowed_branch_codes[0]
+    return requested_branch_code
+
+
 def check_permission(user: User, module: str, action: str = "view") -> bool:
     if user.is_superadmin:
         return True

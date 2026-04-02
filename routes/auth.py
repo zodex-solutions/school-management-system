@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from models.institution import User, Role, Permission
+from models.institution import User, Role, Permission, School
 from utils.auth import (
     verify_password, get_password_hash, create_access_token,
     create_refresh_token, decode_token, get_current_user
@@ -24,6 +24,10 @@ class RegisterRequest(BaseModel):
     full_name: str
     phone: Optional[str] = None
     is_superadmin: bool = False
+    school_id: Optional[str] = None
+    assigned_branch_code: Optional[str] = None
+    assigned_branch_name: Optional[str] = None
+    allowed_branch_codes: Optional[list[str]] = None
 
 
 @router.post("/login")
@@ -49,7 +53,11 @@ async def login(data: LoginRequest):
             "is_superadmin": user.is_superadmin,
             "role": str(user.role.id) if user.role else None,
             "role_name": user.role.name if user.role else None,
-            "avatar": user.avatar
+            "avatar": user.avatar,
+            "assigned_school_id": str(user.assigned_school.id) if user.assigned_school else None,
+            "assigned_branch_code": user.assigned_branch_code,
+            "assigned_branch_name": user.assigned_branch_name,
+            "allowed_branch_codes": user.allowed_branch_codes or []
         }
     }, "Login successful")
 
@@ -66,8 +74,16 @@ async def register(data: RegisterRequest):
         hashed_password=get_password_hash(data.password),
         full_name=data.full_name,
         phone=data.phone,
-        is_superadmin=data.is_superadmin
+        is_superadmin=data.is_superadmin,
+        assigned_branch_code=data.assigned_branch_code,
+        assigned_branch_name=data.assigned_branch_name,
+        allowed_branch_codes=data.allowed_branch_codes or []
     )
+    if data.school_id:
+        try:
+            user.assigned_school = School.objects.get(id=data.school_id)
+        except School.DoesNotExist:
+            raise HTTPException(400, "Assigned school not found")
     user.save()
     return success_response({"id": str(user.id), "username": user.username, "email": user.email}, "Registered successfully")
 
@@ -96,7 +112,11 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "is_superadmin": current_user.is_superadmin,
         "role": current_user.role.name if current_user.role else None,
         "avatar": current_user.avatar,
-        "last_login": current_user.last_login.isoformat() if current_user.last_login else None
+        "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+        "assigned_school_id": str(current_user.assigned_school.id) if current_user.assigned_school else None,
+        "assigned_branch_code": current_user.assigned_branch_code,
+        "assigned_branch_name": current_user.assigned_branch_name,
+        "allowed_branch_codes": current_user.allowed_branch_codes or []
     })
 
 

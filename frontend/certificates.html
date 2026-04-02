@@ -3,6 +3,7 @@
 
 <head>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
@@ -191,10 +192,10 @@
           style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
           <div class="tab-bar">
             <button onclick="switchTab(0)"
-              class="ctab px-5 py-4 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap">📜
+              class="ctab px-5 py-4 flex  items-center gap-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap"><span data-lucide="scroll-text" class="w-4 h-4"></span>
               Issue Certificate</button>
             <button onclick="switchTab(1)"
-              class="ctab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">📋
+              class="ctab px-5 py-4 flex items-center gap-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap"><span data-lucide="file-text" class="w-4 h-4"></span>
               Issued History</button>
           </div>
 
@@ -209,22 +210,22 @@
                   <div class="grid grid-cols-2 gap-3">
                     <label onclick="selectCertType('Bonafide Certificate')" id="ct_bonafide"
                       class="cert-type-btn border-2 border-blue-500 bg-blue-50 rounded-xl p-3 cursor-pointer text-center transition-all">
-                      <div class="text-2xl">📄</div>
+                      <div class="text-2xl"><div data-lucide="file-text" class="w-6 h-6 mx-auto"></div> </div>
                       <div class="text-sm font-medium text-blue-700 mt-1">Bonafide</div>
                     </label>
                     <label onclick="selectCertType('Transfer Certificate')" id="ct_tc"
                       class="cert-type-btn border-2 border-gray-200 rounded-xl p-3 cursor-pointer text-center transition-all hover:border-blue-300">
-                      <div class="text-2xl">🚚</div>
+                      <div class="text-2xl"><div data-lucide="truck" class="w-6 h-6 mx-auto"></div></div>
                       <div class="text-sm font-medium text-gray-600 mt-1">Transfer (TC)</div>
                     </label>
                     <label onclick="selectCertType('Character Certificate')" id="ct_char"
                       class="cert-type-btn border-2 border-gray-200 rounded-xl p-3 cursor-pointer text-center transition-all hover:border-blue-300">
-                      <div class="text-2xl">⭐</div>
+                      <div class="text-2xl"><div data-lucide="star" class="w-6 h-6 mx-auto"></div></div>
                       <div class="text-sm font-medium text-gray-600 mt-1">Character</div>
                     </label>
                     <label onclick="selectCertType('Study Certificate')" id="ct_study"
                       class="cert-type-btn border-2 border-gray-200 rounded-xl p-3 cursor-pointer text-center transition-all hover:border-blue-300">
-                      <div class="text-2xl">📚</div>
+                      <div class="text-2xl"><div data-lucide="book-open" class="w-6 h-6 mx-auto"></div></div>
                       <div class="text-sm font-medium text-gray-600 mt-1">Study</div>
                     </label>
                   </div>
@@ -295,10 +296,11 @@
 
                 <div class="flex gap-3 pt-2">
                   <button onclick="previewCertificate()"
-                    class="flex-1 px-5 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-200">👁
+                    class="flex-1 px-5 py-3 bg-gray-100 flex items-center justify-center gap-2 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-200"><span data-lucide="eye" class="w-4 h-4"></span>
                     Preview</button>
                   <button onclick="issueCertificate()"
-                    class="flex-1 px-5 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg">📜
+                    class="flex-1 px-5 py-3 bg-blue-600 flex items-center justify-center gap-2 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg"><span data-lucide="scroll-text" class="w-4 h-4"></span>
+
                     Issue Certificate</button>
                 </div>
               </div>
@@ -309,12 +311,12 @@
                 <div id="certPreviewBox"
                   class="border-2 border-dashed border-gray-200 rounded-2xl p-6 min-h-96 bg-white flex items-center justify-center">
                   <div class="text-center text-gray-400">
-                    <div class="text-4xl mb-3">📄</div>
+                    <div class="text-4xl mb-3"><span data-lucide="file-text" class="w-8 h-8"></span></div>
                     <p>Fill the form and click Preview</p>
                   </div>
                 </div>
                 <button id="printBtn" onclick="printCert()"
-                  class="hidden mt-3 w-full px-5 py-2.5 bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-900">🖨️
+                  class="hidden mt-3 w-full px-5 py-2.5 bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-900">  <span data-lucide="printer" class="w-4 h-4"></span>
                   Print Certificate</button>
               </div>
             </div>
@@ -460,6 +462,7 @@
     }
 
     init();
+    lucide.createIcons();
   </script>
 </body>
 
