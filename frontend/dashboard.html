@@ -3,8 +3,9 @@
 
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/public/circlelogo.png" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Dashboard — EduManage Pro</title>
+  <title>Dashboard — Scholar Desk</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -321,6 +322,7 @@
   <script src="js/layout.js"></script>
   <script>
     requireAuth();
+    
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('dashboard');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Dashboard', 'School overview and quick actions');
     const ayId = localStorage.getItem('ay_id');

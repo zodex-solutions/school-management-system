@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="icon" type="image/png" href="/public/circlelogo.png" />
+
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>EduManage Pro — Login</title>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -13,8 +15,8 @@ h1,h2,h3{font-family:"Outfit",sans-serif}
 .bg-canvas{position:fixed;inset:0;z-index:0}
 .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.35;animation:float 8s ease-in-out infinite}
 .orb-1{width:600px;height:600px;background:radial-gradient(#6366f1,#4f46e5);top:-200px;left:-100px;animation-delay:0s}
-.orb-2{width:500px;height:500px;background:radial-gradient(#a855f7,#7c3aed);bottom:-150px;right:-100px;animation-delay:-3s}
-.orb-3{width:300px;height:300px;background:radial-gradient(#06b6d4,#0284c7);top:30%;left:30%;animation-delay:-5s}
+.orb-2{width:500px; z-index: 0; height:500px;background:radial-gradient(#a955f7aa,#7c3aed8e);bottom:-100px;right:-100px;animation-delay:-3s}
+.orb-3{width:500px;height:500px;background:radial-gradient(#0651d4,#0284c7);top:30%;left:30%;animation-delay:-5s}
 @keyframes float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(20px,-20px) scale(1.05)}66%{transform:translate(-15px,15px) scale(.97)}}
 .grid-pattern{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:50px 50px}
 .glass-card{background:rgba(255,255,255,.04);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);border-radius:1.75rem;box-shadow:0 0 0 1px rgba(255,255,255,.04),0 32px 64px rgba(0,0,0,.5)}
@@ -40,26 +42,23 @@ h1,h2,h3{font-family:"Outfit",sans-serif}
 <div class="bg-canvas">
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
+  <!-- <div class="orb orb-3"></div> -->
   <div class="grid-pattern"></div>
 </div>
 
 <div style="position:relative;z-index:1;min-height:100vh;display:flex">
   <!-- Left side — Branding -->
-  <div class="hidden lg:flex flex-col justify-between p-12" style="width:52%;background:transparent">
+  <div class="hidden lg:flex flex-col justify- gap-7 p-12" style="width:52%;background:transparent">
     <div class="flex items-center gap-3">
-      <div style="width:2.75rem;height:2.75rem;background:linear-gradient(135deg,#6366f1,#a855f7);border-radius:1rem;display:flex;align-items:center;justify-content:center">
-        <svg style="width:1.375rem;height:1.375rem;color:white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
-        </svg>
-      </div>
-      <span style="font-family:Outfit,sans-serif;font-weight:800;font-size:1.25rem;color:#fff">EduManage Pro</span>
+        <img src="/public/logo.png" alt="Logo" class="rounded-lg w-10"/>
+ 
+      <span style="font-family:Outfit,sans-serif;font-weight:800;font-size:1.25rem;color:#fff">Scholar Desk</span>
     </div>
 
     <div>
       <div style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:999px;padding:.375rem .875rem;margin-bottom:1.5rem">
         <div style="width:.5rem;height:.5rem;background:#6366f1;border-radius:50%;animation:pulse 2s infinite"></div>
-        <span style="font-size:.8125rem;color:rgba(255,255,255,.7);font-weight:500">v3.0 — 19 Modules Active</span>
+        <span style="font-size:.8125rem;color:rgba(255,255,255,.7);font-weight:500">v1.0 — 19 Modules Active</span>
       </div>
       <h1 style="font-size:3.5rem;font-weight:900;line-height:1.1;color:#fff;margin-bottom:1.25rem">
         Complete School<br/>
@@ -75,12 +74,25 @@ h1,h2,h3{font-family:"Outfit",sans-serif}
         <div class="stat-chip"><div style="font-family:Outfit,sans-serif;font-size:1.75rem;font-weight:800;color:#fff">DB</div><div style="font-size:.75rem;color:rgba(255,255,255,.4)">MongoDB</div></div>
       </div>
     </div>
-
-    <div style="display:flex;flex-wrap:wrap;gap:.5rem">
-      ${['Students','Staff','Fees','Attendance','Library','Hostel','Payroll','Certificates','Parent Portal'].map(m =>
-        `<span style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.5rem;padding:.25rem .75rem;font-size:.75rem;color:rgba(255,255,255,.5)">${m}</span>`
-      ).join('')}
-    </div>
+<span></span>
+   <!-- <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+  ${
+    ['Students','Staff','Fees','Attendance','Library','Hostel','Payroll','Certificates','Parent Portal']
+      .map(m => `
+        <span style="
+          background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.1);
+          border-radius:0.5rem;
+          padding:0.25rem 0.75rem;
+          font-size:0.75rem;
+          color:rgba(255,255,255,0.5);
+        ">
+          ${m}
+        </span>
+      `)
+      .join('')
+  }
+</div> -->
   </div>
 
   <!-- Right side — Login Card -->

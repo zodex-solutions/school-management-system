@@ -181,26 +181,27 @@ function renderSidebar(activeModule) {
 
   <aside id="edu-sidebar">
 
-    <!-- LOGO -->
-    <div style="padding:16px;border-bottom:1px solid #f1f5f9;
-    display:flex;align-items:center;gap:10px">
 
-      <div style="width:36px;height:36px;border-radius:10px;
-      background:linear-gradient(135deg,#6366f1,#8b5cf6);
-      display:flex;align-items:center;justify-content:center;color:white;font-weight:700">
-        E
-      </div>
+<!-- LOGO -->
+<div style="padding:16px;border-bottom:1px solid #f1f5f9;
+display:flex;align-items:center;gap:10px">
 
-      <div>
-        <div style="font-weight:800;font-size:14px;color:#111827">
-          EduManage
-        </div>
-        <div style="font-size:11px;color:#9ca3af">
-          School ERP
-        </div>
-      </div>
+  <div style="width:36px;height:36px;border-radius:10px;
+  
+  display:flex;align-items:center;justify-content:center;color:white;font-weight:700">
+      <img src="/public/logo.png" style="width:100%;height:100%;object-fit:cover"/>
+  </div>
 
+  <div>
+    <div style="font-weight:800;font-size:14px;color:#111827">
+      Scholar Desk 
     </div>
+    <div style="font-size:11px;color:#9ca3af">
+      School ERP
+    </div>
+  </div>
+
+</div>
 
     <!-- MENU -->
     <div class="edu-sb-inner">
