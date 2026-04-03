@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
     for d in ["student_photos", "student_documents", "staff_photos",
               "study_materials", "notices", "assets", "certificates"]:
         os.makedirs(os.path.join(settings.UPLOAD_DIR, d), exist_ok=True)
-    logger.info("🚀 EduManage Pro v3.0 — http://localhost:8000")
+    logger.info("🚀 Scholar Desk v1.0 — http://localhost:8000")
     logger.info("📄 Frontend : http://localhost:8000/")
     logger.info("📚 API Docs : http://localhost:8000/api/docs")
     yield

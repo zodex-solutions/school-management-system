@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "🏫 EduManage Pro v3.0 — Setup"
+echo "🏫 Scholar Desk v1.0 — Setup"
 echo "=============================="
 
 cd "$(dirname "$0")"

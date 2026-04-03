@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import List
 
 class Settings(BaseSettings):
-    APP_NAME: str = "EduManage Pro"
+    APP_NAME: str = "Scholar Desk"
     APP_VERSION: str = "3.0.0"
     DEBUG: bool = True
     MONGODB_URL: str = "mongodb+srv://infozodex_db_user:absolutions@data.yycywiw.mongodb.net/school_management3"
