@@ -250,6 +250,9 @@
                   class="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700">Generate</button>
               </div>
             </div>
+            <div class="flex justify-end mb-4">
+              <button onclick="printResultsSummary()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Print Result List</button>
+            </div>
             <div id="resultsTable"></div>
           </div>
         </div>
@@ -307,6 +310,7 @@
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Examinations', 'Manage exams, marks and results');
     const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
     let marksStudents = [];
+    let latestResults = [];
 
     function switchExTab(idx) {
       document.querySelectorAll('.extab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
@@ -437,7 +441,8 @@
       const params = { exam_id: examId }; if (clsId) params.classroom_id = clsId; if (secId) params.section_id = secId;
       try {
         const r = await ExamAPI.getResults(params); const results = r?.data || [];
-        const hdrs = ['Rank', 'Student', 'Total', '%', 'Grade', 'CGPA', 'Status'];
+        latestResults = results;
+        const hdrs = ['Rank', 'Student', 'Total', '%', 'Grade', 'CGPA', 'Status', ''];
         const rows = results.map(res => `
       <td class="px-4 py-3 text-center font-bold text-gray-700">${res.rank || '-'}</td>
       <td class="px-4 py-3 font-medium text-gray-900 text-sm">${res.student_name || '-'}</td>
@@ -446,9 +451,72 @@
       <td class="px-4 py-3 font-bold text-blue-600">${res.grade || '-'}</td>
       <td class="px-4 py-3 text-sm text-gray-700">${res.cgpa || '-'}</td>
       <td class="px-4 py-3">${tdBadge(res.result_status, res.result_status === 'Pass' ? 'green' : 'red')}</td>
+      <td class="px-4 py-3"><button onclick="printSingleResult('${res.id}')" class="text-xs text-blue-600 hover:underline">Print</button></td>
     `);
         document.getElementById('resultsTable').innerHTML = buildTable(hdrs, rows, 'No results found. Generate results first.');
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function buildResultPrintHtml(results, printTitle) {
+      const examText = document.getElementById('res_exam').selectedOptions[0]?.textContent || 'Exam Result';
+      const classText = document.getElementById('res_cls').selectedOptions[0]?.textContent || 'All Classes';
+      const sectionText = document.getElementById('res_sec').selectedOptions[0]?.textContent || 'All Sections';
+      return `<!DOCTYPE html>
+      <html><head><title>${printTitle}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:24px;color:#1f2937}
+        h1,h2,p{margin:0}
+        .head{margin-bottom:18px}
+        .meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#64748b}
+        .card{border:1px solid #e5e7eb;border-radius:14px;padding:18px;margin-bottom:18px}
+        table{width:100%;border-collapse:collapse;margin-top:12px}
+        th,td{border:1px solid #e5e7eb;padding:8px 10px;text-align:left;font-size:13px}
+        th{background:#f8fafc}
+        .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+        .pill{border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;background:#f8fafc}
+      </style></head><body>
+      <div class="head">
+        <h1>${printTitle}</h1>
+        <div class="meta"><span>Exam: ${examText}</span><span>Class: ${classText}</span><span>Section: ${sectionText}</span><span>Printed: ${new Date().toLocaleString('en-IN')}</span></div>
+      </div>
+      ${results.map(result => `
+        <div class="card">
+          <h2>${result.student_name || '-'}</h2>
+          <div class="meta"><span>Roll No: ${result.roll_no || '-'}</span><span>Rank: ${result.rank || '-'}</span><span>Status: ${result.result_status || '-'}</span></div>
+          <div class="summary">
+            <div class="pill"><strong>Total</strong><div>${result.total_obtained || 0}/${result.total_max || 0}</div></div>
+            <div class="pill"><strong>Percentage</strong><div>${result.percentage || 0}%</div></div>
+            <div class="pill"><strong>Grade</strong><div>${result.grade || '-'}</div></div>
+            <div class="pill"><strong>CGPA</strong><div>${result.cgpa || '-'}</div></div>
+          </div>
+          <table>
+            <thead><tr><th>Subject</th><th>Marks</th><th>Grade</th><th>Status</th></tr></thead>
+            <tbody>
+              ${(result.subjects || []).map(subject => `<tr><td>${subject.name || '-'}</td><td>${subject.obtained || 0}/${subject.max || 0}</td><td>${subject.grade || '-'}</td><td>${subject.is_pass ? 'Pass' : 'Fail'}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`).join('')}
+      </body></html>`;
+    }
+
+    function openPrintWindow(html) {
+      const printWindow = window.open('', '_blank', 'width=1100,height=800');
+      if (!printWindow) { showToast('Allow popups to print results', 'error'); return; }
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.focus(); printWindow.print(); }, 300);
+    }
+
+    function printSingleResult(resultId) {
+      const result = latestResults.find(item => item.id === resultId);
+      if (!result) { showToast('Load results first', 'error'); return; }
+      openPrintWindow(buildResultPrintHtml([result], `${result.student_name || 'Student'} Result Card`));
+    }
+
+    function printResultsSummary() {
+      if (!latestResults.length) { showToast('Load results before printing', 'error'); return; }
+      openPrintWindow(buildResultPrintHtml(latestResults, 'Exam Result Summary'));
     }
 
     async function loadResultFormData() {

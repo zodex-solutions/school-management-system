@@ -12,7 +12,7 @@ router = APIRouter(prefix="/staff", tags=["Staff & HR"])
 
 class StaffCreate(BaseModel):
     first_name: str
-    last_name: str
+    last_name: Optional[str] = ""
     date_of_birth: Optional[datetime] = None
     gender: str
     blood_group: Optional[str] = None
@@ -246,6 +246,7 @@ class AssignmentCreate(BaseModel):
     section_id: str
     subject_id: str
     is_class_teacher: bool = False
+    assignment_file: Optional[str] = None
 
 
 @router.post("/assignments")
@@ -270,7 +271,8 @@ async def create_assignment(data: AssignmentCreate, current_user: User = Depends
     assignment = TeacherAssignment(
         school=school, academic_year=ay,
         teacher=teacher, classroom=classroom, section=section, subject=subject,
-        is_class_teacher=data.is_class_teacher
+        is_class_teacher=data.is_class_teacher,
+        assignment_file=data.assignment_file
     )
     assignment.save()
     return success_response({"id": str(assignment.id)}, "Teacher assignment created")
@@ -303,9 +305,26 @@ async def list_assignments(
         "classroom": a.classroom.name if a.classroom else None,
         "section": a.section.name if a.section else None,
         "subject": a.subject.name if a.subject else None,
-        "is_class_teacher": a.is_class_teacher
+        "is_class_teacher": a.is_class_teacher,
+        "assignment_file": a.assignment_file
     } for a in query]
     return success_response(result)
+
+
+@router.post("/assignments/{assignment_id}/upload")
+async def upload_assignment_file(
+    assignment_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        assignment = TeacherAssignment.objects.get(id=assignment_id)
+        resolve_school_access(current_user, str(assignment.school.id) if assignment.school else None)
+        file_path = await save_upload_file(file, "teacher_assignments")
+        assignment.update(assignment_file=file_path)
+        return success_response({"file_path": file_path}, "Assignment file uploaded")
+    except TeacherAssignment.DoesNotExist:
+        raise HTTPException(404, "Assignment not found")
 
 
 # ─── Leave Management ─────────────────────────────────────────────────────────

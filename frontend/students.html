@@ -236,8 +236,28 @@
               <div><label class="lbl">Phone</label><input id="m_ph" type="tel" class="finput" placeholder="Phone" /></div>
               <div><label class="lbl">Email</label><input id="m_em" type="email" class="finput" placeholder="Email" /></div>
               <div><label class="lbl">Aadhar Number</label><input id="m_aad" type="text" class="finput" placeholder="12-digit Aadhar" maxlength="12" /></div>
-              <div><label class="lbl">Religion</label><input id="m_rel" type="text" class="finput" placeholder="Religion" /></div>
-              <div><label class="lbl">Caste</label><input id="m_caste" type="text" class="finput" placeholder="Caste" /></div>
+              <div><label class="lbl">Religion</label>
+                <select id="m_rel" class="finput">
+                  <option value="">Select</option>
+                  <option value="Hindu">Hindu</option>
+                  <option value="Muslim">Muslim</option>
+                  <option value="Sikh">Sikh</option>
+                  <option value="Christians">Christians</option>
+                </select>
+              </div>
+              <div><label class="lbl">Caste</label>
+                <select id="m_caste" class="finput">
+                  <option value="">Select</option>
+                  <option value="BC">BC</option>
+                  <option value="BC-A">BC-A</option>
+                  <option value="BC-B">BC-B</option>
+                  <option value="BS">BS</option>
+                  <option value="General">General</option>
+                  <option value="OBC">OBC</option>
+                  <option value="SC">SC</option>
+                  <option value="ST">ST</option>
+                </select>
+              </div>
               <div><label class="lbl">Nationality</label><input id="m_nat" type="text" class="finput" value="Indian" /></div>
               <div><label class="lbl">Blood Group</label>
                 <select id="m_bg" class="finput">
@@ -287,6 +307,14 @@
                   <option value="Campaign">Campaign</option>
                 </select>
               </div>
+              <div><label class="lbl">Admission Concession</label>
+                <select id="m_concession" class="finput" onchange="updateFeePreview()">
+                  <option value="" data-percent="0">Select</option>
+                  <option value="20% per month concession in Tuition Fees on Each Girls Student" data-percent="20">20% per month concession in Tuition Fees on Each Girls Student</option>
+                  <option value="50% per month concession in Tuition Fees on Second Younger" data-percent="50">50% per month concession in Tuition Fees on Second younger</option>
+                  <option value="100% per month concession in Tuition Fees on Third Child" data-percent="100">100% per month concession in Tuition Fees on Third Child</option>
+                </select>
+              </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div id="ref_num_wrap" class="hidden"><label class="lbl">Referral Number</label><input id="m_ref_num" type="text" class="finput" placeholder="Referral number" /></div>
@@ -327,6 +355,25 @@
               <div><label class="lbl">Guardian Name</label><input id="m_guard" type="text" class="finput" placeholder="Guardian name" /></div>
               <div><label class="lbl">Guardian Phone</label><input id="m_guard_ph" type="tel" class="finput" placeholder="Guardian phone" /></div>
             </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-semibold text-gray-900">Sibling Detail</h4>
+              <button type="button" onclick="toggleSiblingPanel()" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-medium hover:bg-emerald-100">Add Sibling Detail</button>
+            </div>
+            <div id="siblingPanel" class="hidden rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div><label class="lbl">Class</label><select id="sib_cls" class="finput" onchange="loadSiblingSections()"><option value="">Select class</option></select></div>
+                <div><label class="lbl">Section</label><select id="sib_sec" class="finput"><option value="">Select section</option></select></div>
+                <div class="md:col-span-2"><label class="lbl">Search Student</label><input id="sib_search" class="finput" placeholder="Admission no, student name, father name, phone" /></div>
+              </div>
+              <div class="flex justify-end">
+                <button type="button" onclick="searchSiblingStudents()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Search</button>
+              </div>
+              <div id="siblingSearchResults" class="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-400 text-center">Search siblings by class, section or name.</div>
+            </div>
+            <div id="selectedSiblingsBox" class="mt-3 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-500">No sibling selected</div>
           </div>
 
           <div>
@@ -454,6 +501,8 @@
     let branchCache = [];
     let selectedBranchCode = studentPageParams.get('branch_code') || '';
     let editingStudentId = '';
+    let selectedSiblingStudents = [];
+    let siblingSearchCache = {};
 
 async function loadStats() {
   if (!currentSchoolId) return;
@@ -483,6 +532,7 @@ async function loadStats() {
         const r = await ClassAPI.list(currentSchoolId, ayId); const opts = (r?.data || []).map(c => `<option value="${c.id}" data-fee="${c.class_fee || 0}" data-secs='${JSON.stringify(c.sections)}'>${c.name}</option>`).join('');
         document.getElementById('filterClass').innerHTML = '<option value="">All Classes</option>' + opts;
         document.getElementById('m_cls').innerHTML = '<option value="">Select class</option>' + opts;
+        document.getElementById('sib_cls').innerHTML = '<option value="">Select class</option>' + opts;
       } catch (e) { }
     }
 
@@ -530,8 +580,11 @@ async function loadStats() {
       const classFee = parseFloat(selectedClass?.dataset?.fee || '0') || 0;
       const transportFeePerMonth = parseFloat(document.getElementById('m_charge').value || '0') || 0;
       const selectedMonths = document.querySelectorAll('.m_month:checked').length;
+      const concessionEl = document.getElementById('m_concession');
+      const concessionPercent = parseFloat(concessionEl?.options?.[concessionEl.selectedIndex]?.dataset?.percent || '0') || 0;
+      const tuitionDiscount = classFee * (concessionPercent / 100);
       document.getElementById('m_class_fee').value = classFee;
-      document.getElementById('m_total_fee').value = classFee + (transportFeePerMonth * selectedMonths);
+      document.getElementById('m_total_fee').value = Math.max(0, classFee - tuitionDiscount) + (transportFeePerMonth * selectedMonths);
     }
 
     function toggleReferralFields() {
@@ -614,6 +667,83 @@ async function loadStats() {
       secEl.innerHTML = '<option value="">Select section</option>';
       if (!opt || !opt.dataset.secs) return;
       JSON.parse(opt.dataset.secs).forEach(s => secEl.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+    }
+
+    function loadSiblingSections() {
+      const classEl = document.getElementById('sib_cls');
+      const sectionEl = document.getElementById('sib_sec');
+      const opt = classEl.options[classEl.selectedIndex];
+      sectionEl.innerHTML = '<option value="">Select section</option>';
+      if (!opt?.dataset?.secs) return;
+      JSON.parse(opt.dataset.secs).forEach(s => sectionEl.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+    }
+
+    function toggleSiblingPanel() {
+      document.getElementById('siblingPanel').classList.toggle('hidden');
+    }
+
+    function renderSelectedSiblings() {
+      const box = document.getElementById('selectedSiblingsBox');
+      if (!selectedSiblingStudents.length) {
+        box.innerHTML = 'No sibling selected';
+        return;
+      }
+      box.innerHTML = selectedSiblingStudents.map(s => `
+        <div class="flex items-center justify-between gap-3 py-2 border-b last:border-b-0 border-slate-100">
+          <div>
+            <div class="font-medium text-slate-900">${s.full_name}</div>
+            <div class="text-xs text-slate-500">${s.admission_no || '-'} · ${s.classroom_name || '-'}${s.section_name ? ' / ' + s.section_name : ''}</div>
+          </div>
+          <button type="button" onclick="removeSibling('${s.id}')" class="px-3 py-1.5 bg-red-50 text-red-600 rounded-xl text-xs font-medium hover:bg-red-100">Remove</button>
+        </div>`).join('');
+    }
+
+    function addSibling(student) {
+      if (!student || selectedSiblingStudents.some(s => s.id === student.id)) return;
+      selectedSiblingStudents.push(student);
+      renderSelectedSiblings();
+    }
+
+    function addSiblingById(id) {
+      addSibling(siblingSearchCache[id]);
+    }
+
+    function removeSibling(id) {
+      selectedSiblingStudents = selectedSiblingStudents.filter(s => s.id !== id);
+      renderSelectedSiblings();
+    }
+
+    async function searchSiblingStudents() {
+      if (!currentSchoolId) return;
+      try {
+        const params = {
+          school_id: currentSchoolId,
+          classroom_id: document.getElementById('sib_cls').value || '',
+          section_id: document.getElementById('sib_sec').value || '',
+          search: document.getElementById('sib_search').value.trim() || ''
+        };
+        const res = await StudentAPI.searchSiblings(params);
+        const data = (res?.data || []).filter(s => s.id !== editingStudentId);
+        siblingSearchCache = {};
+        data.forEach(item => { siblingSearchCache[item.id] = item; });
+        if (!data.length) {
+          document.getElementById('siblingSearchResults').innerHTML = '<div class="text-sm text-slate-400 text-center">No sibling records found</div>';
+          return;
+        }
+        const hdrs = ['Admission No', 'Student Name', 'Father Name', 'Mother Name', 'Class', 'Mobile', 'Address', ''];
+        document.getElementById('siblingSearchResults').innerHTML = buildTable(hdrs, data.map(s => `
+          <td class="px-4 py-3 font-mono text-xs text-gray-500">${s.admission_no || '-'}</td>
+          <td class="px-4 py-3 text-sm font-medium text-gray-900">${s.full_name || '-'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${s.father_name || '-'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${s.mother_name || '-'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${s.classroom_name || '-'}${s.section_name ? ' / ' + s.section_name : ''}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${s.phone || '-'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${s.address || '-'}</td>
+          <td class="px-4 py-3"><button type="button" onclick="addSiblingById('${s.id}')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-100">Add</button></td>
+        `), 'No sibling records found');
+      } catch (e) {
+        document.getElementById('siblingSearchResults').innerHTML = `<div class="text-sm text-red-400 text-center">${e.message}</div>`;
+      }
     }
 
     async function loadStudents(page = 1) {
@@ -938,10 +1068,16 @@ async function loadStats() {
       document.getElementById('m_class_fee').value = '';
       document.getElementById('m_total_fee').value = '';
       document.getElementById('m_charge').value = '';
+      document.getElementById('m_concession').value = '';
       editingStudentId = '';
+      selectedSiblingStudents = [];
+      siblingSearchCache = {};
       document.getElementById('admModalTitle').textContent = 'New Student Admission';
       document.getElementById('admModalHint').textContent = 'Add student details, transport and documents.';
       document.getElementById('admSubmitBtn').textContent = 'Admit Student';
+      document.getElementById('siblingPanel').classList.add('hidden');
+      document.getElementById('siblingSearchResults').innerHTML = 'Search siblings by class, section or name.';
+      renderSelectedSiblings();
       document.getElementById('documentRows').innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1.2fr_auto] gap-3 items-end doc-row">
           <div>
@@ -1025,6 +1161,7 @@ async function loadStats() {
         setFormValue('m_ref_type', s.referral_type);
         setFormValue('m_ref_num', s.referral_number);
         setFormValue('m_ref_email', s.referral_email);
+        setFormValue('m_concession', s.admission_concession);
         document.getElementById('m_migration').checked = !!s.migration;
         document.getElementById('m_lateral').checked = !!s.lateral_entry;
         document.querySelectorAll('.m_month').forEach(el => {
@@ -1041,6 +1178,12 @@ async function loadStats() {
         fillAddress('pres', s.current_address_details || {});
         fillAddress('perm', s.permanent_address_details || {});
         setFormValue('m_remarks', s.remarks);
+        if (Array.isArray(s.sibling_student_ids) && s.sibling_student_ids.length) {
+          const siblingRes = await StudentAPI.searchSiblings({ school_id: currentSchoolId });
+          const siblingPool = siblingRes?.data || [];
+          selectedSiblingStudents = siblingPool.filter(item => s.sibling_student_ids.includes(item.id));
+          renderSelectedSiblings();
+        }
         if (Array.isArray(s.documents) && s.documents.length) {
           document.getElementById('documentRows').innerHTML = `
             <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
@@ -1105,6 +1248,9 @@ async function loadStats() {
         referral_type: document.getElementById('m_ref_type').value || null,
         referral_number: document.getElementById('m_ref_num').value || null,
         referral_email: document.getElementById('m_ref_email').value || null,
+        admission_concession: document.getElementById('m_concession').value || null,
+        admission_concession_percent: parseFloat(document.getElementById('m_concession').selectedOptions?.[0]?.dataset?.percent || '0') || 0,
+        sibling_student_ids: selectedSiblingStudents.map(s => s.id),
         remarks: document.getElementById('m_remarks').value || null
       };
     }

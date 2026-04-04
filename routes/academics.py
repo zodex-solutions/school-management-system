@@ -39,6 +39,7 @@ async def create_exam(data: ExamCreate, current_user: User = Depends(get_current
         school=school, academic_year=ay,
         name=data.name, exam_type=data.exam_type,
         start_date=data.start_date, end_date=data.end_date,
+        status="Scheduled" if data.start_date or data.end_date else "Draft",
         created_by=current_user.full_name
     )
     

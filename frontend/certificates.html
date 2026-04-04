@@ -355,11 +355,12 @@
     requireAuth();
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('certificates');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Certificates', 'Issue bonafide, TC, character and other certificates');
-    const schoolId = localStorage.getItem('school_id');
+    let schoolId = localStorage.getItem('school_id');
     let students = [], currentCertHtml = '';
 
     // Load students
     async function init() {
+      schoolId = await initializeSchoolContext() || schoolId;
       if (!schoolId) return;
       try {
         const r = await StudentAPI.list({ school_id: schoolId, per_page: 300, admission_status: 'Active' });
@@ -390,7 +391,7 @@
       const student = students.find(s => s.id === stId);
       if (student) {
         document.getElementById('sp_adm').textContent = student.admission_no;
-        document.getElementById('sp_class').textContent = student.class_name || '-';
+        document.getElementById('sp_class').textContent = student.classroom_name || student.class_name || student.classroom || '-';
         document.getElementById('sp_father').textContent = student.father_name || '-';
         document.getElementById('studentPreview').style.display = 'flex';
       } else document.getElementById('studentPreview').style.display = 'none';

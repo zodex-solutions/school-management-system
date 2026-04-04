@@ -122,20 +122,33 @@ class InvoiceCreate(BaseModel):
 
 def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str]):
     built_items = list(items or [])
+    concession_percent = getattr(student, "admission_concession_percent", 0) or 0
 
     if fee_structure_id:
         structure = FeeStructure.objects.get(id=fee_structure_id)
         for item in structure.items:
+            amount = item.amount
+            discount_amount = 0
+            if concession_percent > 0 and item.category_name and "tuition" in item.category_name.lower():
+                discount_amount = round(amount * concession_percent / 100, 2)
+                amount = max(0, amount - discount_amount)
             built_items.append({
                 "category": item.category_name,
                 "description": item.category_name,
-                "amount": item.amount
+                "base_amount": item.amount,
+                "concession_percent": concession_percent if discount_amount else 0,
+                "discount_amount": discount_amount,
+                "amount": amount
             })
     elif student.classroom and getattr(student.classroom, "class_fee", 0):
+        discount_amount = round(student.classroom.class_fee * concession_percent / 100, 2) if concession_percent > 0 else 0
         built_items.append({
             "category": "Class Fee",
             "description": f"{student.classroom.name} Class Fee",
-            "amount": student.classroom.class_fee
+            "base_amount": student.classroom.class_fee,
+            "concession_percent": concession_percent if discount_amount else 0,
+            "discount_amount": discount_amount,
+            "amount": max(0, student.classroom.class_fee - discount_amount)
         })
 
     selected_months = transport_months or (student.transport_months or [])

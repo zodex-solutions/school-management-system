@@ -28,7 +28,7 @@ def _ensure_student_scope(student: Student, current_user: User):
 
 class StudentAdmission(BaseModel):
     first_name: str
-    last_name: str
+    last_name: Optional[str] = ""
     middle_name: Optional[str] = None
     date_of_birth: Optional[datetime] = None
     gender: str
@@ -68,6 +68,9 @@ class StudentAdmission(BaseModel):
     referral_type: Optional[str] = None
     referral_number: Optional[str] = None
     referral_email: Optional[str] = None
+    admission_concession: Optional[str] = None
+    admission_concession_percent: float = 0
+    sibling_student_ids: List[str] = []
 
 
 def _normalize_address_text(address: Optional[dict], fallback: Optional[str] = None) -> Optional[str]:
@@ -143,6 +146,9 @@ async def admit_student(data: StudentAdmission, current_user: User = Depends(get
         gender=data.gender,
         religion=data.religion,
         caste=data.caste,
+        admission_concession=data.admission_concession,
+        admission_concession_percent=data.admission_concession_percent,
+        sibling_student_ids=data.sibling_student_ids or [],
         nationality=data.nationality,
         aadhar_number=data.aadhar_number,
         phone=data.phone,
@@ -307,6 +313,9 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
             "date_of_birth": student.date_of_birth.isoformat() if student.date_of_birth else None,
             "religion": student.religion,
             "caste": student.caste,
+            "admission_concession": student.admission_concession,
+            "admission_concession_percent": student.admission_concession_percent,
+            "sibling_student_ids": student.sibling_student_ids or [],
             "nationality": student.nationality,
             "aadhar_number": student.aadhar_number,
             "phone": student.phone,
@@ -320,6 +329,7 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
             "branch_name": student.branch_name,
             "classroom_id": str(student.classroom.id) if student.classroom else None,
             "classroom_name": student.classroom.name if student.classroom else None,
+            "class_fee": student.classroom.class_fee if student.classroom else 0,
             "section_id": str(student.section.id) if student.section else None,
             "section_name": student.section.name if student.section else None,
             "academic_year": student.academic_year.name if student.academic_year else None,
@@ -328,6 +338,7 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
             "registration_type": student.registration_type,
             "admission_status": student.admission_status,
             "uses_transport": student.uses_transport,
+            "transport_route_id": student.transport_route,
             "transport_route": student.transport_route,
             "transport_route_name": student.transport_route_name,
             "transport_area": student.transport_area,
@@ -480,6 +491,9 @@ async def get_student_profile_summary(student_id: str, current_user: User = Depe
         "date_of_birth": student.date_of_birth.isoformat() if student.date_of_birth else None,
         "religion": student.religion,
         "caste": student.caste,
+        "admission_concession": student.admission_concession,
+        "admission_concession_percent": student.admission_concession_percent,
+        "sibling_student_ids": student.sibling_student_ids or [],
         "nationality": student.nationality,
         "aadhar_number": student.aadhar_number,
         "phone": student.phone,
@@ -492,6 +506,7 @@ async def get_student_profile_summary(student_id: str, current_user: User = Depe
         "branch_code": student.branch_code,
         "branch_name": student.branch_name,
         "classroom_name": student.classroom.name if student.classroom else None,
+        "class_fee": student.classroom.class_fee if student.classroom else 0,
         "section_name": student.section.name if student.section else None,
         "academic_year": student.academic_year.name if student.academic_year else None,
         "admission_date": student.admission_date.isoformat() if student.admission_date else None,
@@ -499,6 +514,7 @@ async def get_student_profile_summary(student_id: str, current_user: User = Depe
         "registration_type": student.registration_type,
         "admission_status": student.admission_status,
         "uses_transport": student.uses_transport,
+        "transport_route_id": student.transport_route,
         "transport_route_name": student.transport_route_name,
         "transport_area": student.transport_area,
         "bus_stop": student.bus_stop,
@@ -582,7 +598,14 @@ async def update_student(student_id: str, data: dict, current_user: User = Depen
         parent_info = data.pop('parent_info', None)
         medical_info = data.pop('medical_info', None)
         data.pop('id', None)
+        data.pop('school_id', None)
         data['updated_at'] = datetime.utcnow()
+        if 'academic_year_id' in data:
+            try:
+                ay = AcademicYear.objects.get(id=data.pop('academic_year_id'))
+                data['academic_year'] = ay
+            except AcademicYear.DoesNotExist:
+                data.pop('academic_year_id', None)
         
         # Handle reference fields
         if 'classroom_id' in data:
@@ -773,5 +796,48 @@ async def student_stats(school_id: str, academic_year_id: Optional[str] = None,
             }
         }
         return success_response(stats)
+    except School.DoesNotExist:
+        raise HTTPException(404, "School not found")
+
+
+@router.get("/search-siblings")
+async def search_siblings(
+    school_id: str,
+    classroom_id: Optional[str] = None,
+    section_id: Optional[str] = None,
+    search: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        school_id = resolve_school_access(current_user, school_id)
+        scoped_branch = resolve_branch_scope(current_user, None)
+        school = School.objects.get(id=school_id)
+        query = Student.objects(school=school, is_active=True)
+        if scoped_branch:
+            query = query.filter(branch_code=scoped_branch)
+        if classroom_id:
+            query = query.filter(classroom=ClassRoom.objects.get(id=classroom_id))
+        if section_id:
+            query = query.filter(section=Section.objects.get(id=section_id))
+        if search:
+            query = query.filter(__raw__={"$or": [
+                {"first_name": {"$regex": search, "$options": "i"}},
+                {"last_name": {"$regex": search, "$options": "i"}},
+                {"admission_no": {"$regex": search, "$options": "i"}},
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"parent_info.father_name": {"$regex": search, "$options": "i"}}
+            ]})
+        result = [{
+            "id": str(s.id),
+            "admission_no": s.admission_no,
+            "full_name": s.full_name,
+            "father_name": s.parent_info.father_name if s.parent_info else None,
+            "mother_name": s.parent_info.mother_name if s.parent_info else None,
+            "phone": s.phone or (s.parent_info.father_phone if s.parent_info else None),
+            "classroom_name": s.classroom.name if s.classroom else None,
+            "section_name": s.section.name if s.section else None,
+            "address": s.current_address
+        } for s in query.order_by('first_name')[:100]]
+        return success_response(result)
     except School.DoesNotExist:
         raise HTTPException(404, "School not found")

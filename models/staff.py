@@ -25,7 +25,7 @@ class Staff(Document):
     
     # Personal
     first_name = StringField(required=True)
-    last_name = StringField(required=True)
+    last_name = StringField(default="")
     date_of_birth = DateTimeField()
     gender = StringField(choices=["Male", "Female", "Other"], required=True)
     blood_group = StringField()
@@ -94,7 +94,7 @@ class Staff(Document):
     
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        return " ".join([part for part in [self.first_name, self.last_name] if part]).strip()
 
 
 class TeacherAssignment(Document):
@@ -105,6 +105,7 @@ class TeacherAssignment(Document):
     section = ReferenceField(Section, required=True)
     subject = ReferenceField(Subject, required=True)
     is_class_teacher = BooleanField(default=False)
+    assignment_file = StringField()
     is_active = BooleanField(default=True)
     created_at = DateTimeField(default=datetime.utcnow)
     

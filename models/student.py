@@ -74,6 +74,9 @@ class Student(Document):
     gender = StringField(choices=["Male", "Female", "Other"], required=True)
     religion = StringField()
     caste = StringField()
+    admission_concession = StringField()
+    admission_concession_percent = FloatField(default=0)
+    sibling_student_ids = ListField(StringField())
     nationality = StringField(default="Indian")
     aadhar_number = StringField()
 

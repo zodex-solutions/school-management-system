@@ -207,6 +207,34 @@ async def list_academic_years(school_id: str, current_user: User = Depends(get_c
         raise HTTPException(404, "School not found")
 
 
+@router.put("/academic-year/{year_id}")
+async def update_academic_year(year_id: str, data: dict, current_user: User = Depends(get_current_user)):
+    try:
+        ay = AcademicYear.objects.get(id=year_id)
+        if data.get('is_current'):
+            AcademicYear.objects(school=ay.school, is_current=True).update(is_current=False)
+        data.pop('id', None)
+        data.pop('school_id', None)
+        if data.get('start_date'):
+            data['start_date'] = datetime.fromisoformat(str(data['start_date']).replace('Z', '+00:00'))
+        if data.get('end_date'):
+            data['end_date'] = datetime.fromisoformat(str(data['end_date']).replace('Z', '+00:00'))
+        ay.update(**data)
+        return success_response(message="Academic year updated")
+    except AcademicYear.DoesNotExist:
+        raise HTTPException(404, "Academic year not found")
+
+
+@router.delete("/academic-year/{year_id}")
+async def delete_academic_year(year_id: str, current_user: User = Depends(get_current_user)):
+    try:
+        ay = AcademicYear.objects.get(id=year_id)
+        ay.update(is_active=False, is_current=False)
+        return success_response(message="Academic year deleted")
+    except AcademicYear.DoesNotExist:
+        raise HTTPException(404, "Academic year not found")
+
+
 @router.patch("/academic-year/{year_id}/set-current")
 async def set_current_year(year_id: str, current_user: User = Depends(get_current_user)):
     try:
@@ -280,6 +308,42 @@ async def list_classes(
         raise HTTPException(404, "School not found")
 
 
+@router.put("/class/{classroom_id}")
+async def update_class(classroom_id: str, data: dict, current_user: User = Depends(get_current_user)):
+    try:
+        classroom = ClassRoom.objects.get(id=classroom_id)
+        data.pop('id', None)
+        data.pop('school_id', None)
+        data.pop('academic_year_id', None)
+        section_names = data.pop('sections', None)
+        classroom.update(**{k: v for k, v in data.items() if k in ['name', 'numeric_name', 'class_fee']})
+        if section_names is not None:
+            Section.objects(classroom=classroom, is_active=True).update(is_active=False)
+            for sec_name in section_names:
+                if not sec_name:
+                    continue
+                Section(
+                    school=classroom.school,
+                    academic_year=classroom.academic_year,
+                    classroom=classroom,
+                    name=sec_name
+                ).save()
+        return success_response(message="Class updated")
+    except ClassRoom.DoesNotExist:
+        raise HTTPException(404, "Class not found")
+
+
+@router.delete("/class/{classroom_id}")
+async def delete_class(classroom_id: str, current_user: User = Depends(get_current_user)):
+    try:
+        classroom = ClassRoom.objects.get(id=classroom_id)
+        classroom.update(is_active=False)
+        Section.objects(classroom=classroom, is_active=True).update(is_active=False)
+        return success_response(message="Class deleted")
+    except ClassRoom.DoesNotExist:
+        raise HTTPException(404, "Class not found")
+
+
 # ─── Section ──────────────────────────────────────────────────────────────────
 
 @router.get("/section")
@@ -346,6 +410,7 @@ async def update_subject(subject_id: str, data: dict, current_user: User = Depen
     try:
         subject = Subject.objects.get(id=subject_id)
         data.pop('id', None)
+        data.pop('school_id', None)
         subject.update(**data)
         return success_response(message="Subject updated")
     except Subject.DoesNotExist:
@@ -404,6 +469,40 @@ async def list_grading_systems(school_id: str, current_user: User = Depends(get_
         return success_response(result)
     except School.DoesNotExist:
         raise HTTPException(404, "School not found")
+
+
+@router.put("/grading-system/{grading_id}")
+async def update_grading_system(grading_id: str, data: dict, current_user: User = Depends(get_current_user)):
+    try:
+        grading = GradingSystem.objects.get(id=grading_id, is_active=True)
+    except GradingSystem.DoesNotExist:
+        raise HTTPException(404, "Grading system not found")
+
+    school_id = resolve_school_access(current_user, data.get('school_id') or (str(grading.school.id) if grading.school else None))
+    if grading.school and str(grading.school.id) != school_id:
+        raise HTTPException(403, "Access denied")
+
+    if data.get('is_default'):
+        GradingSystem.objects(school=grading.school, is_default=True, id__ne=grading.id).update(is_default=False)
+
+    grading.name = data.get('name', grading.name)
+    grading.grading_type = data.get('grading_type', grading.grading_type)
+    grading.is_default = data.get('is_default', grading.is_default)
+    grading.scales = [GradeScale(**scale) for scale in data.get('scales', [])] or grading.scales
+    grading.updated_at = datetime.utcnow()
+    grading.save()
+    return success_response({"id": str(grading.id)}, "Grading system updated")
+
+
+@router.delete("/grading-system/{grading_id}")
+async def delete_grading_system(grading_id: str, current_user: User = Depends(get_current_user)):
+    try:
+        grading = GradingSystem.objects.get(id=grading_id, is_active=True)
+        resolve_school_access(current_user, str(grading.school.id) if grading.school else None)
+        grading.update(is_active=False)
+        return success_response(message="Grading system deleted")
+    except GradingSystem.DoesNotExist:
+        raise HTTPException(404, "Grading system not found")
 
 
 # ─── Dashboard Stats ──────────────────────────────────────────────────────────

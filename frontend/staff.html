@@ -108,7 +108,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       <div class="px-6 py-5">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div><label class="lbl">First Name *</label><input id="sf_fn" class="finput" placeholder="First name"/></div>
-          <div><label class="lbl">Last Name *</label><input id="sf_ln" class="finput" placeholder="Last name"/></div>
+          <div><label class="lbl">Last Name</label><input id="sf_ln" class="finput" placeholder="Last name"/></div>
           <div><label class="lbl">Gender *</label><select id="sf_gnd" class="finput"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
           <div><label class="lbl">Date of Birth</label><input id="sf_dob" type="date" class="finput"/></div>
           <div><label class="lbl">Phone *</label><input id="sf_ph" type="tel" class="finput" placeholder="Phone"/></div>
@@ -152,6 +152,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         <div><label class="lbl">Class *</label><select id="as_cls" class="finput" onchange="loadAssignSections()"><option value="">Select class</option></select></div>
         <div><label class="lbl">Section *</label><select id="as_sec" class="finput"><option value="">Select section</option></select></div>
         <div><label class="lbl">Subject *</label><select id="as_sub" class="finput"><option value="">Select subject</option></select></div>
+        <div><label class="lbl">Upload File</label><input id="as_file" type="file" class="finput" /></div>
         <label class="flex items-center gap-2"><input type="checkbox" id="as_cls_teacher" class="w-4 h-4 accent-blue-600"/><span class="text-sm text-gray-700">Class Teacher</span></label>
       </div>
       <div class="flex gap-3 px-6 py-4 border-t justify-end">
@@ -296,7 +297,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       const gnd = document.getElementById('sf_gnd').value, ph = document.getElementById('sf_ph').value.trim();
       const des = document.getElementById('sf_des').value.trim(), type = document.getElementById('sf_type').value;
       const join = document.getElementById('sf_join').value;
-      if (!fn || !ln || !gnd || !ph || !des || !type || !join) { showToast('Fill all required fields (*)', 'error'); return; }
+      if (!fn || !gnd || !ph || !des || !type || !join) { showToast('Fill all required fields (*)', 'error'); return; }
       try {
         const payload = buildStaffPayload();
         const r = editingStaffId ? await StaffAPI.update(editingStaffId, payload) : await StaffAPI.create(payload);
@@ -409,7 +410,13 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       const t = document.getElementById('as_teacher').value, c = document.getElementById('as_cls').value, s = document.getElementById('as_sec').value, sub = document.getElementById('as_sub').value;
       if (!t || !c || !s || !sub) { showToast('Fill all fields', 'error'); return; }
       try {
-        await StaffAPI.createAssignment({ school_id: schoolId, academic_year_id: ayId, teacher_id: t, classroom_id: c, section_id: s, subject_id: sub, is_class_teacher: document.getElementById('as_cls_teacher').checked });
+        const r = await StaffAPI.createAssignment({ school_id: schoolId, academic_year_id: ayId, teacher_id: t, classroom_id: c, section_id: s, subject_id: sub, is_class_teacher: document.getElementById('as_cls_teacher').checked });
+        const file = document.getElementById('as_file').files?.[0];
+        if (file && r?.data?.id) {
+          const fd = new FormData();
+          fd.append('file', file);
+          await API.upload(`/staff/assignments/${r.data.id}/upload`, fd);
+        }
         showToast('Assignment created!'); document.getElementById('assignModal').style.display = 'none'; loadAssignments();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
@@ -419,13 +426,14 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       try {
         const r = await StaffAPI.getAssignments({ school_id: schoolId, academic_year_id: ayId || '' });
         const data = r?.data || [];
-        const hdrs = ['Teacher', 'Class', 'Section', 'Subject', 'Class Teacher'];
+        const hdrs = ['Teacher', 'Class', 'Section', 'Subject', 'Class Teacher', 'Attachment'];
         const rows = data.map(a => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${a.teacher_name || '-'}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${a.classroom || '-'}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${a.section || '-'}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${a.subject || '-'}</td>
           <td class="px-4 py-3">${a.is_class_teacher ? tdBadge('Yes', 'green') : ''}</td>
+          <td class="px-4 py-3">${a.assignment_file ? `<a href="${a.assignment_file}" target="_blank" class="text-xs text-blue-600 hover:underline">View File</a>` : '<span class="text-xs text-gray-400">-</span>'}</td>
         `);
         document.getElementById('assignTable').innerHTML = buildTable(hdrs, rows, 'No assignments yet');
       } catch (e) {}

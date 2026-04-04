@@ -264,9 +264,13 @@ const SchoolAPI = {
   dashboard:    (id, branchCode)  => API.get(`/institution/dashboard/${id}`, { branch_code: branchCode }),
   createAY:     (d)   => API.post('/institution/academic-year', d),
   listAY:       (sid) => API.get(`/institution/academic-year?school_id=${sid}`),
+  updateAY:     (id,d)=> API.put(`/institution/academic-year/${id}`, d),
+  deleteAY:     (id)  => API.delete(`/institution/academic-year/${id}`),
   setCurrentAY: (id)  => API.patch(`/institution/academic-year/${id}/set-current`, {}),
   createClass:  (d)   => API.post('/institution/class', d),
   listClasses:  (sid) => API.get(`/institution/class?school_id=${sid}`),
+  updateClass:  (id,d)=> API.put(`/institution/class/${id}`, d),
+  deleteClass:  (id)  => API.delete(`/institution/class/${id}`),
   listSections: (sid, cid) => API.get(`/institution/section?school_id=${sid}${cid ? '&classroom_id=' + cid : ''}`),
   createSubject:(d)   => API.post('/institution/subject', d),
   listSubjects: (sid) => API.get(`/institution/subject?school_id=${sid}`),
@@ -274,12 +278,15 @@ const SchoolAPI = {
   deleteSubject:(id)  => API.delete(`/institution/subject/${id}`),
   createGrading:(d)   => API.post('/institution/grading-system', d),
   listGrading:  (sid) => API.get(`/institution/grading-system?school_id=${sid}`),
+  updateGrading:(id,d)=> API.put(`/institution/grading-system/${id}`, d),
+  deleteGrading:(id)  => API.delete(`/institution/grading-system/${id}`),
 };
 
 // STUDENTS  → prefix: /students
 const StudentAPI = {
   create:     (d)     => API.post('/students', d),
   list:       (p)     => API.get('/students', p),
+  searchSiblings:(p)  => API.get('/students/search-siblings', p),
   get:        (id)    => API.get(`/students/${id}`),
   profile:    (id)    => API.get(`/students/${id}/profile-summary`),
   update:     (id,d)  => API.put(`/students/${id}`, d),
@@ -348,7 +355,7 @@ const FeesAPI = {
 const ExamAPI = {
   create:         (d)     => API.post('/exams', d),
   list:           (p)     => API.get('/exams', p),
-  updateStatus:   (id,d)  => API.patch(`/exams/${id}/status`, d),
+  updateStatus:   (id,status)  => API.patch(`/exams/${id}/status?status=${encodeURIComponent(status)}`, {}),
   enterMarksBulk: (d)     => API.post('/exams/marks/bulk', d),
   bulkMarks:      (d)     => API.post('/exams/marks/bulk', d),
   getMarks:       (p)     => API.get('/exams/marks', p),
@@ -533,23 +540,30 @@ const ParentAPI = {
 const AcademicYearAPI = {
   list:       (sid)  => API.get(`/institution/academic-year?school_id=${sid}`),
   create:     (d)    => API.post('/institution/academic-year', d),
+  updateAY:   (id,d) => API.put(`/institution/academic-year/${id}`, d),
+  deleteAY:   (id)   => API.delete(`/institution/academic-year/${id}`),
   setCurrent: (id)   => API.patch(`/institution/academic-year/${id}/set-current`, {}),
 };
 
 const ClassAPI = {
-  list:   (sid, ayid) => API.get(`/institution/class?school_id=${sid}${ayid ? '&academic_year_id=' + ayid : ''}`),
-  create: (d)         => API.post('/institution/class', d),
+  list:        (sid, ayid) => API.get(`/institution/class?school_id=${sid}${ayid ? '&academic_year_id=' + ayid : ''}`),
+  create:      (d)         => API.post('/institution/class', d),
+  updateClass: (id,d)      => API.put(`/institution/class/${id}`, d),
+  deleteClass: (id)        => API.delete(`/institution/class/${id}`),
 };
 
 const SubjectAPI = {
-  list:   (sid)   => API.get(`/institution/subject?school_id=${sid}`),
-  create: (d)     => API.post('/institution/subject', d),
-  delete: (id)    => API.delete(`/institution/subject/${id}`),
+  list:   (sid)    => API.get(`/institution/subject?school_id=${sid}`),
+  create: (d)      => API.post('/institution/subject', d),
+  update: (id,d)   => API.put(`/institution/subject/${id}`, d),
+  delete: (id)     => API.delete(`/institution/subject/${id}`),
 };
 
 const GradingAPI = {
-  list:   (sid)   => API.get(`/institution/grading-system?school_id=${sid}`),
-  create: (d)     => API.post('/institution/grading-system', d),
+  list:   (sid)    => API.get(`/institution/grading-system?school_id=${sid}`),
+  create: (d)      => API.post('/institution/grading-system', d),
+  update: (id,d)   => API.put(`/institution/grading-system/${id}`, d),
+  delete: (id)     => API.delete(`/institution/grading-system/${id}`),
 };
 
 const SectionAPI = {

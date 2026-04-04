@@ -313,7 +313,7 @@
           <div id="tab1" class="p-6 hidden">
             <div class="flex justify-between items-center mb-5">
               <h4 class="font-bold text-gray-900">Academic Years</h4>
-              <button onclick="document.getElementById('ayModal').style.display='flex'"
+              <button onclick="openAYModal()"
                 class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add
                 Year</button>
             </div>
@@ -324,7 +324,7 @@
           <div id="tab2" class="p-6 hidden">
             <div class="flex justify-between items-center mb-5">
               <h4 class="font-bold text-gray-900">Classes &amp; Sections</h4>
-              <button onclick="document.getElementById('clsModal').style.display='flex'"
+              <button onclick="openClassModal()"
                 class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add
                 Class</button>
             </div>
@@ -335,7 +335,7 @@
           <div id="tab3" class="p-6 hidden">
             <div class="flex justify-between items-center mb-5">
               <h4 class="font-bold text-gray-900">Subjects</h4>
-              <button onclick="document.getElementById('subModal').style.display='flex'"
+              <button onclick="openSubjectModal()"
                 class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add
                 Subject</button>
             </div>
@@ -346,8 +346,9 @@
           <div id="tab4" class="p-6 hidden">
             <div class="flex justify-between items-center mb-5">
               <h4 class="font-bold text-gray-900">Grading System</h4>
+              <button onclick="openGradingModal()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add Grading</button>
             </div>
-            <div class="bg-gray-50 rounded-xl p-6">
+            <div class="bg-gray-50 rounded-xl p-6 mb-5">
               <h5 class="font-semibold text-gray-700 mb-4">Standard CBSE Grading (A+ to F)</h5>
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
@@ -366,6 +367,7 @@
                 class="mt-4 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Save
                 Default CBSE Grading</button>
             </div>
+            <div id="gradingList"></div>
           </div>
         </div>
 
@@ -377,7 +379,7 @@
   <div id="ayModal" class="modal-overlay" style="display:none">
     <div class="modal-box w-full max-w-md">
       <div class="flex justify-between items-center px-6 py-4 border-b">
-        <h3 class="font-bold text-gray-900">Add Academic Year</h3>
+        <h3 id="ayModalTitle" class="font-bold text-gray-900">Add Academic Year</h3>
         <button onclick="document.getElementById('ayModal').style.display='none'"
           class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
       </div>
@@ -392,7 +394,7 @@
       <div class="flex gap-3 px-6 py-4 border-t justify-end">
         <button onclick="document.getElementById('ayModal').style.display='none'"
           class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
-        <button onclick="saveAY()"
+        <button id="aySubmitBtn" onclick="saveAY()"
           class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
       </div>
     </div>
@@ -402,7 +404,7 @@
   <div id="clsModal" class="modal-overlay" style="display:none">
     <div class="modal-box w-full max-w-md">
       <div class="flex justify-between items-center px-6 py-4 border-b">
-        <h3 class="font-bold text-gray-900">Add Class</h3>
+        <h3 id="clsModalTitle" class="font-bold text-gray-900">Add Class</h3>
         <button onclick="document.getElementById('clsModal').style.display='none'"
           class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
       </div>
@@ -419,7 +421,7 @@
       <div class="flex gap-3 px-6 py-4 border-t justify-end">
         <button onclick="document.getElementById('clsModal').style.display='none'"
           class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
-        <button onclick="saveClass()"
+        <button id="clsSubmitBtn" onclick="saveClass()"
           class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
       </div>
     </div>
@@ -429,7 +431,7 @@
   <div id="subModal" class="modal-overlay" style="display:none">
     <div class="modal-box w-full max-w-md">
       <div class="flex justify-between items-center px-6 py-4 border-b">
-        <h3 class="font-bold text-gray-900">Add Subject</h3>
+        <h3 id="subModalTitle" class="font-bold text-gray-900">Add Subject</h3>
         <button onclick="document.getElementById('subModal').style.display='none'"
           class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
       </div>
@@ -459,13 +461,37 @@
       <div class="flex gap-3 px-6 py-4 border-t justify-end">
         <button onclick="document.getElementById('subModal').style.display='none'"
           class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
-        <button onclick="saveSubject()"
+        <button id="subSubmitBtn" onclick="saveSubject()"
           class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
       </div>
     </div>
   </div>
 
   <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl text-white font-medium shadow-2xl">
+  </div>
+  <div id="gradingModal" class="modal-overlay" style="display:none">
+    <div class="modal-box w-full max-w-2xl">
+      <div class="flex justify-between items-center px-6 py-4 border-b">
+        <h3 id="gradingModalTitle" class="font-bold text-gray-900">Add Grading System</h3>
+        <button onclick="document.getElementById('gradingModal').style.display='none'" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div><label class="lbl">Name *</label><input id="grading_name" class="finput" placeholder="e.g. CBSE Standard Grading" /></div>
+          <div><label class="lbl">Type</label><select id="grading_type" class="finput"><option value="Marks">Marks</option><option value="Grades">Grades</option><option value="CGPA">CGPA</option></select></div>
+        </div>
+        <label class="flex items-center gap-2"><input type="checkbox" id="grading_default" class="w-4 h-4 accent-blue-600" /><span class="text-sm text-gray-700">Set as default grading</span></label>
+        <div>
+          <label class="lbl">Grade Scales</label>
+          <div id="gradingScaleRows" class="space-y-2"></div>
+          <button onclick="addGradingScaleRow()" class="mt-2 text-blue-600 text-sm hover:underline font-medium">+ Add Grade Row</button>
+        </div>
+      </div>
+      <div class="flex gap-3 px-6 py-4 border-t justify-end">
+        <button onclick="document.getElementById('gradingModal').style.display='none'" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
+        <button id="gradingSubmitBtn" onclick="saveGradingSystem()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
+      </div>
+    </div>
   </div>
   <script src="js/api.js"></script>
   <script src="js/layout.js"></script>
@@ -474,6 +500,10 @@
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('institution');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Institution Setup', 'School configuration and management');
     const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
+    let editingAyId = '';
+    let editingClassId = '';
+    let editingSubjectId = '';
+    let editingGradingId = '';
 
     const defGrades = [{ grade: 'A+', min: 91, max: 100, gp: 10 }, { grade: 'A', min: 81, max: 90, gp: 9 }, { grade: 'B+', min: 71, max: 80, gp: 8 }, { grade: 'B', min: 61, max: 70, gp: 7 }, { grade: 'C+', min: 51, max: 60, gp: 6 }, { grade: 'C', min: 41, max: 50, gp: 5 }, { grade: 'D', min: 33, max: 40, gp: 4 }, { grade: 'F', min: 0, max: 32, gp: 0 }];
     document.getElementById('gradeTable').innerHTML = defGrades.map(g => `<tr><td class="px-4 py-2 font-semibold text-blue-600">${g.grade}</td><td class="px-4 py-2">${g.min}</td><td class="px-4 py-2">${g.max}</td><td class="px-4 py-2">${g.gp}</td></tr>`).join('');
@@ -481,10 +511,66 @@
     function showTab(idx) {
       document.querySelectorAll('.itab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
       document.querySelectorAll('[id^="tab"]').forEach((t, i) => { if (t.id.startsWith('tab')) t.classList.toggle('hidden', parseInt(t.id.replace('tab', '')) !== idx); });
-      if (idx === 1) loadAYs(); if (idx === 2) loadClasses(); if (idx === 3) loadSubjects();
+      if (idx === 1) loadAYs(); if (idx === 2) loadClasses(); if (idx === 3) loadSubjects(); if (idx === 4) loadGradingSystems();
     }
 
     function showSchoolForm() { document.getElementById('schoolDisplay').style.display = 'none'; document.getElementById('schoolForm').style.display = 'flex'; }
+    function openAYModal() {
+      editingAyId = '';
+      document.getElementById('ayModalTitle').textContent = 'Add Academic Year';
+      document.getElementById('aySubmitBtn').textContent = 'Save';
+      ['ay_name', 'ay_start', 'ay_end'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('ay_curr').checked = false;
+      document.getElementById('ayModal').style.display = 'flex';
+    }
+    function openClassModal() {
+      editingClassId = '';
+      document.getElementById('clsModalTitle').textContent = 'Add Class';
+      document.getElementById('clsSubmitBtn').textContent = 'Save';
+      ['cls_name', 'cls_order', 'cls_fee', 'cls_secs'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('clsModal').style.display = 'flex';
+    }
+    function openSubjectModal() {
+      editingSubjectId = '';
+      document.getElementById('subModalTitle').textContent = 'Add Subject';
+      document.getElementById('subSubmitBtn').textContent = 'Save';
+      document.querySelectorAll('#subModal input').forEach(el => {
+        if (el.type === 'checkbox') el.checked = false;
+        else el.value = '';
+      });
+      document.getElementById('sub_type').value = 'Theory';
+      document.getElementById('sub_th').value = 100;
+      document.getElementById('sub_pr').value = 0;
+      document.getElementById('sub_pass').value = 33;
+      document.getElementById('subModal').style.display = 'flex';
+    }
+    function buildDefaultGradeRows() {
+      return defGrades.map(g => ({ grade: g.grade, min: g.min, max: g.max, gp: g.gp }));
+    }
+    function addGradingScaleRow(scale = {}) {
+      const row = document.createElement('div');
+      row.className = 'grid grid-cols-4 gap-2 grading-scale-row';
+      row.innerHTML = `
+        <input class="finput grade-name" placeholder="Grade" value="${scale.grade || ''}" />
+        <input class="finput grade-min" type="number" placeholder="Min %" value="${scale.min ?? ''}" />
+        <input class="finput grade-max" type="number" placeholder="Max %" value="${scale.max ?? ''}" />
+        <div class="flex gap-2">
+          <input class="finput grade-gp" type="number" step="0.1" placeholder="GP" value="${scale.gp ?? ''}" />
+          <button type="button" onclick="this.closest('.grading-scale-row').remove()" class="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-sm">×</button>
+        </div>`;
+      document.getElementById('gradingScaleRows').appendChild(row);
+    }
+    function openGradingModal(grading = null) {
+      editingGradingId = grading?.id || '';
+      document.getElementById('gradingModalTitle').textContent = grading ? 'Edit Grading System' : 'Add Grading System';
+      document.getElementById('gradingSubmitBtn').textContent = grading ? 'Update' : 'Save';
+      document.getElementById('grading_name').value = grading?.name || '';
+      document.getElementById('grading_type').value = grading?.grading_type || 'Marks';
+      document.getElementById('grading_default').checked = !!grading?.is_default;
+      document.getElementById('gradingScaleRows').innerHTML = '';
+      (grading?.scales?.length ? grading.scales : buildDefaultGradeRows()).forEach(scale => addGradingScaleRow(scale));
+      document.getElementById('gradingModal').style.display = 'flex';
+    }
 
     function setLogoPreview(targetId, url, fallback = 'No Logo') {
       const el = document.getElementById(targetId);
@@ -636,7 +722,7 @@
     <td class="px-4 py-3 text-sm text-gray-600">${formatDate(y.start_date)}</td>
     <td class="px-4 py-3 text-sm text-gray-600">${formatDate(y.end_date)}</td>
     <td class="px-4 py-3">${y.is_current ? tdBadge('Current', 'green') : ''}</td>
-    <td class="px-4 py-3"><button onclick="setCurrentAY('${y.id}')" class="text-xs text-blue-600 hover:underline">Set Current</button></td>
+    <td class="px-4 py-3"><div class="flex items-center gap-3"><button onclick="editAYFromEncoded('${encodeURIComponent(JSON.stringify(y))}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="setCurrentAY('${y.id}')" class="text-xs text-blue-600 hover:underline">Set Current</button><button onclick="deleteAY('${y.id}')" class="text-xs text-red-600 hover:underline">Delete</button></div></td>
   `), 'No academic years yet');
       } catch (e) { }
     }
@@ -646,10 +732,32 @@
       const name = document.getElementById('ay_name').value.trim();
       if (!name) { showToast('Year name required', 'error'); return; }
       try {
-        const r = await AcademicYearAPI.create({ school_id: schoolId, name, start_date: new Date(document.getElementById('ay_start').value).toISOString(), end_date: new Date(document.getElementById('ay_end').value).toISOString(), is_current: document.getElementById('ay_curr').checked });
-        if (document.getElementById('ay_curr').checked) { localStorage.setItem('ay_id', r.data.id); }
+        const payload = { school_id: schoolId, name, start_date: new Date(document.getElementById('ay_start').value).toISOString(), end_date: new Date(document.getElementById('ay_end').value).toISOString(), is_current: document.getElementById('ay_curr').checked };
+        const r = editingAyId ? await AcademicYearAPI.updateAY(editingAyId, payload) : await AcademicYearAPI.create(payload);
+        if (document.getElementById('ay_curr').checked && r?.data?.id) { localStorage.setItem('ay_id', r.data.id); }
         showToast('Academic year saved!'); document.getElementById('ayModal').style.display = 'none'; loadAYs();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function editAY(year) {
+      editingAyId = year.id;
+      document.getElementById('ayModalTitle').textContent = 'Edit Academic Year';
+      document.getElementById('aySubmitBtn').textContent = 'Update';
+      document.getElementById('ay_name').value = year.name || '';
+      document.getElementById('ay_start').value = year.start_date ? String(year.start_date).slice(0, 10) : '';
+      document.getElementById('ay_end').value = year.end_date ? String(year.end_date).slice(0, 10) : '';
+      document.getElementById('ay_curr').checked = !!year.is_current;
+      document.getElementById('ayModal').style.display = 'flex';
+    }
+
+    function editAYFromEncoded(encoded) {
+      editAY(JSON.parse(decodeURIComponent(encoded)));
+    }
+
+    async function deleteAY(id) {
+      if (!confirm('Delete this academic year?')) return;
+      try { await AcademicYearAPI.deleteAY(id); showToast('Academic year deleted'); loadAYs(); }
+      catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
     async function setCurrentAY(id) {
@@ -665,7 +773,7 @@
     <td class="px-4 py-3 font-semibold text-gray-900">${c.name}</td>
     <td class="px-4 py-3 text-sm font-medium text-gray-700">${formatCurrency(c.class_fee || 0)}</td>
     <td class="px-4 py-3"><div class="flex gap-1 flex-wrap">${(c.sections || []).map(s => `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">${s.name}</span>`).join('')}</div></td>
-    <td class="px-4 py-3 text-sm text-gray-400">${(c.sections || []).length} sections</td>
+    <td class="px-4 py-3"><div class="flex items-center gap-3"><button onclick="editClassFromEncoded('${encodeURIComponent(JSON.stringify(c))}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="deleteClass('${c.id}')" class="text-xs text-red-600 hover:underline">Delete</button></div></td>
   `), 'No classes yet');
       } catch (e) { }
     }
@@ -677,9 +785,32 @@
       if (!name) { showToast('Class name required', 'error'); return; }
       const secs = document.getElementById('cls_secs').value.split(',').map(s => s.trim()).filter(Boolean);
       try {
-        await ClassAPI.create({ school_id: schoolId, academic_year_id: ayId, name, numeric_name: parseInt(document.getElementById('cls_order').value) || null, class_fee: parseFloat(document.getElementById('cls_fee').value) || 0, sections: secs });
-        showToast('Class created!'); document.getElementById('clsModal').style.display = 'none'; loadClasses();
+        const payload = { school_id: schoolId, academic_year_id: ayId, name, numeric_name: parseInt(document.getElementById('cls_order').value) || null, class_fee: parseFloat(document.getElementById('cls_fee').value) || 0, sections: secs };
+        if (editingClassId) await ClassAPI.updateClass(editingClassId, payload);
+        else await ClassAPI.create(payload);
+        showToast('Class saved!'); document.getElementById('clsModal').style.display = 'none'; loadClasses();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function editClass(data) {
+      editingClassId = data.id;
+      document.getElementById('clsModalTitle').textContent = 'Edit Class';
+      document.getElementById('clsSubmitBtn').textContent = 'Update';
+      document.getElementById('cls_name').value = data.name || '';
+      document.getElementById('cls_order').value = data.numeric_name || '';
+      document.getElementById('cls_fee').value = data.class_fee || 0;
+      document.getElementById('cls_secs').value = (data.sections || []).map(s => s.name).join(', ');
+      document.getElementById('clsModal').style.display = 'flex';
+    }
+
+    function editClassFromEncoded(encoded) {
+      editClass(JSON.parse(decodeURIComponent(encoded)));
+    }
+
+    async function deleteClass(id) {
+      if (!confirm('Delete this class?')) return;
+      try { await ClassAPI.deleteClass(id); showToast('Class deleted'); loadClasses(); }
+      catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
     async function loadSubjects() {
@@ -692,7 +823,7 @@
     <td class="px-4 py-3">${tdBadge(s.subject_type, s.subject_type === 'Theory' ? 'blue' : s.subject_type === 'Practical' ? 'green' : 'purple')}</td>
     <td class="px-4 py-3 text-sm text-gray-600">${s.max_theory_marks + (s.max_practical_marks ? '+' + s.max_practical_marks : '')}</td>
     <td class="px-4 py-3 text-sm text-gray-600">${s.passing_marks}</td>
-    <td class="px-4 py-3"><button onclick="delSubject('${s.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td>
+    <td class="px-4 py-3"><div class="flex items-center gap-3"><button onclick="editSubjectFromEncoded('${encodeURIComponent(JSON.stringify(s))}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="delSubject('${s.id}')" class="text-xs text-red-600 hover:underline">Delete</button></div></td>
   `), 'No subjects yet');
       } catch (e) { }
     }
@@ -702,9 +833,29 @@
       const name = document.getElementById('sub_name').value.trim(), code = document.getElementById('sub_code').value.trim();
       if (!name || !code) { showToast('Name and code required', 'error'); return; }
       try {
-        await SubjectAPI.create({ school_id: schoolId, name, code, subject_type: document.getElementById('sub_type').value, max_theory_marks: parseFloat(document.getElementById('sub_th').value) || 100, max_practical_marks: parseFloat(document.getElementById('sub_pr').value) || 0, passing_marks: parseFloat(document.getElementById('sub_pass').value) || 33, is_optional: document.getElementById('sub_opt').checked });
+        const payload = { school_id: schoolId, name, code, subject_type: document.getElementById('sub_type').value, max_theory_marks: parseFloat(document.getElementById('sub_th').value) || 100, max_practical_marks: parseFloat(document.getElementById('sub_pr').value) || 0, passing_marks: parseFloat(document.getElementById('sub_pass').value) || 33, is_optional: document.getElementById('sub_opt').checked };
+        if (editingSubjectId) await SubjectAPI.update(editingSubjectId, payload);
+        else await SubjectAPI.create(payload);
         showToast('Subject saved!'); document.getElementById('subModal').style.display = 'none'; loadSubjects();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function editSubject(data) {
+      editingSubjectId = data.id;
+      document.getElementById('subModalTitle').textContent = 'Edit Subject';
+      document.getElementById('subSubmitBtn').textContent = 'Update';
+      document.getElementById('sub_name').value = data.name || '';
+      document.getElementById('sub_code').value = data.code || '';
+      document.getElementById('sub_type').value = data.subject_type || 'Theory';
+      document.getElementById('sub_th').value = data.max_theory_marks || 100;
+      document.getElementById('sub_pr').value = data.max_practical_marks || 0;
+      document.getElementById('sub_pass').value = data.passing_marks || 33;
+      document.getElementById('sub_opt').checked = !!data.is_optional;
+      document.getElementById('subModal').style.display = 'flex';
+    }
+
+    function editSubjectFromEncoded(encoded) {
+      editSubject(JSON.parse(decodeURIComponent(encoded)));
     }
 
     async function delSubject(id) {
@@ -715,8 +866,70 @@
     async function createDefaultGrading() {
       if (!schoolId) { showToast('Save school first', 'error'); return; }
       const scales = [{ grade: 'A+', min_marks: 91, max_marks: 100, grade_point: 10, remarks: 'Outstanding' }, { grade: 'A', min_marks: 81, max_marks: 90, grade_point: 9, remarks: 'Excellent' }, { grade: 'B+', min_marks: 71, max_marks: 80, grade_point: 8, remarks: 'Very Good' }, { grade: 'B', min_marks: 61, max_marks: 70, grade_point: 7, remarks: 'Good' }, { grade: 'C+', min_marks: 51, max_marks: 60, grade_point: 6, remarks: 'Average' }, { grade: 'C', min_marks: 41, max_marks: 50, grade_point: 5, remarks: 'Below Average' }, { grade: 'D', min_marks: 33, max_marks: 40, grade_point: 4, remarks: 'Pass' }, { grade: 'F', min_marks: 0, max_marks: 32, grade_point: 0, remarks: 'Fail' }];
-      try { await GradingAPI.create({ school_id: schoolId, name: 'CBSE Standard Grading', grading_type: 'Marks', is_default: true, scales }); showToast('Default grading system saved!'); }
+      try { await GradingAPI.create({ school_id: schoolId, name: 'CBSE Standard Grading', grading_type: 'Marks', is_default: true, scales }); showToast('Default grading system saved!'); loadGradingSystems(); }
       catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function loadGradingSystems() {
+      if (!schoolId) { document.getElementById('gradingList').innerHTML = '<p class="text-gray-400 text-sm">Save school first</p>'; return; }
+      try {
+        const r = await GradingAPI.list(schoolId);
+        const systems = r?.data || [];
+        document.getElementById('gradingList').innerHTML = buildTable(['Name', 'Type', 'Default', 'Scales', ''], systems.map(gs => `
+          <td class="px-4 py-3 font-semibold text-gray-900">${gs.name}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${gs.grading_type}</td>
+          <td class="px-4 py-3">${gs.is_default ? tdBadge('Default', 'green') : ''}</td>
+          <td class="px-4 py-3 text-xs text-gray-500">${(gs.scales || []).map(scale => `${scale.grade} (${scale.min}-${scale.max})`).join(', ')}</td>
+          <td class="px-4 py-3"><div class="flex items-center gap-3"><button onclick="editGradingFromEncoded('${encodeURIComponent(JSON.stringify(gs))}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="deleteGrading('${gs.id}')" class="text-xs text-red-600 hover:underline">Delete</button></div></td>
+        `), 'No grading systems configured yet');
+      } catch (e) {
+        document.getElementById('gradingList').innerHTML = `<div class="text-sm text-red-500">${e.message}</div>`;
+      }
+    }
+
+    async function saveGradingSystem() {
+      if (!schoolId) { showToast('Save school first', 'error'); return; }
+      const name = document.getElementById('grading_name').value.trim();
+      if (!name) { showToast('Grading name required', 'error'); return; }
+      const scales = Array.from(document.querySelectorAll('.grading-scale-row')).map(row => ({
+        grade: row.querySelector('.grade-name').value.trim(),
+        min_marks: parseFloat(row.querySelector('.grade-min').value) || 0,
+        max_marks: parseFloat(row.querySelector('.grade-max').value) || 0,
+        grade_point: parseFloat(row.querySelector('.grade-gp').value) || 0,
+        remarks: ''
+      })).filter(scale => scale.grade);
+      if (!scales.length) { showToast('Add at least one grading row', 'error'); return; }
+      const payload = {
+        school_id: schoolId,
+        name,
+        grading_type: document.getElementById('grading_type').value,
+        is_default: document.getElementById('grading_default').checked,
+        scales
+      };
+      try {
+        if (editingGradingId) await GradingAPI.update(editingGradingId, payload);
+        else await GradingAPI.create(payload);
+        showToast('Grading system saved!');
+        document.getElementById('gradingModal').style.display = 'none';
+        loadGradingSystems();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
+    function editGradingFromEncoded(encoded) {
+      openGradingModal(JSON.parse(decodeURIComponent(encoded)));
+    }
+
+    async function deleteGrading(id) {
+      if (!confirm('Delete this grading system?')) return;
+      try {
+        await GradingAPI.delete(id);
+        showToast('Grading system deleted');
+        loadGradingSystems();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
     }
 
     loadSchool();
