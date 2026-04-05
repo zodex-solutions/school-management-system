@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: {50:"#fff7ed",100:"#ffedd5",500:"#f97316",600:"#ea580c",700:"#c2410c"} }, boxShadow: { soft: "0 20px 60px rgba(15, 23, 42, 0.08)" } } }
+    };
+  </script>
+  <style>::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:rgba(148,163,184,.5);border-radius:999px}</style>
+</head>
+<body class="h-screen overflow-hidden bg-[linear-gradient(180deg,#fffaf5_0%,#f4efe8_100%)] text-slate-800">
+  <div class="grid h-screen grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
+    <aside class="h-full overflow-y-auto border-b border-slate-200/80 bg-[linear-gradient(180deg,#fffdf9_0%,#f8f2ea_100%)] px-5 py-6 lg:border-b-0 lg:border-r">
+      <div class="sticky top-0">
+        <div class="rounded-[28px] border border-white/80 bg-white/85 p-5 shadow-soft backdrop-blur">
+          <span class="inline-flex rounded-full border border-brand-100 bg-brand-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-700">Zodex Admin</span>
+          <h2 class="mt-4 text-2xl font-semibold tracking-tight text-slate-900">Content Settings</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-500">Edit global copy and homepage section text without touching the frontend design.</p>
+        </div>
+        <nav class="mt-6 space-y-2 pb-8">
+          <a href="/admin/dashboard" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Dashboard</a>
+          <a href="/admin/settings" class="block rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm">Settings</a>
+          <a href="/admin/content/services" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Services</a>
+          <a href="/admin/content/stats" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Stats</a>
+          <a href="/admin/content/products" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Products</a>
+          <a href="/admin/content/process-steps" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Process</a>
+          <a href="/admin/content/portfolio-cases" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Portfolio</a>
+          <a href="/admin/content/testimonials" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Testimonials</a>
+          <a href="/admin/content/reasons" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Why Zodex</a>
+          <a href="/admin/content/social-links" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Social Links</a>
+          <a href="/admin/inquiries" class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-900">Inquiries</a>
+          <a href="/admin/logout" class="block rounded-2xl px-4 py-3 text-sm font-medium text-red-500 transition hover:bg-white hover:text-red-600">Logout</a>
+        </nav>
+      </div>
+    </aside>
+    <main class="h-full overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <div class="mx-auto max-w-7xl space-y-6">
+        <section class="rounded-[30px] border border-white/80 bg-white/90 p-6 shadow-soft backdrop-blur sm:p-8">
+          <span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Global Content</span>
+          <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Homepage Settings</h1>
+          <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-500">Update hero messaging, contact details and all landing section headings with clean spacing and better inputs.</p>
+        </section>
+        <section class="rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-soft sm:p-6">
+          <div class="mb-6"><h2 class="text-xl font-semibold text-slate-900">Hero Section</h2><p class="mt-1 text-sm text-slate-500">This content drives the top fold of the homepage.</p></div>
+          <form class="grid grid-cols-1 gap-5 md:grid-cols-2" method="post" action="/admin/settings/hero">
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Availability Badge</span><input name="availability_badge" value="{{ hero.availability_badge }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Title Prefix</span><input name="title_prefix" value="{{ hero.title_prefix }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Title Highlight</span><input name="title_highlight" value="{{ hero.title_highlight }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block md:col-span-2"><span class="mb-2 block text-sm font-medium text-slate-600">Rotating Words</span><textarea name="rotating_words" class="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100">{{ hero.rotating_words | join('\n') }}</textarea></label>
+            <label class="block md:col-span-2"><span class="mb-2 block text-sm font-medium text-slate-600">Subheading</span><textarea name="subheading" class="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100">{{ hero.subheading }}</textarea></label>
+            <label class="block md:col-span-2"><span class="mb-2 block text-sm font-medium text-slate-600">Tech Tags</span><textarea name="tech_tags" class="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100">{{ hero.tech_tags | join('\n') }}</textarea></label>
+            <label class="block md:col-span-2"><span class="mb-2 block text-sm font-medium text-slate-600">Bottom Text</span><textarea name="bottom_text" class="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100">{{ hero.bottom_text }}</textarea></label>
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Primary CTA Text</span><input name="primary_cta_text" value="{{ hero.primary_cta_text }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <div class="md:col-span-2"><button class="inline-flex rounded-2xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:bg-brand-700" type="submit">Save Hero</button></div>
+          </form>
+        </section>
+        <section class="rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-soft sm:p-6">
+          <div class="mb-6"><h2 class="text-xl font-semibold text-slate-900">Contact Info</h2><p class="mt-1 text-sm text-slate-500">These details are shown inside the frontend contact block.</p></div>
+          <form class="grid grid-cols-1 gap-5 md:grid-cols-2" method="post" action="/admin/settings/contact">
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Email</span><input name="email" value="{{ contact.email }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Location</span><input name="location" value="{{ contact.location }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block md:col-span-2"><span class="mb-2 block text-sm font-medium text-slate-600">Phone Numbers</span><textarea name="phone_numbers" class="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100">{{ contact.phone_numbers | join('\n') }}</textarea></label>
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Heading</span><input name="heading" value="{{ contact.heading }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Form Title</span><input name="form_title" value="{{ contact.form_title }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block md:col-span-2"><span class="mb-2 block text-sm font-medium text-slate-600">Subheading</span><textarea name="subheading" class="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100">{{ contact.subheading }}</textarea></label>
+            <div class="md:col-span-2"><button class="inline-flex rounded-2xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:bg-brand-700" type="submit">Save Contact</button></div>
+          </form>
+        </section>
+        {% for section in sections %}
+        <section class="rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-soft sm:p-6">
+          <div class="mb-6"><h2 class="text-xl font-semibold capitalize text-slate-900">{{ section.section_key.replace('_', ' ') }}</h2><p class="mt-1 text-sm text-slate-500">Update this section heading block from here.</p></div>
+          <form class="grid grid-cols-1 gap-5 md:grid-cols-2" method="post" action="/admin/settings/sections/{{ section.id }}">
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Kicker</span><input name="kicker" value="{{ section.kicker }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Title</span><input name="title" value="{{ section.title }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block"><span class="mb-2 block text-sm font-medium text-slate-600">Highlight</span><input name="highlight" value="{{ section.highlight }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100" /></label>
+            <label class="block md:col-span-2"><span class="mb-2 block text-sm font-medium text-slate-600">Description</span><textarea name="description" class="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100">{{ section.description }}</textarea></label>
+            <div class="md:col-span-2"><button class="inline-flex rounded-2xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:bg-brand-700" type="submit">Save Section</button></div>
+          </form>
+        </section>
+        {% endfor %}
+      </div>
+    </main>
+  </div>
+</body>
+</html>

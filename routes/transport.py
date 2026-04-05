@@ -16,18 +16,23 @@ router = APIRouter(prefix="/transport", tags=["Transport"])
 async def create_route(data: dict, current_user: User = Depends(get_current_user)):
     data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
     school = School.objects.get(id=data['school_id'])
+    route_name = (data.get('route_name') or '').strip()
+    if not route_name:
+        raise HTTPException(400, "Route name is required")
+    if data.get('fee_per_month') in (None, ''):
+        raise HTTPException(400, "Route price is required")
     route = TransportRoute(
         school=school,
-        route_name=data['route_name'],
-        route_code=data['route_code'],
-        start_point=data['start_point'],
-        end_point=data['end_point'],
+        route_name=route_name,
+        route_code=(data.get('route_code') or '').strip() or None,
+        start_point=(data.get('start_point') or '').strip() or None,
+        end_point=(data.get('end_point') or '').strip() or None,
         stops=data.get('stops', []),
         distance_km=data.get('distance_km', 0),
         estimated_duration_min=data.get('estimated_duration_min', 0),
         morning_departure=data.get('morning_departure'),
         afternoon_departure=data.get('afternoon_departure'),
-        fee_per_month=data.get('fee_per_month', 0)
+        fee_per_month=float(data.get('fee_per_month', 0) or 0)
     )
     route.save()
     return success_response({"id": str(route.id), "route_name": route.route_name}, "Route created")
@@ -67,6 +72,18 @@ async def update_route(route_id: str, data: dict, current_user: User = Depends(g
     try:
         route = TransportRoute.objects.get(id=route_id)
         data.pop('id', None); data.pop('school_id', None)
+        if 'route_name' in data:
+            data['route_name'] = (data.get('route_name') or '').strip()
+            if not data['route_name']:
+                raise HTTPException(400, "Route name is required")
+        if 'route_code' in data:
+            data['route_code'] = (data.get('route_code') or '').strip() or None
+        if 'start_point' in data:
+            data['start_point'] = (data.get('start_point') or '').strip() or None
+        if 'end_point' in data:
+            data['end_point'] = (data.get('end_point') or '').strip() or None
+        if 'fee_per_month' in data and data.get('fee_per_month') in (None, ''):
+            raise HTTPException(400, "Route price is required")
         route.update(**data)
         return success_response(message="Route updated")
     except TransportRoute.DoesNotExist:

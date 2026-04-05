@@ -235,9 +235,23 @@
                 </div>
 
                 <div>
+                  <label class="lbl">Class *</label>
+                  <select id="cert_class" class="finput" onchange="loadCertSections(); resetCertificateStudents()">
+                    <option value="">Select class</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="lbl">Section *</label>
+                  <select id="cert_section" class="finput" onchange="loadCertificateStudents()">
+                    <option value="">Select section</option>
+                  </select>
+                </div>
+
+                <div>
                   <label class="lbl">Student *</label>
                   <select id="cert_student" class="finput" onchange="loadStudentInfo()">
-                    <option value="">Select student</option>
+                    <option value="">Select class and section first</option>
                   </select>
                 </div>
 
@@ -356,17 +370,71 @@
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('certificates');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Certificates', 'Issue bonafide, TC, character and other certificates');
     let schoolId = localStorage.getItem('school_id');
+    let ayId = localStorage.getItem('ay_id') || '';
     let students = [], currentCertHtml = '';
 
-    // Load students
     async function init() {
       schoolId = await initializeSchoolContext() || schoolId;
       if (!schoolId) return;
+      await loadCertClasses();
+      resetCertificateStudents();
+    }
+
+    function resetCertificateStudents(message = 'Select class and section first') {
+      students = [];
+      document.getElementById('cert_student').innerHTML = `<option value="">${message}</option>`;
+      document.getElementById('studentPreview').style.display = 'none';
+    }
+
+    async function loadCertClasses() {
+      if (!schoolId) return;
       try {
-        const r = await StudentAPI.list({ school_id: schoolId, per_page: 300, admission_status: 'Active' });
+        const r = await ClassAPI.list(schoolId, ayId);
+        const classes = r?.data || [];
+        document.getElementById('cert_class').innerHTML = '<option value="">Select class</option>' + classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      } catch (e) {
+        resetCertificateStudents('Unable to load classes');
+      }
+    }
+
+    async function loadCertSections() {
+      const classId = document.getElementById('cert_class').value;
+      const sectionEl = document.getElementById('cert_section');
+      sectionEl.innerHTML = '<option value="">Select section</option>';
+      resetCertificateStudents();
+      if (!schoolId || !classId) return;
+      try {
+        const r = await SectionAPI.list(schoolId, classId);
+        const sections = r?.data || [];
+        sectionEl.innerHTML = '<option value="">Select section</option>' + sections.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      } catch (e) {
+        resetCertificateStudents('Unable to load sections');
+      }
+    }
+
+    async function loadCertificateStudents() {
+      const classId = document.getElementById('cert_class').value;
+      const sectionId = document.getElementById('cert_section').value;
+      if (!schoolId || !classId || !sectionId) {
+        resetCertificateStudents();
+        return;
+      }
+      try {
+        const r = await StudentAPI.list({
+          school_id: schoolId,
+          classroom_id: classId,
+          section_id: sectionId,
+          per_page: 100,
+          admission_status: 'Active'
+        });
         students = r?.data || [];
         document.getElementById('cert_student').innerHTML = '<option value="">Select student</option>' + students.map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})</option>`).join('');
-      } catch (e) { }
+        if (!students.length) {
+          resetCertificateStudents('No students found');
+        }
+      } catch (e) {
+        resetCertificateStudents('Unable to load students');
+      }
     }
 
     function switchTab(i) {
@@ -401,7 +469,7 @@
       const stId = document.getElementById('cert_student').value;
       const purpose = document.getElementById('cert_purpose').value.trim();
       const certType = document.getElementById('selectedCertType').value;
-      if (!stId || !purpose) { showToast('Select student and enter purpose', 'error'); return; }
+      if (!document.getElementById('cert_class').value || !document.getElementById('cert_section').value || !stId || !purpose) { showToast('Select class, section, student and enter purpose', 'error'); return; }
       try {
         const r = await CertAPI.issue({
           school_id: schoolId, student_id: stId, cert_type: certType,

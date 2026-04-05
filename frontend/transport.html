@@ -65,7 +65,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <!-- Routes -->
           <div id="ttab0" class="p-5">
             <div class="flex justify-between mb-4"><h4 class="font-bold text-gray-900">Transport Routes</h4>
-              <button onclick="document.getElementById('routeModal').style.display='flex'" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add Route</button></div>
+              <button onclick="openRouteModal()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add Route</button></div>
             <div id="routeTable"></div>
           </div>
 
@@ -110,15 +110,15 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
   <!-- Route Modal -->
   <div id="routeModal" class="modal-overlay" style="display:none">
     <div class="modal-box w-full max-w-lg max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center px-6 py-4 border-b"><h3 class="font-bold text-gray-900">Add Route</h3><button onclick="document.getElementById('routeModal').style.display='none'" class="text-gray-400 hover:text-gray-600 text-xl px-2">×</button></div>
+      <div class="flex justify-between items-center px-6 py-4 border-b"><h3 id="routeModalTitle" class="font-bold text-gray-900">Add Route</h3><button onclick="document.getElementById('routeModal').style.display='none'" class="text-gray-400 hover:text-gray-600 text-xl px-2">×</button></div>
       <div class="px-6 py-5 space-y-4">
         <div class="grid grid-cols-2 gap-4">
           <div><label class="lbl">Route Name *</label><input id="rt_name" class="finput" placeholder="e.g. Route 1 - North"/></div>
-          <div><label class="lbl">Route Code *</label><input id="rt_code" class="finput" placeholder="e.g. RT001"/></div>
+          <div><label class="lbl">Route Code</label><input id="rt_code" class="finput" placeholder="e.g. RT001"/></div>
         </div>
         <div class="grid grid-cols-2 gap-4">
-          <div><label class="lbl">Start Point *</label><input id="rt_start" class="finput" placeholder="Start location"/></div>
-          <div><label class="lbl">End Point *</label><input id="rt_end" class="finput" placeholder="End location"/></div>
+          <div><label class="lbl">Start Point</label><input id="rt_start" class="finput" placeholder="Start location"/></div>
+          <div><label class="lbl">End Point</label><input id="rt_end" class="finput" placeholder="End location"/></div>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div><label class="lbl">Distance (km)</label><input id="rt_dist" type="number" class="finput" placeholder="0"/></div>
@@ -128,7 +128,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <div><label class="lbl">Morning Departure</label><input id="rt_morn" type="time" class="finput"/></div>
           <div><label class="lbl">Afternoon Departure</label><input id="rt_aft" type="time" class="finput"/></div>
         </div>
-        <div><label class="lbl">Monthly Fee (₹)</label><input id="rt_fee" type="number" class="finput" placeholder="0"/></div>
+        <div><label class="lbl">Monthly Fee (₹) *</label><input id="rt_fee" type="number" class="finput" placeholder="0"/></div>
         <div>
           <label class="lbl">Stops (one per line: Name, Time)</label>
           <textarea id="rt_stops" rows="4" class="finput resize-none" placeholder="Bus Stand, 07:10&#10;City Mall, 07:20&#10;College Road, 07:30"></textarea>
@@ -136,7 +136,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       </div>
       <div class="flex gap-3 px-6 py-4 border-t justify-end">
         <button onclick="document.getElementById('routeModal').style.display='none'" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
-        <button onclick="saveRoute()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
+        <button id="routeSubmitBtn" onclick="saveRoute()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
       </div>
     </div>
   </div>
@@ -252,6 +252,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     let schoolId = localStorage.getItem('school_id');
     let schoolBranches = [];
     let selectedBranchCode = '';
+    let editingRouteId = '';
 
     document.getElementById('transportBranchFilter').addEventListener('change', async (e) => {
       selectedBranchCode = e.target.value || '';
@@ -326,6 +327,38 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
   } catch (e) {}
 }
 
+    function resetRouteModal() {
+      editingRouteId = '';
+      document.getElementById('routeModalTitle').textContent = 'Add Route';
+      document.getElementById('routeSubmitBtn').textContent = 'Save';
+      ['rt_name', 'rt_code', 'rt_start', 'rt_end', 'rt_dist', 'rt_dur', 'rt_morn', 'rt_aft', 'rt_fee', 'rt_stops'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+    }
+
+    function openRouteModal() {
+      resetRouteModal();
+      document.getElementById('routeModal').style.display = 'flex';
+    }
+
+    function editRouteFromEncoded(encoded) {
+      const route = JSON.parse(decodeURIComponent(encoded));
+      editingRouteId = route.id;
+      document.getElementById('routeModalTitle').textContent = 'Edit Route';
+      document.getElementById('routeSubmitBtn').textContent = 'Update';
+      document.getElementById('rt_name').value = route.route_name || '';
+      document.getElementById('rt_code').value = route.route_code || '';
+      document.getElementById('rt_start').value = route.start_point || '';
+      document.getElementById('rt_end').value = route.end_point || '';
+      document.getElementById('rt_dist').value = route.distance_km ?? '';
+      document.getElementById('rt_dur').value = route.estimated_duration_min ?? '';
+      document.getElementById('rt_morn').value = route.morning_departure || '';
+      document.getElementById('rt_aft').value = route.afternoon_departure || '';
+      document.getElementById('rt_fee').value = route.fee_per_month ?? '';
+      document.getElementById('rt_stops').value = (route.stops || []).map(stop => [stop.name, stop.time].filter(Boolean).join(', ')).join('\n');
+      document.getElementById('routeModal').style.display = 'flex';
+    }
+
     async function loadRoutes() {
       if (!schoolId) { document.getElementById('routeTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
       try {
@@ -333,15 +366,15 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         const hdrs = ['Route Name', 'Code', 'Start', 'End', 'Distance', 'Morning', 'Afternoon', 'Monthly Fee', 'Students', ''];
         const rows = routes.map(rt => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${rt.route_name}</td>
-          <td class="px-4 py-3 font-mono text-xs text-gray-500">${rt.route_code}</td>
-          <td class="px-4 py-3 text-sm text-gray-600">${rt.start_point}</td>
-          <td class="px-4 py-3 text-sm text-gray-600">${rt.end_point}</td>
+          <td class="px-4 py-3 font-mono text-xs text-gray-500">${rt.route_code || '-'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${rt.start_point || '-'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${rt.end_point || '-'}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${rt.distance_km || 0} km</td>
           <td class="px-4 py-3 text-sm text-gray-600">${rt.morning_departure || '-'}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${rt.afternoon_departure || '-'}</td>
           <td class="px-4 py-3 font-medium text-gray-900">${formatCurrency(rt.fee_per_month)}</td>
           <td class="px-4 py-3 text-center"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold">${rt.student_count || 0}</span></td>
-          <td class="px-4 py-3"><button onclick="deleteRoute('${rt.id}')" class="text-xs text-red-500 hover:underline">Delete</button></td>
+          <td class="px-4 py-3"><div class="flex items-center gap-3"><button onclick="editRouteFromEncoded('${encodeURIComponent(JSON.stringify(rt))}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="deleteRoute('${rt.id}')" class="text-xs text-red-500 hover:underline">Delete</button></div></td>
         `);
         document.getElementById('routeTable').innerHTML = buildTable(hdrs, rows, 'No routes added yet');
       } catch (e) { document.getElementById('routeTable').innerHTML = `<p class="text-red-400 text-sm p-4">Error: ${e.message}</p>`; }
@@ -351,12 +384,18 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       if (!schoolId) { showToast('Configure school first', 'error'); return; }
       const name = document.getElementById('rt_name').value.trim(), code = document.getElementById('rt_code').value.trim();
       const start = document.getElementById('rt_start').value.trim(), end = document.getElementById('rt_end').value.trim();
-      if (!name || !code || !start || !end) { showToast('Fill required fields', 'error'); return; }
+      const feeValue = document.getElementById('rt_fee').value;
+      if (!name || feeValue === '') { showToast('Route name and route price are required', 'error'); return; }
       const stopsRaw = document.getElementById('rt_stops').value.trim();
       const stops = stopsRaw ? stopsRaw.split('\n').map((s, i) => { const p = s.split(','); return { name: p[0]?.trim(), time: p[1]?.trim(), order: i + 1 }; }) : [];
       try {
-        await TransportAPI.createRoute({ school_id: schoolId, route_name: name, route_code: code, start_point: start, end_point: end, stops, distance_km: parseFloat(document.getElementById('rt_dist').value) || 0, estimated_duration_min: parseInt(document.getElementById('rt_dur').value) || 0, morning_departure: document.getElementById('rt_morn').value || null, afternoon_departure: document.getElementById('rt_aft').value || null, fee_per_month: parseFloat(document.getElementById('rt_fee').value) || 0 });
-        showToast('Route saved!'); document.getElementById('routeModal').style.display = 'none'; loadRoutes(); loadStats();
+        const payload = { school_id: schoolId, route_name: name, route_code: code || null, start_point: start || null, end_point: end || null, stops, distance_km: parseFloat(document.getElementById('rt_dist').value) || 0, estimated_duration_min: parseInt(document.getElementById('rt_dur').value) || 0, morning_departure: document.getElementById('rt_morn').value || null, afternoon_departure: document.getElementById('rt_aft').value || null, fee_per_month: parseFloat(feeValue) || 0 };
+        if (editingRouteId) await TransportAPI.updateRoute(editingRouteId, payload);
+        else await TransportAPI.createRoute(payload);
+        showToast(editingRouteId ? 'Route updated!' : 'Route saved!');
+        document.getElementById('routeModal').style.display = 'none';
+        resetRouteModal();
+        loadRoutes(); loadStats();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 

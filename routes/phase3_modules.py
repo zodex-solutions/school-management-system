@@ -257,7 +257,7 @@ async def issue_certificate(data: dict, current_user: User = Depends(get_current
         'purpose': data.get('purpose', 'official purpose'),
         'from_year': data.get('from_year', 'N/A'),
         'to_year': data.get('to_year', 'N/A'),
-        'admission_date': student.date_of_admission.strftime('%d/%m/%Y') if student.date_of_admission else 'N/A',
+        'admission_date': student.admission_date.strftime('%d/%m/%Y') if student.admission_date else 'N/A',
         'leaving_date': data.get('leaving_date', datetime.utcnow().strftime('%d/%m/%Y')),
         'result': data.get('result', 'Passed'),
         'reason': data.get('reason', 'Personal')

@@ -12,6 +12,14 @@ from utils.helpers import success_response, error_response, paginate_query, doc_
 router = APIRouter(prefix="/institution", tags=["Institution"])
 
 
+def _normalize_logo_url(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    if value.startswith(("http://", "https://", "/uploads/")):
+        return value
+    return f"/uploads/{value.lstrip('/')}"
+
+
 # ─── School CRUD ──────────────────────────────────────────────────────────────
 
 class SchoolCreate(BaseModel):
@@ -48,7 +56,7 @@ def _build_branches(branches: List[dict]):
         result.append(Branch(
             name=branch.get("name"),
             code=branch.get("code"),
-            logo=branch.get("logo"),
+            logo=_normalize_logo_url(branch.get("logo")),
             address=address,
             phone=branch.get("phone"),
             email=branch.get("email"),
@@ -76,7 +84,7 @@ def _serialize_school(school: School):
         "id": str(school.id),
         "name": school.name,
         "code": school.code,
-        "logo": school.logo,
+        "logo": _normalize_logo_url(school.logo),
         "tagline": school.tagline,
         "affiliation_no": school.affiliation_no,
         "affiliation_board": school.affiliation_board,
@@ -90,7 +98,7 @@ def _serialize_school(school: School):
         "branches": [{
             "name": branch.name,
             "code": branch.code,
-            "logo": branch.logo,
+            "logo": _normalize_logo_url(branch.logo),
             "phone": branch.phone,
             "email": branch.email,
             "principal": branch.principal,
@@ -105,6 +113,7 @@ async def create_school(data: SchoolCreate, current_user: User = Depends(get_cur
     if School.objects(code=data.code).first():
         raise HTTPException(400, "School code already exists")
     payload = data.model_dump()
+    payload["logo"] = _normalize_logo_url(payload.get("logo"))
     payload["address"] = _build_address(payload.get("address"))
     payload["branches"] = _build_branches(payload.get("branches", []))
     payload["is_multi_branch"] = len(payload["branches"]) > 0
@@ -141,6 +150,8 @@ async def update_school(school_id: str, data: dict, current_user: User = Depends
     try:
         school = School.objects.get(id=school_id)
         data.pop('id', None)
+        if 'logo' in data:
+            data['logo'] = _normalize_logo_url(data.get('logo'))
         if 'address' in data:
             data['address'] = _build_address(data.get('address'))
         if 'branches' in data:

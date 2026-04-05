@@ -442,19 +442,27 @@
       try {
         const r = await ExamAPI.getResults(params); const results = r?.data || [];
         latestResults = results;
-        const hdrs = ['Rank', 'Student', 'Total', '%', 'Grade', 'CGPA', 'Status', ''];
+        const hdrs = ['Rank', 'Student', 'Total', '%', 'Division', 'Status', ''];
         const rows = results.map(res => `
       <td class="px-4 py-3 text-center font-bold text-gray-700">${res.rank || '-'}</td>
       <td class="px-4 py-3 font-medium text-gray-900 text-sm">${res.student_name || '-'}</td>
       <td class="px-4 py-3 text-sm text-gray-700">${res.total_obtained || 0}/${res.total_max || 0}</td>
       <td class="px-4 py-3 font-bold text-gray-900">${res.percentage || 0}%</td>
-      <td class="px-4 py-3 font-bold text-blue-600">${res.grade || '-'}</td>
-      <td class="px-4 py-3 text-sm text-gray-700">${res.cgpa || '-'}</td>
+      <td class="px-4 py-3 font-bold text-blue-600">${getRbseDivision(res)}</td>
       <td class="px-4 py-3">${tdBadge(res.result_status, res.result_status === 'Pass' ? 'green' : 'red')}</td>
       <td class="px-4 py-3"><button onclick="printSingleResult('${res.id}')" class="text-xs text-blue-600 hover:underline">Print</button></td>
     `);
         document.getElementById('resultsTable').innerHTML = buildTable(hdrs, rows, 'No results found. Generate results first.');
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function getRbseDivision(result) {
+      if (!result || result.is_pass === false || String(result.result_status || '').toLowerCase() === 'fail') return 'Fail';
+      const percentage = parseFloat(result.percentage) || 0;
+      if (percentage >= 60) return 'First Division';
+      if (percentage >= 45) return 'Second Division';
+      if (percentage >= 33) return 'Third Division';
+      return 'Fail';
     }
 
     function buildResultPrintHtml(results, printTitle) {
@@ -486,8 +494,8 @@
           <div class="summary">
             <div class="pill"><strong>Total</strong><div>${result.total_obtained || 0}/${result.total_max || 0}</div></div>
             <div class="pill"><strong>Percentage</strong><div>${result.percentage || 0}%</div></div>
-            <div class="pill"><strong>Grade</strong><div>${result.grade || '-'}</div></div>
-            <div class="pill"><strong>CGPA</strong><div>${result.cgpa || '-'}</div></div>
+            <div class="pill"><strong>Division</strong><div>${getRbseDivision(result)}</div></div>
+            <div class="pill"><strong>Result</strong><div>${result.result_status || '-'}</div></div>
           </div>
           <table>
             <thead><tr><th>Subject</th><th>Marks</th><th>Grade</th><th>Status</th></tr></thead>

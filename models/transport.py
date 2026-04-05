@@ -8,9 +8,9 @@ from models.staff import Staff
 class TransportRoute(Document):
     school = ReferenceField(School, required=True)
     route_name = StringField(required=True)
-    route_code = StringField(required=True)
-    start_point = StringField(required=True)
-    end_point = StringField(required=True)
+    route_code = StringField()
+    start_point = StringField()
+    end_point = StringField()
     stops = ListField(DictField())       # [{name, landmark, time, lat, lng}]
     distance_km = FloatField(default=0)
     estimated_duration_min = IntField(default=0)

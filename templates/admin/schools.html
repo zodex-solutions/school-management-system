@@ -1,0 +1,70 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<section class="split-layout">
+    <article class="panel form-panel">
+        <div class="panel-heading">
+            <h3>Create school</h3>
+            <span>Register a campus or institution in MongoDB.</span>
+        </div>
+        <form method="post" action="/admin/schools" class="stacked-form">
+            <label>School name<input type="text" name="name" required></label>
+            <label>School code<input type="text" name="code" required></label>
+            <label>Tagline<input type="text" name="tagline"></label>
+            <label>Board
+                <select name="board">
+                    <option>RBSE</option>
+                    <option>CBSE</option>
+                    <option>ICSE</option>
+                    <option>State Board</option>
+                    <option>IB</option>
+                    <option>IGCSE</option>
+                    <option>Other</option>
+                </select>
+            </label>
+            <label>Type
+                <select name="school_type">
+                    <option>Private</option>
+                    <option>Government</option>
+                    <option>Aided</option>
+                    <option>International</option>
+                </select>
+            </label>
+            <label>Phone<input type="text" name="phone"></label>
+            <label>Email<input type="email" name="email"></label>
+            <label>City<input type="text" name="city"></label>
+            <label>State<input type="text" name="state_name"></label>
+            <button type="submit" class="primary-button">Create school</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <h3>School directory</h3>
+            <span>{{ schools|length }} total records</span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Board</th>
+                    <th>Contact</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for school in schools %}
+                <tr>
+                    <td>{{ school.name }}</td>
+                    <td>{{ school.code }}</td>
+                    <td>{{ school.affiliation_board or "-" }}</td>
+                    <td>{{ school.phone or school.email or "-" }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4">No schools created yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </article>
+</section>
+{% endblock %}

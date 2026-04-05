@@ -220,6 +220,9 @@ async def update_staff(staff_id: str, data: dict, current_user: User = Depends(g
         staff = Staff.objects.get(id=staff_id)
         resolve_school_access(current_user, str(staff.school.id) if staff.school else None)
         data.pop('id', None)
+        data.pop('school_id', None)
+        data.pop('employee_id', None)
+        data.pop('full_name', None)
         data['updated_at'] = datetime.utcnow()
         # Recalculate gross salary if salary fields updated
         if any(k in data for k in ['basic_salary', 'hra', 'da', 'other_allowances']):

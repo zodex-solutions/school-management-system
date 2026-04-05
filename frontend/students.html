@@ -211,7 +211,7 @@
               </div>
               <div><label class="lbl">Branch</label>
                 <select id="m_branch" class="finput">
-                  <option value="">Main School</option>
+                  <option value="">School</option>
                 </select>
               </div>
               <div><label class="lbl">Admission Type</label>
@@ -288,7 +288,6 @@
                   <option value="">Select section</option>
                 </select>
               </div>
-              <div><label class="lbl">Area</label><input id="m_transport_area" type="text" class="finput" placeholder="Area" /></div>
               <div><label class="lbl">Route</label>
                 <select id="m_route" class="finput" onchange="updateRouteMeta()">
                   <option value="">Select route</option>
@@ -379,11 +378,9 @@
           <div>
             <div class="flex items-center justify-between mb-3">
               <h4 class="font-semibold text-gray-900">Present Address</h4>
-              <label class="flex items-center gap-2 text-sm text-gray-700"><input id="same_addr" type="checkbox" class="w-4 h-4 accent-blue-600" onchange="copyPresentAddress()" />Same as Present Address</label>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div class="lg:col-span-2"><label class="lbl">Address</label><input id="pres_address" type="text" class="finput" placeholder="Address" /></div>
-              <div><label class="lbl">Village/Area</label><input id="pres_village" type="text" class="finput" placeholder="Village / Area" /></div>
               <div><label class="lbl">State</label><input id="pres_state" type="text" class="finput" placeholder="State" /></div>
               <div><label class="lbl">Post Office</label><input id="pres_post" type="text" class="finput" placeholder="Post office" /></div>
               <div><label class="lbl">Pin Code</label><input id="pres_pin" type="text" class="finput" placeholder="Pin code" /></div>
@@ -393,10 +390,12 @@
           </div>
 
           <div>
-            <h4 class="font-semibold text-gray-900 mb-3">Permanent Address</h4>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-semibold text-gray-900">Permanent Address</h4>
+              <label class="flex items-center gap-2 text-sm text-gray-700"><input id="same_addr" type="checkbox" class="w-4 h-4 accent-blue-600" onchange="copyPresentAddress()" />Same as Present Address</label>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div class="lg:col-span-2"><label class="lbl">Address</label><input id="perm_address" type="text" class="finput" placeholder="Address" /></div>
-              <div><label class="lbl">Village/Area</label><input id="perm_village" type="text" class="finput" placeholder="Village / Area" /></div>
               <div><label class="lbl">State</label><input id="perm_state" type="text" class="finput" placeholder="State" /></div>
               <div><label class="lbl">Post Office</label><input id="perm_post" type="text" class="finput" placeholder="Post office" /></div>
               <div><label class="lbl">Pin Code</label><input id="perm_pin" type="text" class="finput" placeholder="Pin code" /></div>
@@ -496,6 +495,7 @@
     const studentPageParams = new URLSearchParams(window.location.search);
     const ayId = localStorage.getItem('ay_id');
     let currentSchoolId = localStorage.getItem('school_id') || '';
+    let currentSchoolName = 'School';
     let curPage = 1, totalPgs = 1;
     let routeCache = [];
     let branchCache = [];
@@ -540,8 +540,9 @@ async function loadStats() {
       if (!currentSchoolId) return;
       try {
         const r = await SchoolAPI.get(currentSchoolId);
+        currentSchoolName = r?.data?.name || 'School';
         branchCache = r?.data?.branches || [];
-        const branchOpts = '<option value="">Main School</option>' + branchCache.map(b => `<option value="${b.code}" data-name="${b.name}">${b.name}</option>`).join('');
+        const branchOpts = `<option value="" data-name="${currentSchoolName}">${currentSchoolName}</option>` + branchCache.map(b => `<option value="${b.code}" data-name="${b.name}">${b.name}</option>`).join('');
         document.getElementById('m_branch').innerHTML = branchOpts;
         document.getElementById('filterBranch').innerHTML = '<option value="">All Branches</option>' + branchCache.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
         selectedBranchCode = applyBranchAccessToSelect('filterBranch', selectedBranchCode);
@@ -567,9 +568,6 @@ async function loadStats() {
       document.getElementById('m_charge').value = route ? route.fee_per_month || 0 : '';
       if (route && !document.getElementById('m_bus_stop').value && route.stops?.length) {
         document.getElementById('m_bus_stop').value = route.stops[0].name || '';
-      }
-      if (route && !document.getElementById('m_transport_area').value) {
-        document.getElementById('m_transport_area').value = route.start_point || '';
       }
       updateFeePreview();
     }
@@ -645,7 +643,7 @@ async function loadStats() {
     function collectAddress(prefix) {
       return {
         address: document.getElementById(`${prefix}_address`).value || null,
-        village_area: document.getElementById(`${prefix}_village`).value || null,
+        village_area: null,
         post_office: document.getElementById(`${prefix}_post`).value || null,
         city: document.getElementById(`${prefix}_city`).value || null,
         state: document.getElementById(`${prefix}_state`).value || null,
@@ -656,7 +654,7 @@ async function loadStats() {
 
     function copyPresentAddress() {
       if (!document.getElementById('same_addr').checked) return;
-      ['address', 'village', 'post', 'city', 'state', 'pin', 'phone'].forEach(field => {
+      ['address', 'post', 'city', 'state', 'pin', 'phone'].forEach(field => {
         document.getElementById(`perm_${field}`).value = document.getElementById(`pres_${field}`).value;
       });
     }
@@ -962,7 +960,7 @@ async function loadStats() {
                 <div><span class="text-slate-400">Migration / Lateral:</span> <span class="font-medium text-slate-900">${s.migration ? 'Migration' : '-'} ${s.lateral_entry ? '/ Lateral Entry' : ''}</span></div>
                 <div><span class="text-slate-400">Transport Route:</span> <span class="font-medium text-slate-900">${s.transport_route_name || '-'}</span></div>
                 <div><span class="text-slate-400">Transport Charge:</span> <span class="font-medium text-slate-900">${formatCurrency(s.transport_fee_per_month || 0)}</span></div>
-                <div><span class="text-slate-400">Area / Stop:</span> <span class="font-medium text-slate-900">${s.transport_area || '-'} / ${s.bus_stop || '-'}</span></div>
+                <div><span class="text-slate-400">Bus Stop:</span> <span class="font-medium text-slate-900">${s.bus_stop || '-'}</span></div>
                 <div><span class="text-slate-400">Months:</span> <span class="font-medium text-slate-900">${(s.transport_months || []).join(', ') || '-'}</span></div>
                 <div><span class="text-slate-400">Referral Type:</span> <span class="font-medium text-slate-900">${s.referral_type || '-'}</span></div>
                 <div><span class="text-slate-400">Referral Contact:</span> <span class="font-medium text-slate-900">${s.referral_number || s.referral_email || '-'}</span></div>
@@ -1020,11 +1018,11 @@ async function loadStats() {
               <div class="space-y-4 text-sm">
                 <div class="rounded-xl bg-white p-4 border border-slate-200">
                   <div class="font-semibold text-slate-900 mb-2">Present Address</div>
-                  <div class="text-slate-600">${[presentAddr.address, presentAddr.village_area, presentAddr.post_office, presentAddr.city, presentAddr.state, presentAddr.pin_code].filter(Boolean).join(', ') || s.current_address || '-'}</div>
+                  <div class="text-slate-600">${[presentAddr.address, presentAddr.post_office, presentAddr.city, presentAddr.state, presentAddr.pin_code].filter(Boolean).join(', ') || s.current_address || '-'}</div>
                 </div>
                 <div class="rounded-xl bg-white p-4 border border-slate-200">
                   <div class="font-semibold text-slate-900 mb-2">Permanent Address</div>
-                  <div class="text-slate-600">${[permanentAddr.address, permanentAddr.village_area, permanentAddr.post_office, permanentAddr.city, permanentAddr.state, permanentAddr.pin_code].filter(Boolean).join(', ') || s.permanent_address || '-'}</div>
+                  <div class="text-slate-600">${[permanentAddr.address, permanentAddr.post_office, permanentAddr.city, permanentAddr.state, permanentAddr.pin_code].filter(Boolean).join(', ') || s.permanent_address || '-'}</div>
                 </div>
               </div>
             </div>
@@ -1154,7 +1152,6 @@ async function loadStats() {
         setFormValue('m_cls', s.classroom_id);
         loadSections();
         setFormValue('m_sec', s.section_id);
-        setFormValue('m_transport_area', s.transport_area);
         setFormValue('m_route', s.transport_route_id);
         setFormValue('m_bus_stop', s.bus_stop);
         setFormValue('m_bus_no', s.bus_no);
@@ -1221,7 +1218,7 @@ async function loadStats() {
         classroom_id: document.getElementById('m_cls').value,
         section_id: document.getElementById('m_sec').value,
         branch_code: branchEl.value || null,
-        branch_name: branchOpt?.dataset?.name || null,
+        branch_name: branchOpt?.dataset?.name || currentSchoolName || null,
         admission_type: document.getElementById('m_at').value,
         registration_type: document.getElementById('m_reg_type').value,
         parent_info: {
@@ -1239,7 +1236,6 @@ async function loadStats() {
         permanent_address_details: collectAddress('perm'),
         uses_transport: !!routeId,
         transport_route_id: routeId,
-        transport_area: document.getElementById('m_transport_area').value || null,
         bus_stop: document.getElementById('m_bus_stop').value || null,
         bus_no: document.getElementById('m_bus_no').value || null,
         transport_months: months,

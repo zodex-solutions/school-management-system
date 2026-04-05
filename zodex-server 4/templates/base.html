@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zodex Server</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: "#fff7ed",
+              100: "#ffedd5",
+              500: "#f97316",
+              600: "#ea580c",
+              700: "#c2410c"
+            }
+          },
+          boxShadow: {
+            soft: "0 20px 60px rgba(15, 23, 42, 0.08)"
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="min-h-screen bg-[linear-gradient(180deg,#fffaf5_0%,#f4efe8_100%)] px-4 py-8 text-slate-800">
+  <main class="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center justify-center">
+    <section class="w-full max-w-3xl rounded-[32px] border border-white/80 bg-white/90 p-8 shadow-soft backdrop-blur sm:p-12">
+      <span class="inline-flex rounded-full border border-brand-100 bg-brand-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-brand-700">
+        FastAPI Backend Ready
+      </span>
+      <h1 class="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
+        Zodex Server is running
+      </h1>
+      <p class="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+        This backend is prepared for the `zodex-client` frontend with seeded content, public APIs, and a Tailwind-based admin panel.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a href="/docs" class="inline-flex items-center justify-center rounded-2xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:bg-brand-700">
+          Open API Docs
+        </a>
+        <a href="/admin/login" class="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-5 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100">
+          Open Admin
+        </a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

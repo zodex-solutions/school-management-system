@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from contextlib import asynccontextmanager
@@ -28,6 +29,7 @@ from routes.hostel import router as hostel_router
 from routes.payroll import router as payroll_router
 from routes.phase3_modules import admissions_router, cert_router
 from routes.parent_portal import router as parent_router
+from routes.admin import router as admin_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -67,10 +69,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 # ── Mount uploads directory ───────────────────────────────────────────────────
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+admin_static_dir = os.path.join(BASE_DIR, "static")
+if os.path.exists(admin_static_dir):
+    app.mount("/admin-assets", StaticFiles(directory=admin_static_dir), name="admin_static")
 
 
 # ── Global error handler ──────────────────────────────────────────────────────
@@ -86,6 +92,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # ── Register ALL API routers ──────────────────────────────────────────────────
 PREFIX = "/api/v1"
+
+app.include_router(admin_router)
 
 for r in [
     auth_router, institution_router, student_router, staff_router,

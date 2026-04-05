@@ -296,6 +296,82 @@ async def list_students(
     })
 
 
+@router.get("/stats/summary")
+async def student_stats(school_id: str, academic_year_id: Optional[str] = None,
+                        branch_code: Optional[str] = None,
+                        current_user: User = Depends(get_current_user)):
+    try:
+        school_id = resolve_school_access(current_user, school_id)
+        branch_code = resolve_branch_scope(current_user, branch_code)
+        school = School.objects.get(id=school_id)
+        query = Student.objects(school=school, is_active=True)
+        if academic_year_id:
+            ay = AcademicYear.objects.get(id=academic_year_id)
+            query = query.filter(academic_year=ay)
+        if branch_code:
+            query = query.filter(branch_code=branch_code)
+
+        stats = {
+            "total": query.count(),
+            "by_gender": {
+                "male": query.filter(gender="Male").count(),
+                "female": query.filter(gender="Female").count(),
+                "other": query.filter(gender="Other").count()
+            },
+            "by_status": {
+                "active": query.filter(admission_status="Active").count(),
+                "transferred": query.filter(admission_status="Transferred").count(),
+                "alumni": query.filter(admission_status="Alumni").count(),
+            }
+        }
+        return success_response(stats)
+    except School.DoesNotExist:
+        raise HTTPException(404, "School not found")
+
+
+@router.get("/search-siblings")
+async def search_siblings(
+    school_id: str,
+    classroom_id: Optional[str] = None,
+    section_id: Optional[str] = None,
+    search: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        school_id = resolve_school_access(current_user, school_id)
+        scoped_branch = resolve_branch_scope(current_user, None)
+        school = School.objects.get(id=school_id)
+        query = Student.objects(school=school, is_active=True)
+        if scoped_branch:
+            query = query.filter(branch_code=scoped_branch)
+        if classroom_id:
+            query = query.filter(classroom=ClassRoom.objects.get(id=classroom_id))
+        if section_id:
+            query = query.filter(section=Section.objects.get(id=section_id))
+        if search:
+            query = query.filter(__raw__={"$or": [
+                {"first_name": {"$regex": search, "$options": "i"}},
+                {"last_name": {"$regex": search, "$options": "i"}},
+                {"admission_no": {"$regex": search, "$options": "i"}},
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"parent_info.father_name": {"$regex": search, "$options": "i"}}
+            ]})
+        result = [{
+            "id": str(s.id),
+            "admission_no": s.admission_no,
+            "full_name": s.full_name,
+            "father_name": s.parent_info.father_name if s.parent_info else None,
+            "mother_name": s.parent_info.mother_name if s.parent_info else None,
+            "phone": s.phone or (s.parent_info.father_phone if s.parent_info else None),
+            "classroom_name": s.classroom.name if s.classroom else None,
+            "section_name": s.section.name if s.section else None,
+            "address": s.current_address
+        } for s in query.order_by('first_name')[:100]]
+        return success_response(result)
+    except School.DoesNotExist:
+        raise HTTPException(404, "School not found")
+
+
 @router.get("/{student_id}")
 async def get_student(student_id: str, current_user: User = Depends(get_current_user)):
     try:
@@ -766,78 +842,3 @@ async def get_tc(student_id: str, current_user: User = Depends(get_current_user)
     except Student.DoesNotExist:
         raise HTTPException(404, "Student not found")
 
-
-@router.get("/stats/summary")
-async def student_stats(school_id: str, academic_year_id: Optional[str] = None,
-                        branch_code: Optional[str] = None,
-                        current_user: User = Depends(get_current_user)):
-    try:
-        school_id = resolve_school_access(current_user, school_id)
-        branch_code = resolve_branch_scope(current_user, branch_code)
-        school = School.objects.get(id=school_id)
-        query = Student.objects(school=school, is_active=True)
-        if academic_year_id:
-            ay = AcademicYear.objects.get(id=academic_year_id)
-            query = query.filter(academic_year=ay)
-        if branch_code:
-            query = query.filter(branch_code=branch_code)
-        
-        stats = {
-            "total": query.count(),
-            "by_gender": {
-                "male": query.filter(gender="Male").count(),
-                "female": query.filter(gender="Female").count(),
-                "other": query.filter(gender="Other").count()
-            },
-            "by_status": {
-                "active": query.filter(admission_status="Active").count(),
-                "transferred": query.filter(admission_status="Transferred").count(),
-                "alumni": query.filter(admission_status="Alumni").count(),
-            }
-        }
-        return success_response(stats)
-    except School.DoesNotExist:
-        raise HTTPException(404, "School not found")
-
-
-@router.get("/search-siblings")
-async def search_siblings(
-    school_id: str,
-    classroom_id: Optional[str] = None,
-    section_id: Optional[str] = None,
-    search: Optional[str] = None,
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        school_id = resolve_school_access(current_user, school_id)
-        scoped_branch = resolve_branch_scope(current_user, None)
-        school = School.objects.get(id=school_id)
-        query = Student.objects(school=school, is_active=True)
-        if scoped_branch:
-            query = query.filter(branch_code=scoped_branch)
-        if classroom_id:
-            query = query.filter(classroom=ClassRoom.objects.get(id=classroom_id))
-        if section_id:
-            query = query.filter(section=Section.objects.get(id=section_id))
-        if search:
-            query = query.filter(__raw__={"$or": [
-                {"first_name": {"$regex": search, "$options": "i"}},
-                {"last_name": {"$regex": search, "$options": "i"}},
-                {"admission_no": {"$regex": search, "$options": "i"}},
-                {"phone": {"$regex": search, "$options": "i"}},
-                {"parent_info.father_name": {"$regex": search, "$options": "i"}}
-            ]})
-        result = [{
-            "id": str(s.id),
-            "admission_no": s.admission_no,
-            "full_name": s.full_name,
-            "father_name": s.parent_info.father_name if s.parent_info else None,
-            "mother_name": s.parent_info.mother_name if s.parent_info else None,
-            "phone": s.phone or (s.parent_info.father_phone if s.parent_info else None),
-            "classroom_name": s.classroom.name if s.classroom else None,
-            "section_name": s.section.name if s.section else None,
-            "address": s.current_address
-        } for s in query.order_by('first_name')[:100]]
-        return success_response(result)
-    except School.DoesNotExist:
-        raise HTTPException(404, "School not found")

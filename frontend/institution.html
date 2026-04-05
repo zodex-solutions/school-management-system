@@ -212,6 +212,7 @@
                 <div><label class="lbl">Affiliation Board</label>
                   <select id="s_board" class="finput">
                     <option value="">Select board</option>
+                    <option>RBSE</option>
                     <option>CBSE</option>
                     <option>ICSE</option>
                     <option>State Board</option>
@@ -349,7 +350,7 @@
               <button onclick="openGradingModal()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add Grading</button>
             </div>
             <div class="bg-gray-50 rounded-xl p-6 mb-5">
-              <h5 class="font-semibold text-gray-700 mb-4">Standard CBSE Grading (A+ to F)</h5>
+              <h5 class="font-semibold text-gray-700 mb-4">Standard RBSE Grading (A+ to F)</h5>
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
@@ -365,7 +366,7 @@
               </div>
               <button onclick="createDefaultGrading()"
                 class="mt-4 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Save
-                Default CBSE Grading</button>
+                Default RBSE Grading</button>
             </div>
             <div id="gradingList"></div>
           </div>
@@ -477,7 +478,7 @@
       </div>
       <div class="px-6 py-5 space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><label class="lbl">Name *</label><input id="grading_name" class="finput" placeholder="e.g. CBSE Standard Grading" /></div>
+          <div><label class="lbl">Name *</label><input id="grading_name" class="finput" placeholder="e.g. RBSE Standard Grading" /></div>
           <div><label class="lbl">Type</label><select id="grading_type" class="finput"><option value="Marks">Marks</option><option value="Grades">Grades</option><option value="CGPA">CGPA</option></select></div>
         </div>
         <label class="flex items-center gap-2"><input type="checkbox" id="grading_default" class="w-4 h-4 accent-blue-600" /><span class="text-sm text-gray-700">Set as default grading</span></label>
@@ -547,6 +548,9 @@
     function buildDefaultGradeRows() {
       return defGrades.map(g => ({ grade: g.grade, min: g.min, max: g.max, gp: g.gp }));
     }
+    function normalizeGradingName(name) {
+      return (name || '').replace(/CBSE/gi, 'RBSE').replace(/\s+\/\s+RBSE/gi, ' RBSE');
+    }
     function addGradingScaleRow(scale = {}) {
       const row = document.createElement('div');
       row.className = 'grid grid-cols-4 gap-2 grading-scale-row';
@@ -564,7 +568,7 @@
       editingGradingId = grading?.id || '';
       document.getElementById('gradingModalTitle').textContent = grading ? 'Edit Grading System' : 'Add Grading System';
       document.getElementById('gradingSubmitBtn').textContent = grading ? 'Update' : 'Save';
-      document.getElementById('grading_name').value = grading?.name || '';
+      document.getElementById('grading_name').value = normalizeGradingName(grading?.name || '');
       document.getElementById('grading_type').value = grading?.grading_type || 'Marks';
       document.getElementById('grading_default').checked = !!grading?.is_default;
       document.getElementById('gradingScaleRows').innerHTML = '';
@@ -575,9 +579,16 @@
     function setLogoPreview(targetId, url, fallback = 'No Logo') {
       const el = document.getElementById(targetId);
       if (!el) return;
+      const safeUrl = normalizeLogoUrl(url);
       el.innerHTML = url
-        ? `<img src="${url}" alt="Logo" class="w-full h-full object-cover" />`
+        ? `<img src="${safeUrl}" alt="Logo" class="w-full h-full object-cover" />`
         : `<span>${fallback}</span>`;
+    }
+
+    function normalizeLogoUrl(url) {
+      if (!url) return '';
+      if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/uploads/')) return url;
+      return `/uploads/${url.replace(/^\/+/, '')}`;
     }
 
     async function uploadInstitutionLogo(type, index = null) {
@@ -590,7 +601,7 @@
         const fd = new FormData();
         fd.append('file', file);
         const res = await SchoolAPI.uploadLogo(fd);
-        const url = res?.data?.file_url || '';
+        const url = normalizeLogoUrl(res?.data?.file_url || res?.data?.file_path || '');
         document.getElementById(hiddenId).value = url;
         setLogoPreview(previewId, url);
         showToast('Logo uploaded!');
@@ -866,7 +877,7 @@
     async function createDefaultGrading() {
       if (!schoolId) { showToast('Save school first', 'error'); return; }
       const scales = [{ grade: 'A+', min_marks: 91, max_marks: 100, grade_point: 10, remarks: 'Outstanding' }, { grade: 'A', min_marks: 81, max_marks: 90, grade_point: 9, remarks: 'Excellent' }, { grade: 'B+', min_marks: 71, max_marks: 80, grade_point: 8, remarks: 'Very Good' }, { grade: 'B', min_marks: 61, max_marks: 70, grade_point: 7, remarks: 'Good' }, { grade: 'C+', min_marks: 51, max_marks: 60, grade_point: 6, remarks: 'Average' }, { grade: 'C', min_marks: 41, max_marks: 50, grade_point: 5, remarks: 'Below Average' }, { grade: 'D', min_marks: 33, max_marks: 40, grade_point: 4, remarks: 'Pass' }, { grade: 'F', min_marks: 0, max_marks: 32, grade_point: 0, remarks: 'Fail' }];
-      try { await GradingAPI.create({ school_id: schoolId, name: 'CBSE Standard Grading', grading_type: 'Marks', is_default: true, scales }); showToast('Default grading system saved!'); loadGradingSystems(); }
+      try { await GradingAPI.create({ school_id: schoolId, name: 'RBSE Standard Grading', grading_type: 'Marks', is_default: true, scales }); showToast('Default grading system saved!'); loadGradingSystems(); }
       catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
@@ -876,7 +887,7 @@
         const r = await GradingAPI.list(schoolId);
         const systems = r?.data || [];
         document.getElementById('gradingList').innerHTML = buildTable(['Name', 'Type', 'Default', 'Scales', ''], systems.map(gs => `
-          <td class="px-4 py-3 font-semibold text-gray-900">${gs.name}</td>
+          <td class="px-4 py-3 font-semibold text-gray-900">${normalizeGradingName(gs.name)}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${gs.grading_type}</td>
           <td class="px-4 py-3">${gs.is_default ? tdBadge('Default', 'green') : ''}</td>
           <td class="px-4 py-3 text-xs text-gray-500">${(gs.scales || []).map(scale => `${scale.grade} (${scale.min}-${scale.max})`).join(', ')}</td>

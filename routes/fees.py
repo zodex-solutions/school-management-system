@@ -18,8 +18,25 @@ router = APIRouter(prefix="/fees", tags=["Fees Management"])
 async def create_fee_category(data: dict, current_user: User = Depends(get_current_user)):
     data['school_id'] = resolve_school_access(current_user, data.get('school_id'))
     school = School.objects.get(id=data['school_id'])
+    name = (data.get('name') or '').strip()
+    code = (data.get('code') or '').strip().upper()
+    if not name or not code:
+        raise HTTPException(status_code=400, detail="Name and code are required")
+
+    existing = FeeCategory.objects(
+        school=school,
+        is_active=True
+    ).filter(__raw__={
+        "$or": [
+            {"name": {"$regex": f"^{name}$", "$options": "i"}},
+            {"code": {"$regex": f"^{code}$", "$options": "i"}}
+        ]
+    }).first()
+    if existing:
+        return success_response({"id": str(existing.id)}, "Fee category already exists")
+
     cat = FeeCategory(
-        school=school, name=data['name'], code=data['code'],
+        school=school, name=name, code=code,
         description=data.get('description'),
         is_mandatory=data.get('is_mandatory', True)
     )
