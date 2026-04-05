@@ -79,6 +79,7 @@ class Student(Document):
     sibling_student_ids = ListField(StringField())
     nationality = StringField(default="Indian")
     aadhar_number = StringField()
+    srn_no = StringField()
 
     # Contact
     phone = StringField()

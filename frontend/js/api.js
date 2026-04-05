@@ -293,6 +293,18 @@ const StudentAPI = {
   delete:     (id)    => API.delete(`/students/${id}`),
   uploadPhoto:(id,fd) => API.upload(`/students/${id}/upload-photo`, fd),
   uploadDoc:  (id,fd) => API.upload(`/students/${id}/upload-document`, fd),
+  templateUrl:(schoolId = '', academicYearId = '') => {
+    const params = new URLSearchParams();
+    if (schoolId) params.append('school_id', schoolId);
+    if (academicYearId) params.append('academic_year_id', academicYearId);
+    return `${API_BASE}/students/import/template${params.toString() ? `?${params.toString()}` : ''}`;
+  },
+  importCsv:  (schoolId, academicYearId, fd, branchCode = '', branchName = '') => {
+    const params = new URLSearchParams({ school_id: schoolId, academic_year_id: academicYearId });
+    if (branchCode) params.append('branch_code', branchCode);
+    if (branchName) params.append('branch_name', branchName);
+    return API.upload(`/students/import/csv?${params.toString()}`, fd);
+  },
   generateTC: (id,d)  => API.post(`/students/${id}/transfer-certificate`, d),
   getTC:      (id)    => API.get(`/students/${id}/transfer-certificate`),
   stats:      (sid, ayid, branchCode)   => API.get('/students/stats/summary', { school_id: sid, academic_year_id: ayid, branch_code: branchCode }),

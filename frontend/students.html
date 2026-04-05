@@ -150,6 +150,31 @@
         <div id="statsRow" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+              <h3 class="text-lg font-bold text-gray-900">Bulk Student Upload</h3>
+              <p class="text-sm text-gray-500 mt-1">Backend structure ke according CSV template download karo aur usi format me data upload karo. Agar class ya section ERP me pehle se nahi bani hai to import ke time khud create ho jayegi, aur jo fields blank hongi unhe baad me update kar sakte ho.</p>
+            </div>
+            <button onclick="downloadStudentImportTemplate()" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 whitespace-nowrap">Download CSV Template</button>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 mt-5">
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+              <label class="lbl">Upload Student CSV</label>
+              <input id="studentImportFile" type="file" accept=".csv" class="finput" />
+              <div class="grid sm:grid-cols-3 gap-3 mt-3 text-sm text-slate-500">
+                <div class="rounded-xl bg-white border border-slate-200 px-3 py-2">School: <span id="studentImportSchool" class="font-medium text-slate-700">-</span></div>
+                <div class="rounded-xl bg-white border border-slate-200 px-3 py-2">Academic Year: <span id="studentImportYear" class="font-medium text-slate-700">-</span></div>
+                <div class="rounded-xl bg-white border border-slate-200 px-3 py-2">Branch: <span id="studentImportBranch" class="font-medium text-slate-700">Main School</span></div>
+              </div>
+            </div>
+            <div class="flex flex-col gap-3 lg:w-56">
+              <button id="studentImportBtn" onclick="uploadStudentCsv()" class="px-5 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed">Upload Data</button>
+              <div id="studentImportResult" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 min-h-[92px]">CSV template download karo, data fill karo, file save karo, phir yahin se upload kar do.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div class="flex flex-col sm:flex-row gap-3 justify-between mb-5">
             <div class="flex gap-2 flex-wrap">
               <input id="searchInput" type="text" placeholder="Search name, admission no..."
@@ -236,6 +261,7 @@
               <div><label class="lbl">Phone</label><input id="m_ph" type="tel" class="finput" placeholder="Phone" /></div>
               <div><label class="lbl">Email</label><input id="m_em" type="email" class="finput" placeholder="Email" /></div>
               <div><label class="lbl">Aadhar Number</label><input id="m_aad" type="text" class="finput" placeholder="12-digit Aadhar" maxlength="12" /></div>
+              <div><label class="lbl">SRN No</label><input id="m_srn" type="text" class="finput" placeholder="Student SRN" /></div>
               <div><label class="lbl">Religion</label>
                 <select id="m_rel" class="finput">
                   <option value="">Select</option>
@@ -496,6 +522,7 @@
     const ayId = localStorage.getItem('ay_id');
     let currentSchoolId = localStorage.getItem('school_id') || '';
     let currentSchoolName = 'School';
+    let currentAcademicYearName = '';
     let curPage = 1, totalPgs = 1;
     let routeCache = [];
     let branchCache = [];
@@ -551,7 +578,59 @@ async function loadStats() {
           document.getElementById('m_branch').value = scopedFormBranch;
         }
         document.getElementById('m_branch').disabled = !!getAssignedBranchCode();
+        updateStudentImportMeta();
       } catch (e) { }
+    }
+
+    async function loadAcademicYearMeta() {
+      if (!currentSchoolId || !ayId) return;
+      try {
+        const r = await AcademicYearAPI.list(currentSchoolId);
+        const years = r?.data || [];
+        currentAcademicYearName = years.find(year => year.id === ayId)?.name || ayId;
+        updateStudentImportMeta();
+      } catch (e) { }
+    }
+
+    function updateStudentImportMeta() {
+      const schoolEl = document.getElementById('studentImportSchool');
+      const yearEl = document.getElementById('studentImportYear');
+      const branchEl = document.getElementById('studentImportBranch');
+      if (schoolEl) schoolEl.textContent = currentSchoolName || 'School';
+      if (yearEl) yearEl.textContent = currentAcademicYearName || ayId || '-';
+      const selectedFilterBranch = document.getElementById('filterBranch')?.value || '';
+      const activeBranchCode = selectedFilterBranch || getAssignedBranchCode() || '';
+      const branch = branchCache.find(b => b.code === activeBranchCode);
+      if (branchEl) branchEl.textContent = branch?.name || currentSchoolName || 'Main School';
+    }
+
+    async function downloadStudentImportTemplate() {
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(StudentAPI.templateUrl(currentSchoolId, ayId), {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!res.ok) {
+          let message = 'Template download failed';
+          try {
+            const err = await res.json();
+            message = err.detail || err.message || message;
+          } catch (_) {}
+          throw new Error(message);
+        }
+        const blob = await res.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = 'student_import_template.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(downloadUrl);
+        showToast('Template downloaded', 'success');
+      } catch (e) {
+        showToast('Template error: ' + e.message, 'error');
+      }
     }
 
     async function loadRoutes() {
@@ -928,6 +1007,7 @@ async function loadStats() {
                 <div><span class="text-slate-400">Caste:</span> <span class="font-medium text-slate-900">${s.caste || '-'}</span></div>
                 <div><span class="text-slate-400">Nationality:</span> <span class="font-medium text-slate-900">${s.nationality || '-'}</span></div>
                 <div><span class="text-slate-400">Aadhar:</span> <span class="font-medium text-slate-900">${s.aadhar_number || '-'}</span></div>
+                <div><span class="text-slate-400">SRN No:</span> <span class="font-medium text-slate-900">${s.srn_no || '-'}</span></div>
                 <div><span class="text-slate-400">Blood Group:</span> <span class="font-medium text-slate-900">${medical.blood_group || '-'}</span></div>
                 <div><span class="text-slate-400">Height / Weight:</span> <span class="font-medium text-slate-900">${medical.height || '-'} / ${medical.weight || '-'}</span></div>
               </div>
@@ -1142,6 +1222,7 @@ async function loadStats() {
         setFormValue('m_ph', s.phone);
         setFormValue('m_em', s.email);
         setFormValue('m_aad', s.aadhar_number);
+        setFormValue('m_srn', s.srn_no);
         setFormValue('m_rel', s.religion);
         setFormValue('m_caste', s.caste);
         setFormValue('m_nat', s.nationality || 'Indian');
@@ -1213,6 +1294,7 @@ async function loadStats() {
         caste: document.getElementById('m_caste').value || null,
         nationality: document.getElementById('m_nat').value || 'Indian',
         aadhar_number: document.getElementById('m_aad').value || null,
+        srn_no: document.getElementById('m_srn').value || null,
         school_id: currentSchoolId,
         academic_year_id: ayId || '',
         classroom_id: document.getElementById('m_cls').value,
@@ -1275,19 +1357,60 @@ async function loadStats() {
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
+    async function uploadStudentCsv() {
+      if (!currentSchoolId) { showToast('Configure school first', 'error'); return; }
+      if (!ayId) { showToast('Select academic year first', 'error'); return; }
+      const fileInput = document.getElementById('studentImportFile');
+      const resultBox = document.getElementById('studentImportResult');
+      const button = document.getElementById('studentImportBtn');
+      const file = fileInput?.files?.[0];
+      if (!file) { showToast('CSV file select karo', 'error'); return; }
+      const selectedFilterBranch = document.getElementById('filterBranch')?.value || '';
+      const branchCode = selectedFilterBranch || getAssignedBranchCode() || '';
+      const branch = branchCache.find(b => b.code === branchCode);
+      const fd = new FormData();
+      fd.append('file', file);
+      button.disabled = true;
+      resultBox.textContent = 'Uploading and importing student data...';
+      try {
+        const r = await StudentAPI.importCsv(currentSchoolId, ayId, fd, branchCode, branch?.name || currentSchoolName || '');
+        const data = r?.data || {};
+        resultBox.innerHTML = `
+          <div class="font-semibold text-slate-800">Import completed</div>
+          <div class="mt-2 text-slate-600">Created: <span class="font-medium">${data.created || 0}</span></div>
+          <div class="text-slate-600">Updated: <span class="font-medium">${data.updated || 0}</span></div>
+          <div class="text-slate-600">Skipped: <span class="font-medium">${data.skipped || 0}</span></div>
+          <div class="text-slate-600">Classes created: <span class="font-medium">${data.classes_created || 0}</span></div>
+          <div class="text-slate-600">Sections created: <span class="font-medium">${data.sections_created || 0}</span></div>
+          <div class="text-slate-500 mt-2 text-xs">${(data.errors || []).slice(0, 3).join(' | ') || 'No import errors'}</div>`;
+        fileInput.value = '';
+        showToast(`Import complete. Created ${data.created || 0}, updated ${data.updated || 0}`, 'success');
+        loadStudents(1);
+        loadStats();
+      } catch (e) {
+        resultBox.textContent = `Import failed: ${e.message}`;
+        showToast('Import error: ' + e.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+
     const dbLoad = debounce(() => loadStudents(1));
     document.querySelectorAll('.m_month').forEach(el => el.addEventListener('change', updateFeePreview));
     document.getElementById('searchInput').addEventListener('input', dbLoad);
     document.getElementById('filterStatus').addEventListener('change', () => loadStudents(1));
     document.getElementById('filterBranch').addEventListener('change', async (e) => {
       selectedBranchCode = e.target.value || '';
+      updateStudentImportMeta();
       await loadStats();
       loadStudents(1);
     });
     document.getElementById('filterClass').addEventListener('change', () => loadStudents(1));
     (async function initStudentPage() {
       currentSchoolId = await initializeSchoolContext() || currentSchoolId;
-      loadStats(); loadClasses(); loadSchoolMeta(); loadRoutes(); loadStudents();
+      updateStudentImportMeta();
+      loadStats(); loadClasses(); loadSchoolMeta(); loadAcademicYearMeta(); loadRoutes(); loadStudents();
     })();
 
     function statCard(title, value, icon, color) {

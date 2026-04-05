@@ -1,7 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+import csv
+import io
+import re
+import os
+import tempfile
 from models.student import Student, TransferCertificate
 from models.institution import School, AcademicYear, ClassRoom, Section, User
 from models.transport import TransportRoute, StudentTransport, Vehicle
@@ -13,6 +19,7 @@ from utils.helpers import (
     success_response, paginate_query, generate_admission_no,
     generate_id, generate_tc_no, save_upload_file, doc_to_dict
 )
+from utils.student_pdf_import import convert_student_pdf_to_csv
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -27,6 +34,7 @@ def _ensure_student_scope(student: Student, current_user: User):
 # ─── Admission ────────────────────────────────────────────────────────────────
 
 class StudentAdmission(BaseModel):
+    admission_no: Optional[str] = None
     first_name: str
     last_name: Optional[str] = ""
     middle_name: Optional[str] = None
@@ -36,6 +44,7 @@ class StudentAdmission(BaseModel):
     caste: Optional[str] = None
     nationality: str = "Indian"
     aadhar_number: Optional[str] = None
+    srn_no: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     current_address: Optional[str] = None
@@ -80,6 +89,129 @@ def _normalize_address_text(address: Optional[dict], fallback: Optional[str] = N
         return None
     parts = [address.get(key) for key in ["address", "village_area", "post_office", "city", "state", "pin_code"]]
     return ", ".join([part for part in parts if part])
+
+
+def _parse_import_date(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    for fmt in ("%d-%b-%Y", "%d-%B-%Y", "%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _split_name(full_name: Optional[str]) -> tuple[str, Optional[str], str]:
+    parts = [part for part in re.split(r"\s+", (full_name or "").strip()) if part]
+    if not parts:
+        return "", None, ""
+    if len(parts) == 1:
+        return parts[0], None, ""
+    if len(parts) == 2:
+        return parts[0], None, parts[1]
+    return parts[0], " ".join(parts[1:-1]), parts[-1]
+
+
+def _normalize_gender(value: Optional[str]) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in {"m", "male"}:
+        return "Male"
+    if raw in {"f", "female"}:
+        return "Female"
+    return "Other"
+
+
+def _csv_value(row: dict, *keys: str) -> Optional[str]:
+    normalized = {str(k).strip().lower(): v for k, v in row.items()}
+    for key in keys:
+        value = normalized.get(key.strip().lower())
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return None
+
+
+def _resolve_class_section(row: dict) -> tuple[Optional[str], Optional[str]]:
+    combined = _csv_value(row, "class", "class/sec", "class-section", "class_section")
+    section = _csv_value(row, "section", "sec")
+    class_name = None
+    if combined:
+        match = re.match(r"(.+?)\s*-\s*([A-Za-z0-9]+)$", combined)
+        if match:
+            class_name = match.group(1).strip()
+            section = section or match.group(2).strip()
+        else:
+            class_name = combined.strip()
+    return class_name, section
+
+
+def _infer_numeric_name(class_name: Optional[str]) -> Optional[int]:
+    if not class_name:
+        return None
+    normalized = str(class_name).strip().lower()
+    direct_map = {
+        "nursery": -2,
+        "lkg": -1,
+        "ukg": 0,
+        "1st": 1,
+        "2nd": 2,
+        "3rd": 3,
+        "4th": 4,
+        "5th": 5,
+        "6th": 6,
+        "7th": 7,
+        "8th": 8,
+        "9th": 9,
+        "10th": 10,
+    }
+    if normalized in direct_map:
+        return direct_map[normalized]
+    match = re.search(r"\d+", normalized)
+    return int(match.group()) if match else None
+
+
+def _ensure_class_and_section(school: School, ay: AcademicYear, class_name: str, section_name: str) -> tuple[ClassRoom, Section, bool, bool]:
+    class_created = False
+    section_created = False
+
+    classroom = ClassRoom.objects(school=school, academic_year=ay, name__iexact=class_name, is_active=True).first()
+    if not classroom:
+        classroom = ClassRoom(
+            school=school,
+            academic_year=ay,
+            name=class_name,
+            numeric_name=_infer_numeric_name(class_name),
+            class_fee=0,
+            sections=[section_name],
+            is_active=True
+        )
+        classroom.save()
+        class_created = True
+
+    section = Section.objects(classroom=classroom, name__iexact=section_name, is_active=True).first()
+    if not section:
+        section = Section(
+            school=school,
+            academic_year=ay,
+            classroom=classroom,
+            name=section_name,
+            is_active=True
+        )
+        section.save()
+        section_created = True
+
+    existing_sections = classroom.sections or []
+    if section_name not in existing_sections:
+        classroom.sections = [*existing_sections, section_name]
+        classroom.save()
+
+    return classroom, section, class_created, section_created
 
 
 def _sync_student_transport(student: Student, route_id: Optional[str], payload: StudentAdmission):
@@ -133,7 +265,9 @@ async def admit_student(data: StudentAdmission, current_user: User = Depends(get
     except Exception as e:
         raise HTTPException(404, f"Reference not found: {str(e)}")
     
-    admission_no = generate_admission_no(school.code)
+    admission_no = (data.admission_no or "").strip() or generate_admission_no(school.code)
+    if Student.objects(admission_no=admission_no).first():
+        raise HTTPException(400, f"Student with admission number {admission_no} already exists")
     student_id = generate_id("STU")
     
     student = Student(
@@ -151,6 +285,7 @@ async def admit_student(data: StudentAdmission, current_user: User = Depends(get
         sibling_student_ids=data.sibling_student_ids or [],
         nationality=data.nationality,
         aadhar_number=data.aadhar_number,
+        srn_no=data.srn_no,
         phone=data.phone,
         email=data.email,
         current_address=_normalize_address_text(data.current_address_details, data.current_address),
@@ -195,13 +330,13 @@ async def admit_student(data: StudentAdmission, current_user: User = Depends(get
         route = _sync_student_transport(student, data.transport_route_id, data)
         student.reload()
     
-    return success_response({
-        "id": str(student.id),
-        "admission_no": student.admission_no,
-        "student_id": student.student_id,
-        "full_name": student.full_name,
-        "transport_route_name": route.route_name if route else None
-    }, "Student admitted successfully")
+        return success_response({
+            "id": str(student.id),
+            "admission_no": student.admission_no,
+            "student_id": student.student_id,
+            "full_name": student.full_name,
+            "transport_route_name": route.route_name if route else None
+        }, "Student admitted successfully")
 
 
 @router.get("")
@@ -394,6 +529,7 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
             "sibling_student_ids": student.sibling_student_ids or [],
             "nationality": student.nationality,
             "aadhar_number": student.aadhar_number,
+            "srn_no": student.srn_no,
             "phone": student.phone,
             "email": student.email,
             "current_address": student.current_address,
@@ -572,6 +708,7 @@ async def get_student_profile_summary(student_id: str, current_user: User = Depe
         "sibling_student_ids": student.sibling_student_ids or [],
         "nationality": student.nationality,
         "aadhar_number": student.aadhar_number,
+        "srn_no": student.srn_no,
         "phone": student.phone,
         "email": student.email,
         "current_address": student.current_address,
@@ -741,6 +878,222 @@ async def update_student(student_id: str, data: dict, current_user: User = Depen
         raise HTTPException(404, "Student not found")
 
 
+@router.post("/import/csv")
+async def import_students_csv(
+    school_id: str,
+    academic_year_id: str,
+    file: UploadFile = File(...),
+    branch_code: Optional[str] = None,
+    branch_name: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        school_id = resolve_school_access(current_user, school_id)
+        branch_code = resolve_branch_scope(current_user, branch_code)
+        school = School.objects.get(id=school_id)
+        ay = AcademicYear.objects.get(id=academic_year_id)
+    except Exception as e:
+        raise HTTPException(404, f"Reference not found: {str(e)}")
+
+    raw_bytes = await file.read()
+    try:
+        decoded = raw_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        decoded = raw_bytes.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(decoded))
+    created = 0
+    updated = 0
+    skipped = 0
+    classes_created = 0
+    sections_created = 0
+    errors = []
+
+    for index, row in enumerate(reader, start=2):
+        admission_no = _csv_value(row, "adm no", "admission no", "admission_no", "adm_no")
+        full_name = _csv_value(row, "name", "student name", "student_name")
+        class_name, section_name = _resolve_class_section(row)
+
+        if not admission_no or not full_name or not class_name or not section_name:
+            skipped += 1
+            errors.append(f"Row {index}: admission no, name, class or section missing")
+            continue
+
+        classroom, section, class_created, section_created = _ensure_class_and_section(school, ay, class_name, section_name)
+        classes_created += 1 if class_created else 0
+        sections_created += 1 if section_created else 0
+
+        first_name, middle_name, last_name = _split_name(full_name)
+        if not first_name:
+            skipped += 1
+            errors.append(f"Row {index}: invalid student name")
+            continue
+
+        address = _csv_value(row, "address", "current_address")
+        contact_no = _csv_value(row, "contact no", "contact_no", "mobile", "phone")
+        aadhar_no = _csv_value(row, "aadhar no", "aadhaar no", "aadhar_number", "aadhaar_number")
+        srn_no = _csv_value(row, "srn no", "srn_no", "srn")
+        father_name = _csv_value(row, "father name", "father_name")
+        mother_name = _csv_value(row, "mother name", "mother_name")
+        gender = _normalize_gender(_csv_value(row, "gen", "gender"))
+        dob = _parse_import_date(_csv_value(row, "dob", "date of birth", "date_of_birth"))
+        admission_date = _parse_import_date(_csv_value(row, "adm date", "admission date", "admission_date"))
+        category = _csv_value(row, "category", "caste")
+
+        parent_info = {
+            "father_name": father_name,
+            "father_phone": contact_no,
+            "mother_name": mother_name
+        }
+
+        update_data = {
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "last_name": last_name,
+            "date_of_birth": dob,
+            "gender": gender,
+            "caste": category,
+            "nationality": _csv_value(row, "nationality") or "Indian",
+            "aadhar_number": aadhar_no,
+            "srn_no": srn_no,
+            "phone": contact_no,
+            "email": _csv_value(row, "email"),
+            "current_address": address,
+            "permanent_address": _csv_value(row, "permanent_address") or address,
+            "school": school,
+            "academic_year": ay,
+            "classroom": classroom,
+            "section": section,
+            "branch_code": branch_code,
+            "branch_name": branch_name or school.name,
+            "admission_date": admission_date or datetime.utcnow(),
+            "admission_type": _csv_value(row, "admission_type") or "New",
+            "registration_type": "Manual",
+            "updated_at": datetime.utcnow(),
+            "remarks": _csv_value(row, "remarks")
+        }
+
+        student = Student.objects(school=school, admission_no=admission_no).first()
+        if student:
+            for key, value in update_data.items():
+                setattr(student, key, value)
+            from models.student import ParentInfo
+            student.parent_info = ParentInfo(**parent_info)
+            student.save()
+            updated += 1
+            continue
+
+        from models.student import ParentInfo
+        student = Student(
+            admission_no=admission_no,
+            student_id=generate_id("STU"),
+            created_at=datetime.utcnow(),
+            parent_info=ParentInfo(**parent_info),
+            **update_data
+        )
+        student.save()
+        created += 1
+
+    return success_response({
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "classes_created": classes_created,
+        "sections_created": sections_created,
+        "errors": errors[:100]
+    }, "Student CSV import completed")
+
+
+@router.get("/import/template")
+async def download_student_import_template(
+    school_id: Optional[str] = None,
+    academic_year_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    school = None
+    ay = None
+    if school_id:
+        school_id = resolve_school_access(current_user, school_id)
+        school = School.objects.get(id=school_id)
+    if academic_year_id:
+        ay = AcademicYear.objects.get(id=academic_year_id)
+
+    sample_class = "LKG"
+    sample_section = "A"
+    if school and ay:
+        classroom = ClassRoom.objects(school=school, academic_year=ay, is_active=True).order_by("numeric_name", "name").first()
+        if classroom:
+            sample_class = classroom.name
+            section = Section.objects(classroom=classroom, is_active=True).order_by("name").first()
+            if section:
+                sample_section = section.name
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([
+        "Adm No",
+        "Adm Date",
+        "Class",
+        "Section",
+        "Name",
+        "Father Name",
+        "Mother Name",
+        "Gen",
+        "DOB",
+        "Address",
+        "Category",
+        "Contact No",
+        "Aadhar No",
+        "SRN No",
+        "Email",
+        "Remarks",
+    ])
+    writer.writerow([
+        "1205",
+        "04-Jul-2025",
+        sample_class,
+        sample_section,
+        "Radhika Sharma",
+        "Rajkumar Sharma",
+        "Mamta Sharma",
+        "Female",
+        "30-Aug-2021",
+        "Thada Mode, Alwar, Rajasthan",
+        "GENERAL",
+        "9602385241",
+        "",
+        "",
+        "",
+        "Leave blank if not available",
+    ])
+
+    response = StreamingResponse(iter([buffer.getvalue().encode("utf-8")]), media_type="text/csv")
+    response.headers["Content-Disposition"] = 'attachment; filename="student_import_template.csv"'
+    response.headers["X-Template-Mode"] = "auto-create-class-section"
+    return response
+
+
+@router.post("/import/pdf-to-csv")
+async def convert_students_pdf_to_csv(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    filename = (file.filename or "").lower()
+    if not filename.endswith(".pdf"):
+        raise HTTPException(400, "Please upload a PDF file")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pdf_path = os.path.join(tmpdir, "student_import.pdf")
+        with open(pdf_path, "wb") as handle:
+            handle.write(await file.read())
+        try:
+            csv_content, row_count = convert_student_pdf_to_csv(pdf_path)
+        except Exception as exc:
+            raise HTTPException(500, f"PDF conversion failed: {exc}")
+
+    response = StreamingResponse(iter([csv_content.encode("utf-8")]), media_type="text/csv")
+    response.headers["Content-Disposition"] = 'attachment; filename="student_import_from_pdf.csv"'
+    response.headers["X-Student-Row-Count"] = str(row_count)
+    return response
+
+
 @router.delete("/{student_id}")
 async def delete_student(student_id: str, current_user: User = Depends(get_current_user)):
     try:
@@ -841,4 +1194,3 @@ async def get_tc(student_id: str, current_user: User = Depends(get_current_user)
         return success_response(result)
     except Student.DoesNotExist:
         raise HTTPException(404, "Student not found")
-
