@@ -4,9 +4,11 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 from io import BytesIO
+import os
 import smtplib
 from email.message import EmailMessage
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from models.fees import FeeCategory, FeeStructure, FeeInvoice, PaymentTransaction, FeeDiscount
 from models.institution import School, AcademicYear, ClassRoom, User
@@ -308,14 +310,61 @@ def _generate_invoice_pdf_bytes(invoice: FeeInvoice) -> bytes:
 
     school = invoice.school
     student = invoice.student
+    address_parts = []
+    if school and school.address:
+        address_parts = [
+            school.address.line1,
+            school.address.line2,
+            school.address.city,
+            school.address.state,
+            school.address.pincode,
+        ]
+    school_address = ", ".join([part for part in address_parts if part])
+
+    logo_path = None
+    if school and school.logo:
+        candidate = school.logo.strip()
+        if candidate.startswith("/uploads/"):
+            logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), candidate.lstrip("/"))
+        elif candidate.startswith("uploads/"):
+            logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), candidate)
+        elif os.path.isabs(candidate):
+            logo_path = candidate
+        else:
+            logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), candidate.lstrip("/"))
+        if logo_path and not os.path.exists(logo_path):
+            logo_path = None
+
+    pdf.setFillColorRGB(0.97, 0.98, 1)
+    pdf.roundRect(30, height - 145, width - 60, 105, 18, stroke=0, fill=1)
+
+    if logo_path:
+        try:
+            pdf.drawImage(ImageReader(logo_path), 42, height - 122, width=54, height=54, preserveAspectRatio=True, mask='auto')
+        except Exception:
+            pass
+
+    left_start_x = 108 if logo_path else 42
 
     pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(40, y, school.name if school else "School Invoice")
-    y -= 20
+    pdf.setFillColorRGB(0.06, 0.09, 0.16)
+    pdf.drawString(left_start_x, height - 68, school.name if school else "School Invoice")
+    pdf.setFont("Helvetica", 9)
+    pdf.setFillColorRGB(0.39, 0.45, 0.55)
+    if school_address:
+        pdf.drawString(left_start_x, height - 84, school_address[:88])
+    if school and school.phone:
+        pdf.drawString(left_start_x, height - 98, f"Phone: {school.phone}")
+    if school and school.email:
+        pdf.drawString(left_start_x, height - 112, f"Email: {school.email}")
+
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.setFillColorRGB(0.17, 0.24, 0.39)
+    pdf.drawRightString(width - 42, height - 68, f"Invoice No: {invoice.invoice_no}")
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(40, y, f"Invoice No: {invoice.invoice_no}")
-    pdf.drawRightString(width - 40, y, f"Date: {invoice.invoice_date.strftime('%d-%m-%Y') if invoice.invoice_date else '-'}")
-    y -= 24
+    pdf.drawRightString(width - 42, height - 84, f"Invoice Date: {invoice.invoice_date.strftime('%d-%m-%Y') if invoice.invoice_date else '-'}")
+    pdf.drawRightString(width - 42, height - 98, f"Due Date: {invoice.due_date.strftime('%d-%m-%Y') if invoice.due_date else '-'}")
+    y = height - 165
 
     pdf.setFont("Helvetica-Bold", 12)
     pdf.drawString(40, y, "Student Details")
@@ -328,7 +377,20 @@ def _generate_invoice_pdf_bytes(invoice: FeeInvoice) -> bytes:
     pdf.drawString(40, y, f"Class / Section: {(student.classroom.name if student and student.classroom else '-') } / {(student.section.name if student and student.section else '-')}")
     y -= 14
     pdf.drawString(40, y, f"Branch: {student.branch_name if student and student.branch_name else '-'}")
-    y -= 22
+    y -= 18
+
+    pdf.setFillColorRGB(0.96, 0.98, 1)
+    pdf.roundRect(40, y - 58, width - 80, 52, 12, stroke=0, fill=1)
+    pdf.setFillColorRGB(0.06, 0.09, 0.16)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(52, y - 28, "Total Amount")
+    pdf.drawCentredString(width / 2, y - 28, "Paid Amount")
+    pdf.drawRightString(width - 52, y - 28, "Pending Amount")
+    pdf.setFont("Helvetica-Bold", 13)
+    pdf.drawString(52, y - 44, f"Rs. {invoice.net_amount:.2f}")
+    pdf.drawCentredString(width / 2, y - 44, f"Rs. {invoice.paid_amount:.2f}")
+    pdf.drawRightString(width - 52, y - 44, f"Rs. {invoice.balance_amount:.2f}")
+    y -= 82
 
     pdf.setFont("Helvetica-Bold", 12)
     pdf.drawString(40, y, "Fee Breakdown")
@@ -363,10 +425,13 @@ def _generate_invoice_pdf_bytes(invoice: FeeInvoice) -> bytes:
     pdf.drawRightString(width - 40, y, f"Rs. {invoice.discount_amount:.2f}")
     y -= 14
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(40, y, "Net Amount")
+    pdf.drawString(40, y, "Total Amount")
     pdf.drawRightString(width - 40, y, f"Rs. {invoice.net_amount:.2f}")
     y -= 14
-    pdf.drawString(40, y, "Balance Amount")
+    pdf.drawString(40, y, "Paid Amount")
+    pdf.drawRightString(width - 40, y, f"Rs. {invoice.paid_amount:.2f}")
+    y -= 14
+    pdf.drawString(40, y, "Pending Amount")
     pdf.drawRightString(width - 40, y, f"Rs. {invoice.balance_amount:.2f}")
     y -= 22
     pdf.setFont("Helvetica", 9)
