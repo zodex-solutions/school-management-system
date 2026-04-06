@@ -71,7 +71,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
                   <option value="">All Status</option><option value="Pending">Pending</option><option value="Partial">Partial</option><option value="Paid">Paid</option><option value="Overdue">Overdue</option>
                 </select>
               </div>
-              <button onclick="document.getElementById('invModal').style.display='flex';loadInvStudents()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg whitespace-nowrap">+ Create Invoice</button>
+              <button onclick="document.getElementById('invModal').style.display='flex';loadInvoiceClasses();loadInvoiceStructures()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg whitespace-nowrap">+ Create Invoice</button>
             </div>
             <div id="invTable"></div>
           </div>
@@ -80,6 +80,10 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <div id="ftab1" class="p-5 hidden">
             <h4 class="font-bold text-gray-900 mb-5">Record Fee Payment</h4>
             <div class="max-w-lg space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label class="lbl">Class</label><select id="pay_class" class="finput" onchange="loadPaySections(); loadPayStudents()"><option value="">Select class</option></select></div>
+                <div><label class="lbl">Section</label><select id="pay_section" class="finput" onchange="loadPayStudents()"><option value="">Select section</option></select></div>
+              </div>
               <div><label class="lbl">Student *</label><select id="pay_student" class="finput" onchange="loadStudentInvoices()"><option value="">Select student</option></select></div>
               <div><label class="lbl">Invoice *</label><select id="pay_invoice" class="finput"><option value="">Select invoice</option></select></div>
               <div id="invoiceDetails" class="hidden bg-blue-50 rounded-xl p-4 text-sm">
@@ -125,7 +129,12 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       <div class="flex justify-between items-center px-6 py-4 border-b"><h3 class="font-bold text-gray-900">Create Invoice</h3><button onclick="document.getElementById('invModal').style.display='none'" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl text-lg">×</button></div>
       <div class="px-6 py-5 grid grid-cols-1 xl:grid-cols-[1.1fr_.9fr] gap-6">
         <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label class="lbl">Class</label><select id="inv_class" class="finput" onchange="loadInvoiceSections(); loadInvStudents()"><option value="">Select class</option></select></div>
+          <div><label class="lbl">Section</label><select id="inv_section" class="finput" onchange="loadInvStudents()"><option value="">Select section</option></select></div>
+        </div>
         <div><label class="lbl">Student *</label><select id="inv_student" class="finput" onchange="loadInvoiceStudentMeta()"><option value="">Select student</option></select></div>
+        <div><label class="lbl">Concession</label><select id="inv_concession" class="finput" onchange="renderInvoiceEstimate()"></select></div>
         <div><label class="lbl">Fee Structure</label><select id="inv_structure" class="finput"><option value="">Select fee structure</option></select></div>
         <label class="flex items-center gap-2"><input id="inv_transport_toggle" type="checkbox" class="w-4 h-4 accent-blue-600" /><span class="text-sm text-gray-700">Include transport fee from student route</span></label>
         <div id="inv_transport_meta" class="hidden bg-blue-50 rounded-xl p-4 text-sm text-blue-900"></div>
@@ -160,6 +169,12 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         </div>
         <div><label class="lbl">Discount (₹)</label><input id="inv_disc" type="number" class="finput" value="0"/></div>
         <div><label class="lbl">Remarks</label><input id="inv_rem" class="finput" placeholder="Remarks"/></div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+          <p class="text-sm font-semibold text-slate-800">After Create</p>
+          <label class="flex items-center gap-2 text-sm text-slate-700"><input id="inv_send_parent" type="checkbox" class="w-4 h-4 accent-blue-600" checked />Send to parent email</label>
+          <label class="flex items-center gap-2 text-sm text-slate-700"><input id="inv_send_student" type="checkbox" class="w-4 h-4 accent-blue-600" />Send to student email</label>
+          <p class="text-xs text-slate-500">Invoice PDF auto download ho jayega.</p>
+        </div>
         </div>
         <div class="space-y-4">
           <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -219,13 +234,28 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Fees Management', 'Manage fees, invoices and payments');
     const feePageParams = new URLSearchParams(window.location.search);
     let schoolId = localStorage.getItem('school_id');
-    const ayId = localStorage.getItem('ay_id');
+    let resolvedFeeAyId = localStorage.getItem('ay_id') || localStorage.getItem('academic_year_id') || '';
     let schoolBranches = [];
     let selectedBranchCode = feePageParams.get('branch_code') || '';
     let feeCats = [], feeStructCats = [];
     let invoiceStudents = {};
     let feeStructures = [];
     let invoiceStudentMeta = null;
+    let invoiceClassCache = [];
+    let paymentClassCache = [];
+    const invoiceConcessionOptions = [
+      { label: 'Select', percent: 0 },
+      { label: '20% per month concession in Tuition Fees on Each Girls Student', percent: 20 },
+      { label: '50% per month concession in Tuition Fees on Second Younger', percent: 50 },
+      { label: '100% per month concession in Tuition Fees on Third Child', percent: 100 }
+    ];
+    const allowedFeeStructureCategories = [
+      { name: 'Registration Fee', code: 'REG' },
+      { name: 'Admission Fee', code: 'ADM' },
+      { name: 'Annual Examination Fee', code: 'EXAM' },
+      { name: 'Stationary kit / Activity Charge', code: 'ACT' },
+      { name: 'Tuition Fee Mly', code: 'TUI' }
+    ];
     const initialFeeTab = feePageParams.get('tab');
 
     document.getElementById('feeBranchFilter').addEventListener('change', async (e) => {
@@ -267,9 +297,31 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       updateFeeBranchLabel();
     }
 
+    async function resolveFeeAcademicYearId(forceRefresh = false) {
+      if (!schoolId) return '';
+      if (resolvedFeeAyId && !forceRefresh) return resolvedFeeAyId;
+      try {
+        const res = await SchoolAPI.listAY(schoolId);
+        const years = res?.data || [];
+        const activeYear = years.find(year => year.is_current) || years[0] || null;
+        resolvedFeeAyId = activeYear?.id || '';
+        if (resolvedFeeAyId) {
+          localStorage.setItem('ay_id', resolvedFeeAyId);
+          localStorage.setItem('academic_year_id', resolvedFeeAyId);
+        }
+        return resolvedFeeAyId;
+      } catch (e) {
+        return resolvedFeeAyId || '';
+      }
+    }
+
     async function refreshFeeViews() {
+      await resolveFeeAcademicYearId();
       await Promise.allSettled([loadFeeStats(), loadInvoices()]);
-      if (!document.getElementById('ftab1').classList.contains('hidden')) await loadPayStudents();
+      if (!document.getElementById('ftab1').classList.contains('hidden')) {
+        await loadPaymentClasses();
+        await loadPayStudents();
+      }
       if (!document.getElementById('ftab3').classList.contains('hidden')) await loadDues();
     }
 
@@ -284,7 +336,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         t.classList.toggle('hidden', parseInt(t.id.replace('ftab', '')) !== idx);
       });
       if (idx === 0) loadInvoices();
-      if (idx === 1) loadPayStudents();
+      if (idx === 1) { loadPaymentClasses(); loadPayStudents(); }
       if (idx === 2) loadStructures();
       if (idx === 3) loadDues();
     }
@@ -323,10 +375,50 @@ function statCard(title, value, icon, color) {
   `;
 }
 
-    async function loadInvStudents() {
+    async function loadInvoiceClasses() {
       if (!schoolId) return;
       try {
-        const r = await StudentAPI.list({ school_id: schoolId, branch_code: selectedBranchCode, per_page: 200 });
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await ClassAPI.list(schoolId, academicYearId);
+        invoiceClassCache = r?.data || [];
+        document.getElementById('inv_class').innerHTML = '<option value="">Select class</option>' +
+          invoiceClassCache.map(c => `<option value="${c.id}" data-name="${c.name}" data-secs='${JSON.stringify(c.sections || [])}'>${c.name}</option>`).join('');
+        loadInvoiceSections();
+      } catch (e) {}
+    }
+
+    function loadInvoiceSections() {
+      const classEl = document.getElementById('inv_class');
+      const selectedOption = classEl?.selectedOptions?.[0];
+      let sections = [];
+      try {
+        sections = JSON.parse(selectedOption?.dataset?.secs || '[]');
+      } catch (e) {
+        sections = [];
+      }
+      document.getElementById('inv_section').innerHTML = '<option value="">Select section</option>' +
+        sections.map(sec => `<option value="${sec.id}">${sec.name}</option>`).join('');
+      document.getElementById('inv_student').innerHTML = '<option value="">Select student</option>';
+      invoiceStudents = {};
+      invoiceStudentMeta = null;
+      resetInvoiceEstimate();
+      loadInvoiceStructures();
+    }
+
+    async function loadInvStudents() {
+      if (!schoolId) return;
+      const academicYearId = await resolveFeeAcademicYearId();
+      const classId = document.getElementById('inv_class').value;
+      const sectionId = document.getElementById('inv_section').value;
+      if (!classId || !sectionId) {
+        document.getElementById('inv_student').innerHTML = '<option value="">Select student</option>';
+        invoiceStudents = {};
+        invoiceStudentMeta = null;
+        resetInvoiceEstimate();
+        return;
+      }
+      try {
+        const r = await StudentAPI.list({ school_id: schoolId, academic_year_id: academicYearId || '', classroom_id: classId, section_id: sectionId, branch_code: selectedBranchCode, per_page: 100, admission_status: 'Active' });
         const students = r?.data || [];
         invoiceStudents = {};
         students.forEach(s => invoiceStudents[s.id] = s);
@@ -334,16 +426,22 @@ function statCard(title, value, icon, color) {
           students.map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})</option>`).join('');
         await loadInvoiceStructures();
         renderInvoiceEstimate();
-      } catch (e) {}
+      } catch (e) {
+        document.getElementById('inv_student').innerHTML = '<option value="">No students found</option>';
+        showToast('Student load error: ' + e.message, 'error');
+      }
     }
 
     async function loadInvoiceStructures() {
       if (!schoolId) return;
       try {
-        const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: ayId || '' });
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: academicYearId || '' });
         feeStructures = r?.data || [];
+        const selectedClassName = document.getElementById('inv_class')?.selectedOptions?.[0]?.dataset?.name || '';
+        const filteredStructures = selectedClassName ? feeStructures.filter(s => !s.classroom || s.classroom === selectedClassName) : feeStructures;
         document.getElementById('inv_structure').innerHTML = '<option value="">Select fee structure</option>' +
-          feeStructures.map(s => `<option value="${s.id}">${s.name} (${s.classroom || 'All'})</option>`).join('');
+          filteredStructures.map(s => `<option value="${s.id}">${s.name} (${s.classroom || 'All'})</option>`).join('');
       } catch (e) {}
     }
 
@@ -359,6 +457,7 @@ function statCard(title, value, icon, color) {
         const s = r?.data;
         if (!s) return;
         invoiceStudentMeta = s;
+        document.getElementById('inv_concession').value = '';
         (s.transport_months || []).forEach(month => {
           const box = document.querySelector(`.inv_month[value="${month}"]`);
           if (box) box.checked = true;
@@ -405,11 +504,20 @@ function statCard(title, value, icon, color) {
       return feeStructures.find(structure => structure.id === structureId) || null;
     }
 
+    function getSelectedInvoiceConcession() {
+      const option = document.getElementById('inv_concession')?.selectedOptions?.[0];
+      return {
+        name: option?.value || '',
+        percent: parseFloat(option?.dataset?.percent || '0') || 0
+      };
+    }
+
     function buildInvoiceEstimate() {
       if (!invoiceStudentMeta) return null;
       const lines = [];
       const structure = getSelectedFeeStructure();
-      const concessionPercent = parseFloat(invoiceStudentMeta.admission_concession_percent || 0) || 0;
+      const concession = getSelectedInvoiceConcession();
+      const concessionPercent = concession.percent;
       const selectedMonths = Array.from(document.querySelectorAll('.inv_month:checked')).map(el => el.value);
       const includeTransport = document.getElementById('inv_transport_toggle').checked;
       const manualDiscount = parseFloat(document.getElementById('inv_disc').value) || 0;
@@ -479,7 +587,7 @@ function statCard(title, value, icon, color) {
           <div class="flex justify-between gap-3"><span class="text-slate-500">Student</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.full_name || '-'}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Admission No</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.admission_no || '-'}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Class / Branch</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.classroom_name || '-'}${invoiceStudentMeta.branch_name ? ` • ${invoiceStudentMeta.branch_name}` : ''}</span></div>
-          <div class="flex justify-between gap-3"><span class="text-slate-500">Concession</span><span class="font-semibold text-emerald-700 text-right">${invoiceStudentMeta.admission_concession || 'No concession'}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Concession</span><span class="font-semibold text-emerald-700 text-right">${getSelectedInvoiceConcession().name || 'No concession'}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Transport</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.transport_route_name || 'Not assigned'}${selectedMonths.length ? ` • ${selectedMonths.length} month(s)` : ''}</span></div>
         </div>`;
       const lines = estimate?.lines || [];
@@ -514,29 +622,77 @@ function statCard(title, value, icon, color) {
     }
     function removeInvItem(btn) { btn.parentElement.remove(); renderInvoiceEstimate(); }
 
+    async function downloadInvoicePdf(invoiceId, invoiceNo = 'invoice') {
+      const token = Auth.getToken();
+      const res = await fetch(`${API_BASE}/fees/invoice/${invoiceId}/pdf`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.message || 'Invoice PDF download failed');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${invoiceNo}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }
+
+    async function triggerInvoiceEmail(invoiceId, recipientType) {
+      const response = await FeesAPI.sendInvoiceEmail(invoiceId, { recipient_type: recipientType });
+      return response?.data?.email || '';
+    }
+
     async function createInvoice() {
-      if (!schoolId || !ayId) { showToast('Configure school and academic year', 'error'); return; }
+      const academicYearId = await resolveFeeAcademicYearId();
+      const resolvedAyId = academicYearId || invoiceStudentMeta?.academic_year_id || localStorage.getItem('ay_id') || localStorage.getItem('academic_year_id');
+      if (!schoolId || !resolvedAyId) { showToast('Configure school and academic year', 'error'); return; }
       const studId = document.getElementById('inv_student').value;
       if (!studId) { showToast('Select student', 'error'); return; }
       const items = getInvoiceManualItems();
       const feeStructureId = document.getElementById('inv_structure').value || null;
       const includeTransport = document.getElementById('inv_transport_toggle').checked;
       const transportMonths = Array.from(document.querySelectorAll('.inv_month:checked')).map(el => el.value);
+      const concession = getSelectedInvoiceConcession();
       if (!items.length && !feeStructureId && !includeTransport) { showToast('Choose fee structure, add fee item, or include transport fee', 'error'); return; }
       try {
         const r = await FeesAPI.createInvoice({
           school_id: schoolId,
           student_id: studId,
-          academic_year_id: ayId,
+          academic_year_id: resolvedAyId,
           fee_structure_id: feeStructureId,
           include_transport: includeTransport,
           transport_months: transportMonths,
+          concession_name: concession.name || null,
+          concession_percent: concession.percent || 0,
           items,
           due_date: document.getElementById('inv_due').value ? new Date(document.getElementById('inv_due').value).toISOString() : null,
           discount_amount: parseFloat(document.getElementById('inv_disc').value) || 0,
           remarks: document.getElementById('inv_rem').value || null
         });
-        showToast('Invoice ' + r.data.invoice_no + ' created! Net: ' + formatCurrency(r.data.net_amount));
+        await downloadInvoicePdf(r.data.id, r.data.invoice_no);
+        const sentMessages = [];
+        if (document.getElementById('inv_send_parent').checked) {
+          try {
+            const email = await triggerInvoiceEmail(r.data.id, 'parent');
+            if (email) sentMessages.push(`parent: ${email}`);
+          } catch (e) {
+            showToast('Parent email send failed: ' + e.message, 'error');
+          }
+        }
+        if (document.getElementById('inv_send_student').checked) {
+          try {
+            const email = await triggerInvoiceEmail(r.data.id, 'student');
+            if (email) sentMessages.push(`student: ${email}`);
+          } catch (e) {
+            showToast('Student email send failed: ' + e.message, 'error');
+          }
+        }
+        showToast('Invoice ' + r.data.invoice_no + ' created! Net: ' + formatCurrency(r.data.net_amount) + (sentMessages.length ? ` | Sent to ${sentMessages.join(', ')}` : ''));
         document.getElementById('invModal').style.display = 'none'; loadInvoices(); loadFeeStats();
         invoiceStudentMeta = null;
         resetInvoiceEstimate();
@@ -545,9 +701,10 @@ function statCard(title, value, icon, color) {
 
     async function loadInvoices() {
       if (!schoolId) { document.getElementById('invTable').innerHTML = '<div class="text-center py-8 text-gray-400">Configure school first</div>'; return; }
+      const academicYearId = await resolveFeeAcademicYearId();
       const params = { school_id: schoolId, branch_code: selectedBranchCode, per_page: 20 };
       const stat = document.getElementById('invStatus').value; if (stat) params.status = stat;
-      if (ayId) params.academic_year_id = ayId;
+      if (academicYearId) params.academic_year_id = academicYearId;
       try {
         const r = await FeesAPI.getInvoices(params); const invs = r?.data || [];
         const hdrs = ['Invoice No', 'Student', 'Net Amount', 'Paid', 'Balance', 'Due Date', 'Status', ''];
@@ -559,7 +716,7 @@ function statCard(title, value, icon, color) {
           <td class="px-4 py-3 text-sm text-red-500 font-medium">${formatCurrency(inv.balance_amount)}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${formatDate(inv.due_date)}</td>
           <td class="px-4 py-3">${tdBadge(inv.status, inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'yellow' : inv.status === 'Overdue' ? 'red' : 'orange')}</td>
-          <td class="px-4 py-3"><button onclick="viewInvoice('${inv.id}')" class="text-xs text-blue-600 hover:underline">View</button></td>
+          <td class="px-4 py-3 space-x-3"><button onclick="viewInvoice('${inv.id}')" class="text-xs text-blue-600 hover:underline">View</button><button onclick="downloadInvoicePdf('${inv.id}','${inv.invoice_no}')" class="text-xs text-emerald-600 hover:underline">PDF</button><button onclick="triggerInvoiceEmail('${inv.id}','parent').then(email=>showToast('Invoice sent to '+email)).catch(e=>showToast('Error: '+e.message,'error'))" class="text-xs text-violet-600 hover:underline">Send</button></td>
         `);
         document.getElementById('invTable').innerHTML = buildTable(hdrs, rows, 'No invoices found');
       } catch (e) { document.getElementById('invTable').innerHTML = `<div class="text-center py-8 text-red-400">Error: ${e.message}</div>`; }
@@ -574,11 +731,50 @@ function statCard(title, value, icon, color) {
 
     async function loadPayStudents() {
       if (!schoolId) return;
+      const academicYearId = await resolveFeeAcademicYearId();
+      const classId = document.getElementById('pay_class').value;
+      const sectionId = document.getElementById('pay_section').value;
+      if (!classId || !sectionId) {
+        document.getElementById('pay_student').innerHTML = '<option value="">Select student</option>';
+        document.getElementById('pay_invoice').innerHTML = '<option value="">Select invoice</option>';
+        document.getElementById('invoiceDetails').style.display = 'none';
+        return;
+      }
       try {
-        const r = await StudentAPI.list({ school_id: schoolId, branch_code: selectedBranchCode, per_page: 200 });
+        const r = await StudentAPI.list({ school_id: schoolId, academic_year_id: academicYearId || '', classroom_id: classId, section_id: sectionId, branch_code: selectedBranchCode, per_page: 100, admission_status: 'Active' });
         document.getElementById('pay_student').innerHTML = '<option value="">Select student</option>' +
           (r?.data || []).map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})</option>`).join('');
+        document.getElementById('pay_invoice').innerHTML = '<option value="">Select invoice</option>';
+        document.getElementById('invoiceDetails').style.display = 'none';
+      } catch (e) { showToast('Payment student load error: ' + e.message, 'error'); }
+    }
+
+    async function loadPaymentClasses() {
+      if (!schoolId) return;
+      try {
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await ClassAPI.list(schoolId, academicYearId);
+        paymentClassCache = r?.data || [];
+        document.getElementById('pay_class').innerHTML = '<option value="">Select class</option>' +
+          paymentClassCache.map(c => `<option value="${c.id}" data-secs='${JSON.stringify(c.sections || [])}'>${c.name}</option>`).join('');
+        loadPaySections();
       } catch (e) {}
+    }
+
+    function loadPaySections() {
+      const classEl = document.getElementById('pay_class');
+      const selectedOption = classEl?.selectedOptions?.[0];
+      let sections = [];
+      try {
+        sections = JSON.parse(selectedOption?.dataset?.secs || '[]');
+      } catch (e) {
+        sections = [];
+      }
+      document.getElementById('pay_section').innerHTML = '<option value="">Select section</option>' +
+        sections.map(sec => `<option value="${sec.id}">${sec.name}</option>`).join('');
+      document.getElementById('pay_student').innerHTML = '<option value="">Select student</option>';
+      document.getElementById('pay_invoice').innerHTML = '<option value="">Select invoice</option>';
+      document.getElementById('invoiceDetails').style.display = 'none';
     }
 
     async function loadStudentInvoices() {
@@ -591,7 +787,7 @@ function statCard(title, value, icon, color) {
         (r?.data || []).filter(inv => inv.status !== 'Paid').forEach(inv => {
           document.getElementById('pay_invoice').innerHTML += `<option value="${inv.id}" data-total="${inv.net_amount}" data-paid="${inv.paid_amount}" data-bal="${inv.balance_amount}">${inv.invoice_no} - Balance: ${formatCurrency(inv.balance_amount)}</option>`;
         });
-        document.getElementById('pay_invoice').addEventListener('change', function () {
+        document.getElementById('pay_invoice').onchange = function () {
           const opt = this.options[this.selectedIndex];
           if (!opt.value) { document.getElementById('invoiceDetails').style.display = 'none'; return; }
           document.getElementById('inv_total').textContent = formatCurrency(opt.dataset.total);
@@ -599,7 +795,7 @@ function statCard(title, value, icon, color) {
           document.getElementById('inv_bal').textContent = formatCurrency(opt.dataset.bal);
           document.getElementById('pay_amount').value = opt.dataset.bal;
           document.getElementById('invoiceDetails').style.display = 'flex';
-        });
+        };
       } catch (e) {}
     }
 
@@ -619,52 +815,91 @@ function statCard(title, value, icon, color) {
     async function loadStructCats() {
       if (!schoolId) return;
       try {
-        const [cr, catr] = await Promise.allSettled([ClassAPI.list(schoolId, ayId), FeesAPI.getCategories(schoolId)]);
+        const academicYearId = await resolveFeeAcademicYearId();
+        const categoryData = await ensureFeeStructureCategories();
+        const [cr, catr] = await Promise.allSettled([ClassAPI.list(schoolId, academicYearId), Promise.resolve({ data: categoryData })]);
         if (cr.status === 'fulfilled') document.getElementById('str_cls').innerHTML = '<option value="">Select class</option>' + (cr.value?.data || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         if (catr.status === 'fulfilled') {
           const rawCats = catr.value?.data || [];
-          const seenCats = new Set();
-          feeCats = rawCats.filter(c => {
-            const key = `${String(c.code || '').trim().toLowerCase()}::${String(c.name || '').trim().toLowerCase()}`;
-            if (seenCats.has(key)) return false;
-            seenCats.add(key);
-            return true;
-          });
+          feeCats = allowedFeeStructureCategories.map(allowed => {
+            const match = rawCats.find(c =>
+              String(c.code || '').trim().toLowerCase() === allowed.code.toLowerCase() ||
+              String(c.name || '').trim().toLowerCase() === allowed.name.toLowerCase()
+            );
+            return match ? { ...match, name: allowed.name, code: allowed.code } : null;
+          }).filter(Boolean);
           if (!feeCats.length) {
             document.getElementById('strCatItems').innerHTML = '<label class="lbl">Fee Categories</label><p class="text-xs text-orange-600">No fee categories found. <button onclick="createDefaultCats()" class="underline">Create defaults</button></p>';
           } else {
-            document.getElementById('strCatItems').innerHTML = '<label class="lbl">Fee Categories & Amounts</label>' + feeCats.map(c => `<div class="flex items-center gap-3"><div class="flex-1 text-sm font-medium text-gray-700">${c.name}</div><input type="number" id="cat_${c.id}" class="finput w-32" placeholder="Amount ₹"/></div>`).join('');
+            document.getElementById('strCatItems').innerHTML = '<label class="lbl">Fee Categories & Amounts</label>' + feeCats.map(c => `<div class="flex items-center gap-3"><div class="flex-1 text-sm font-medium text-gray-700">${c.name}</div><input type="number" id="cat_${c.id}" class="finput w-32 struct-cat-input" data-code="${c.code}" placeholder="Amount ₹" oninput="updateFeeStructureYearlyTotal()"/></div>`).join('') + `
+              <div class="flex items-center gap-3 border-t border-slate-100 pt-3 mt-2">
+                <div class="flex-1 text-sm font-semibold text-gray-900">Tuition Fee Yly Upto 30 April 2025</div>
+                <input type="text" id="str_yearly_total" class="finput w-40 bg-slate-100 font-semibold text-slate-700" value="0" readonly />
+              </div>`;
+            updateFeeStructureYearlyTotal();
           }
         }
       } catch (e) {}
     }
 
+    function updateFeeStructureYearlyTotal() {
+      const getValueByCode = (code) => {
+        const input = document.querySelector(`.struct-cat-input[data-code="${code}"]`);
+        return parseFloat(input?.value) || 0;
+      };
+      const registrationFee = getValueByCode('REG');
+      const admissionFee = getValueByCode('ADM');
+      const annualExamFee = getValueByCode('EXAM');
+      const activityCharge = getValueByCode('ACT');
+      const tuitionMonthly = getValueByCode('TUI');
+      const total = registrationFee + admissionFee + annualExamFee + activityCharge + (tuitionMonthly * 12);
+      const totalInput = document.getElementById('str_yearly_total');
+      if (totalInput) totalInput.value = total ? String(total) : '0';
+    }
+
+    async function ensureFeeStructureCategories() {
+      if (!schoolId) return [];
+      const existing = await FeesAPI.getCategories(schoolId);
+      const current = existing?.data || [];
+      let createdCount = 0;
+      for (const category of allowedFeeStructureCategories) {
+        const found = current.find(item =>
+          String(item.code || '').trim().toLowerCase() === category.code.toLowerCase() ||
+          String(item.name || '').trim().toLowerCase() === category.name.toLowerCase()
+        );
+        if (found) continue;
+        await FeesAPI.createCategory({ school_id: schoolId, ...category });
+        createdCount += 1;
+      }
+      if (createdCount) {
+        const refreshed = await FeesAPI.getCategories(schoolId);
+        return refreshed?.data || [];
+      }
+      return current;
+    }
+
     async function createDefaultCats() {
       if (!schoolId) return;
-      const cats = [{ name: 'Tuition Fee', code: 'TUI' }, { name: 'Transport Fee', code: 'TRP' }, { name: 'Library Fee', code: 'LIB' }, { name: 'Lab Fee', code: 'LAB' }];
       try {
-        const existing = await FeesAPI.getCategories(schoolId);
-        const existingKeys = new Set((existing?.data || []).map(c => `${String(c.code || '').trim().toLowerCase()}::${String(c.name || '').trim().toLowerCase()}`));
-        let createdCount = 0;
-        for (const c of cats) {
-          const key = `${c.code.toLowerCase()}::${c.name.toLowerCase()}`;
-          if (existingKeys.has(key)) continue;
-          await FeesAPI.createCategory({ school_id: schoolId, ...c });
-          createdCount += 1;
-        }
+        const before = await FeesAPI.getCategories(schoolId);
+        const beforeCount = (before?.data || []).length;
+        await ensureFeeStructureCategories();
+        const after = await FeesAPI.getCategories(schoolId);
+        const afterCount = (after?.data || []).length;
+        const createdCount = Math.max(0, afterCount - beforeCount);
         showToast(createdCount ? 'Default categories created!' : 'Default categories already exist');
         loadStructCats();
       } catch (e) {}
     }
 
     async function createFeeStructure() {
-      if (!schoolId || !ayId) { showToast('Configure school and academic year', 'error'); return; }
+      const academicYearId = await resolveFeeAcademicYearId();
+      if (!schoolId || !academicYearId) { showToast('Configure school and academic year', 'error'); return; }
       const name = document.getElementById('str_name').value.trim(), cls = document.getElementById('str_cls').value;
       if (!name || !cls) { showToast('Name and class required', 'error'); return; }
-      const items = feeCats.map(c => { const amt = parseFloat(document.getElementById(`cat_${c.id}`)?.value) || 0; return amt > 0 ? { category_id: c.id, amount: amt } : null; }).filter(Boolean);
-      if (!items.length) { showToast('Add at least one amount', 'error'); return; }
+      const items = feeCats.map(c => ({ category_id: c.id, amount: parseFloat(document.getElementById(`cat_${c.id}`)?.value) || 0 }));
       try {
-        await FeesAPI.createStructure({ school_id: schoolId, academic_year_id: ayId, classroom_id: cls, name, items, installments: parseInt(document.getElementById('str_inst').value) || 1, late_fee_per_day: parseFloat(document.getElementById('str_late').value) || 0 });
+        await FeesAPI.createStructure({ school_id: schoolId, academic_year_id: academicYearId, classroom_id: cls, name, items, installments: parseInt(document.getElementById('str_inst').value) || 1, late_fee_per_day: parseFloat(document.getElementById('str_late').value) || 0 });
         showToast('Fee structure created!'); document.getElementById('structModal').style.display = 'none'; loadStructures();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
@@ -672,14 +907,18 @@ function statCard(title, value, icon, color) {
     async function loadStructures() {
       if (!schoolId) { document.getElementById('structTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
       try {
-        const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: ayId || '' }); const data = r?.data || [];
-        const hdrs = ['Name', 'Class', 'Total Amount', 'Installments', 'Items'];
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: academicYearId || '' }); const data = r?.data || [];
+        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Tuition Fee Mly', 'Tuition Fee Yly Upto 30 April 2025'];
         const rows = data.map(s => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${s.name}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${s.classroom || '-'}</td>
-          <td class="px-4 py-3 font-bold text-gray-900">${formatCurrency(s.total_amount)}</td>
-          <td class="px-4 py-3 text-sm text-gray-600">${s.installments}</td>
-          <td class="px-4 py-3 text-xs text-gray-500">${(s.items || []).map(i => i.category + ': ' + formatCurrency(i.amount)).join(', ')}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.REG || 0)}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.ADM || 0)}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.EXAM || 0)}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.ACT || 0)}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.TUI || 0)}</td>
+          <td class="px-4 py-3 font-bold text-gray-900">${formatCurrency(s.fee_breakdown?.TUIY || s.total_amount || 0)}</td>
         `);
         document.getElementById('structTable').innerHTML = buildTable(hdrs, rows, 'No fee structures');
       } catch (e) {}
@@ -688,7 +927,8 @@ function statCard(title, value, icon, color) {
     async function loadDues() {
       if (!schoolId) { document.getElementById('duesTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
       try {
-        const r = await FeesAPI.getDues({ school_id: schoolId, branch_code: selectedBranchCode }); const d = r?.data || {};
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await FeesAPI.getDues({ school_id: schoolId, academic_year_id: academicYearId || '', branch_code: selectedBranchCode }); const d = r?.data || {};
         document.getElementById('duesTable').innerHTML = `
           <div class="grid grid-cols-3 gap-4 mb-5">
             <div class="bg-red-50 rounded-xl p-4 text-center"><div class="text-2xl font-bold text-red-600">${d.total_pending_invoices || 0}</div><div class="text-xs text-red-500 mt-0.5">Pending Invoices</div></div>
@@ -714,6 +954,7 @@ function statCard(title, value, icon, color) {
     document.getElementById('inv_disc').addEventListener('input', renderInvoiceEstimate);
     document.querySelectorAll('.inv_month').forEach(cb => cb.addEventListener('change', renderInvoiceEstimate));
     document.querySelectorAll('.inv-desc, .inv-amt').forEach(el => el.addEventListener('input', renderInvoiceEstimate));
+    document.getElementById('inv_concession').innerHTML = invoiceConcessionOptions.map(option => `<option value="${option.label === 'Select' ? '' : option.label}" data-percent="${option.percent}">${option.label}</option>`).join('');
     resetInvoiceEstimate();
     (async () => {
       await loadFeeBranches();

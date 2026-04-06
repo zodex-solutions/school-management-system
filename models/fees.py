@@ -70,6 +70,9 @@ class FeeInvoice(Document):
     items = ListField(DictField())              # [{category, description, amount}]
     transport_months = ListField(StringField())
     transport_route = StringField()
+    concession_name = StringField()
+    concession_percent = FloatField(default=0)
+    emailed_to = ListField(StringField())
 
     gross_amount = FloatField(default=0)
     discount_amount = FloatField(default=0)

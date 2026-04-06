@@ -1,15 +1,70 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from io import BytesIO
+import smtplib
+from email.message import EmailMessage
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from models.fees import FeeCategory, FeeStructure, FeeInvoice, PaymentTransaction, FeeDiscount
 from models.institution import School, AcademicYear, ClassRoom, User
 from models.student import Student
 from models.transport import TransportRoute
 from utils.auth import get_current_user, resolve_school_access, resolve_branch_scope
 from utils.helpers import success_response, generate_invoice_no, generate_transaction_no
+from config import settings
 
 router = APIRouter(prefix="/fees", tags=["Fees Management"])
+
+ALLOWED_FEE_STRUCTURE_CATEGORIES = [
+    {"name": "Registration Fee", "code": "REG"},
+    {"name": "Admission Fee", "code": "ADM"},
+    {"name": "Annual Examination Fee", "code": "EXAM"},
+    {"name": "Stationary kit / Activity Charge", "code": "ACT"},
+    {"name": "Tuition Fee Mly", "code": "TUI"},
+]
+YEARLY_TUITION_LABEL = "Tuition Fee Yly Upto 30 April 2025"
+
+ALLOWED_CATEGORY_BY_CODE = {item["code"]: item for item in ALLOWED_FEE_STRUCTURE_CATEGORIES}
+ALLOWED_CATEGORY_BY_NAME = {item["name"].lower(): item for item in ALLOWED_FEE_STRUCTURE_CATEGORIES}
+
+
+def _normalize_fee_category(name: str, code: str):
+    normalized_name = (name or "").strip()
+    normalized_code = (code or "").strip().upper()
+    allowed = ALLOWED_CATEGORY_BY_CODE.get(normalized_code) or ALLOWED_CATEGORY_BY_NAME.get(normalized_name.lower())
+    if not allowed:
+        raise HTTPException(
+            status_code=400,
+            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Tuition Fee Mly",
+        )
+    return allowed["name"], allowed["code"]
+
+
+def _is_allowed_fee_category(category: FeeCategory) -> bool:
+    if not category:
+        return False
+    return bool(
+        ALLOWED_CATEGORY_BY_CODE.get((category.code or "").strip().upper()) or
+        ALLOWED_CATEGORY_BY_NAME.get((category.name or "").strip().lower())
+    )
+
+
+def _build_fee_breakdown(items: List) -> dict:
+    breakdown = {item["code"]: 0 for item in ALLOWED_FEE_STRUCTURE_CATEGORIES}
+    for entry in items or []:
+        category_obj = getattr(entry, "category", None)
+        category_name = getattr(entry, "category_name", None)
+        code = (getattr(category_obj, "code", "") or "").strip().upper()
+        if not code:
+            matched = ALLOWED_CATEGORY_BY_NAME.get((category_name or "").strip().lower())
+            code = matched["code"] if matched else ""
+        if code in breakdown:
+            breakdown[code] = float(getattr(entry, "amount", 0) or 0)
+    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + (breakdown["TUI"] * 12)
+    return breakdown
 
 
 # ─── Fee Category ─────────────────────────────────────────────────────────────
@@ -22,6 +77,7 @@ async def create_fee_category(data: dict, current_user: User = Depends(get_curre
     code = (data.get('code') or '').strip().upper()
     if not name or not code:
         raise HTTPException(status_code=400, detail="Name and code are required")
+    name, code = _normalize_fee_category(name, code)
 
     existing = FeeCategory.objects(
         school=school,
@@ -49,7 +105,10 @@ async def list_fee_categories(school_id: str, current_user: User = Depends(get_c
     school_id = resolve_school_access(current_user, school_id)
     school = School.objects.get(id=school_id)
     cats = FeeCategory.objects(school=school, is_active=True)
-    result = [{"id": str(c.id), "name": c.name, "code": c.code, "is_mandatory": c.is_mandatory} for c in cats]
+    result = [
+        {"id": str(c.id), "name": c.name, "code": c.code, "is_mandatory": c.is_mandatory}
+        for c in cats if _is_allowed_fee_category(c)
+    ]
     return success_response(result)
 
 
@@ -57,7 +116,7 @@ async def list_fee_categories(school_id: str, current_user: User = Depends(get_c
 
 class FeeStructureCreate(BaseModel):
     school_id: str
-    academic_year_id: str
+    academic_year_id: Optional[str] = None
     classroom_id: str
     name: str
     items: List[dict]
@@ -66,11 +125,34 @@ class FeeStructureCreate(BaseModel):
     grace_days: int = 0
 
 
+def _resolve_academic_year(school: School, academic_year_id: Optional[str] = None) -> AcademicYear:
+    if academic_year_id:
+        try:
+            academic_year = AcademicYear.objects.get(id=academic_year_id)
+            if academic_year.school and str(academic_year.school.id) != str(school.id):
+                raise HTTPException(400, "Academic year does not belong to this school")
+            return academic_year
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    current_year = AcademicYear.objects(school=school, is_current=True, is_active=True).first()
+    if current_year:
+        return current_year
+
+    fallback_year = AcademicYear.objects(school=school, is_active=True).order_by("-created_at").first()
+    if fallback_year:
+        return fallback_year
+
+    raise HTTPException(404, "Configure school and academic year")
+
+
 @router.post("/structure")
 async def create_fee_structure(data: FeeStructureCreate, current_user: User = Depends(get_current_user)):
     data.school_id = resolve_school_access(current_user, data.school_id)
     school = School.objects.get(id=data.school_id)
-    ay = AcademicYear.objects.get(id=data.academic_year_id)
+    ay = _resolve_academic_year(school, data.academic_year_id)
     classroom = ClassRoom.objects.get(id=data.classroom_id)
     
     from models.fees import FeeStructureItem
@@ -85,13 +167,18 @@ async def create_fee_structure(data: FeeStructureCreate, current_user: User = De
     total = 0
     for item in data.items:
         cat = FeeCategory.objects.get(id=item['category_id'])
+        if not _is_allowed_fee_category(cat):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{cat.name} is not allowed in fee structure. Use only the approved fee fields."
+            )
         fi = FeeStructureItem(category=cat, category_name=cat.name, amount=item['amount'])
         fs.items.append(fi)
         total += item['amount']
     
-    fs.total_amount = total
+    fs.total_amount = _build_fee_breakdown(fs.items)["TUIY"]
     fs.save()
-    return success_response({"id": str(fs.id), "total_amount": total}, "Fee structure created")
+    return success_response({"id": str(fs.id), "total_amount": fs.total_amount, "fee_breakdown": _build_fee_breakdown(fs.items)}, "Fee structure created")
 
 
 @router.get("/structure")
@@ -117,7 +204,9 @@ async def list_fee_structures(
         "classroom": f.classroom.name if f.classroom else None,
         "total_amount": f.total_amount,
         "installments": f.installments,
-        "items": [{"category": i.category_name, "amount": i.amount} for i in f.items]
+        "items": [{"category": i.category_name, "amount": i.amount} for i in f.items],
+        "fee_breakdown": _build_fee_breakdown(f.items),
+        "yearly_label": YEARLY_TUITION_LABEL,
     } for f in query]
     return success_response(result)
 
@@ -127,7 +216,7 @@ async def list_fee_structures(
 class InvoiceCreate(BaseModel):
     school_id: str
     student_id: str
-    academic_year_id: str
+    academic_year_id: Optional[str] = None
     fee_structure_id: Optional[str] = None
     items: List[dict] = []
     due_date: Optional[datetime] = None
@@ -135,11 +224,18 @@ class InvoiceCreate(BaseModel):
     remarks: Optional[str] = None
     include_transport: bool = False
     transport_months: List[str] = []
+    concession_name: Optional[str] = None
+    concession_percent: float = 0
 
 
-def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str]):
+class InvoiceEmailRequest(BaseModel):
+    recipient_type: str = "parent"
+    email: Optional[str] = None
+
+
+def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str], concession_percent: float = 0):
     built_items = list(items or [])
-    concession_percent = getattr(student, "admission_concession_percent", 0) or 0
+    concession_percent = concession_percent or 0
 
     if fee_structure_id:
         structure = FeeStructure.objects.get(id=fee_structure_id)
@@ -185,6 +281,131 @@ def _build_invoice_items(student: Student, fee_structure_id: Optional[str], item
     return built_items, selected_months
 
 
+def _get_invoice_recipient_email(invoice: FeeInvoice, recipient_type: str, fallback_email: Optional[str] = None) -> str:
+    if fallback_email:
+        return fallback_email
+    student = invoice.student
+    if not student:
+        raise HTTPException(404, "Student not found for this invoice")
+    recipient_type = (recipient_type or "parent").lower()
+    if recipient_type == "student":
+        if student.email:
+            return student.email
+        raise HTTPException(400, "Student email not found")
+    parent_info = student.parent_info
+    if parent_info and parent_info.father_email:
+        return parent_info.father_email
+    if student.email:
+        return student.email
+    raise HTTPException(400, "Parent email not found")
+
+
+def _generate_invoice_pdf_bytes(invoice: FeeInvoice) -> bytes:
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    y = height - 48
+
+    school = invoice.school
+    student = invoice.student
+
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(40, y, school.name if school else "School Invoice")
+    y -= 20
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(40, y, f"Invoice No: {invoice.invoice_no}")
+    pdf.drawRightString(width - 40, y, f"Date: {invoice.invoice_date.strftime('%d-%m-%Y') if invoice.invoice_date else '-'}")
+    y -= 24
+
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(40, y, "Student Details")
+    y -= 16
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(40, y, f"Student: {student.full_name if student else '-'}")
+    y -= 14
+    pdf.drawString(40, y, f"Admission No: {student.admission_no if student else '-'}")
+    y -= 14
+    pdf.drawString(40, y, f"Class / Section: {(student.classroom.name if student and student.classroom else '-') } / {(student.section.name if student and student.section else '-')}")
+    y -= 14
+    pdf.drawString(40, y, f"Branch: {student.branch_name if student and student.branch_name else '-'}")
+    y -= 22
+
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(40, y, "Fee Breakdown")
+    y -= 18
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(40, y, "Description")
+    pdf.drawRightString(width - 40, y, "Amount")
+    y -= 10
+    pdf.line(40, y, width - 40, y)
+    y -= 16
+    pdf.setFont("Helvetica", 10)
+    for item in invoice.items or []:
+        if y < 120:
+            pdf.showPage()
+            y = height - 48
+            pdf.setFont("Helvetica", 10)
+        pdf.drawString(40, y, str(item.get("description") or item.get("category") or "Fee Item")[:80])
+        pdf.drawRightString(width - 40, y, f"Rs. {float(item.get('amount', 0) or 0):.2f}")
+        y -= 14
+
+    y -= 8
+    pdf.line(40, y, width - 40, y)
+    y -= 18
+    pdf.setFont("Helvetica", 10)
+    if invoice.concession_name:
+        pdf.drawString(40, y, f"Concession: {invoice.concession_name} ({invoice.concession_percent:.0f}%)")
+        y -= 16
+    pdf.drawString(40, y, "Gross Amount")
+    pdf.drawRightString(width - 40, y, f"Rs. {invoice.gross_amount:.2f}")
+    y -= 14
+    pdf.drawString(40, y, "Manual Discount")
+    pdf.drawRightString(width - 40, y, f"Rs. {invoice.discount_amount:.2f}")
+    y -= 14
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(40, y, "Net Amount")
+    pdf.drawRightString(width - 40, y, f"Rs. {invoice.net_amount:.2f}")
+    y -= 14
+    pdf.drawString(40, y, "Balance Amount")
+    pdf.drawRightString(width - 40, y, f"Rs. {invoice.balance_amount:.2f}")
+    y -= 22
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(40, y, f"Generated by: {invoice.generated_by or '-'}")
+    if invoice.remarks:
+        y -= 14
+        pdf.drawString(40, y, f"Remarks: {invoice.remarks[:90]}")
+
+    pdf.save()
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def _send_invoice_email(invoice: FeeInvoice, recipient_email: str):
+    if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        raise HTTPException(400, "SMTP is not configured. Add SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASSWORD in .env")
+
+    student = invoice.student
+    school = invoice.school
+    pdf_bytes = _generate_invoice_pdf_bytes(invoice)
+
+    msg = EmailMessage()
+    msg["Subject"] = f"Fee Invoice {invoice.invoice_no}"
+    msg["From"] = settings.SMTP_USER
+    msg["To"] = recipient_email
+    msg.set_content(
+        f"Dear Parent/Student,\n\nPlease find attached fee invoice {invoice.invoice_no} for {student.full_name if student else 'student'}.\n"
+        f"Net Amount: Rs. {invoice.net_amount:.2f}\n"
+        f"Due Date: {invoice.due_date.strftime('%d-%m-%Y') if invoice.due_date else '-'}\n\n"
+        f"Regards,\n{school.name if school else 'School'}"
+    )
+    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=f"{invoice.invoice_no}.pdf")
+
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        server.starttls()
+        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        server.send_message(msg)
+
+
 @router.post("/invoice")
 async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_current_user)):
     data.school_id = resolve_school_access(current_user, data.school_id)
@@ -193,7 +414,7 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
     scoped_branch = resolve_branch_scope(current_user, None)
     if scoped_branch and student.branch_code != scoped_branch:
         raise HTTPException(403, "Access denied for this branch")
-    ay = AcademicYear.objects.get(id=data.academic_year_id)
+    ay = _resolve_academic_year(school, data.academic_year_id or (str(student.academic_year.id) if student.academic_year else None))
     
     invoice_no = generate_invoice_no(school.code)
     items, selected_months = _build_invoice_items(
@@ -201,7 +422,8 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
         data.fee_structure_id,
         data.items,
         data.include_transport,
-        data.transport_months
+        data.transport_months,
+        data.concession_percent
     )
     if not items:
         raise HTTPException(400, "Add at least one fee item or select a fee structure")
@@ -215,6 +437,8 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
         items=items,
         transport_months=selected_months,
         transport_route=student.transport_route_name,
+        concession_name=data.concession_name,
+        concession_percent=data.concession_percent or 0,
         gross_amount=gross,
         discount_amount=data.discount_amount,
         net_amount=net,
@@ -228,7 +452,9 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
         "invoice_no": invoice_no,
         "net_amount": net,
         "gross_amount": gross,
-        "items": items
+        "items": items,
+        "concession_name": invoice.concession_name,
+        "concession_percent": invoice.concession_percent
     }, "Invoice created successfully")
 
 
@@ -252,7 +478,7 @@ async def list_invoices(
         student = Student.objects.get(id=student_id)
         query = query.filter(student=student)
     if academic_year_id:
-        ay = AcademicYear.objects.get(id=academic_year_id)
+        ay = _resolve_academic_year(school, academic_year_id)
         query = query.filter(academic_year=ay)
     if branch_code:
         students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
@@ -272,6 +498,8 @@ async def list_invoices(
         "due_date": inv.due_date.isoformat() if inv.due_date else None,
         "gross_amount": inv.gross_amount,
         "discount_amount": inv.discount_amount,
+        "concession_name": inv.concession_name,
+        "concession_percent": inv.concession_percent,
         "net_amount": inv.net_amount,
         "paid_amount": inv.paid_amount,
         "balance_amount": inv.balance_amount,
@@ -302,6 +530,8 @@ async def get_invoice(invoice_id: str, current_user: User = Depends(get_current_
             "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
             "due_date": inv.due_date.isoformat() if inv.due_date else None,
             "items": inv.items,
+            "concession_name": inv.concession_name,
+            "concession_percent": inv.concession_percent,
             "gross_amount": inv.gross_amount,
             "discount_amount": inv.discount_amount,
             "late_fee": inv.late_fee,
@@ -320,6 +550,44 @@ async def get_invoice(invoice_id: str, current_user: User = Depends(get_current_
             } for t in transactions]
         }
         return success_response(data)
+    except FeeInvoice.DoesNotExist:
+        raise HTTPException(404, "Invoice not found")
+
+
+@router.get("/invoice/{invoice_id}/pdf")
+async def download_invoice_pdf(invoice_id: str, current_user: User = Depends(get_current_user)):
+    try:
+        inv = FeeInvoice.objects.get(id=invoice_id)
+        resolve_school_access(current_user, str(inv.school.id) if inv.school else None)
+        scoped_branch = resolve_branch_scope(current_user, None)
+        if scoped_branch and inv.student and inv.student.branch_code != scoped_branch:
+            raise HTTPException(403, "Access denied for this branch")
+        pdf_bytes = _generate_invoice_pdf_bytes(inv)
+        filename = f"{inv.invoice_no}.pdf"
+        return StreamingResponse(
+            BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except FeeInvoice.DoesNotExist:
+        raise HTTPException(404, "Invoice not found")
+
+
+@router.post("/invoice/{invoice_id}/send-email")
+async def send_invoice_email(invoice_id: str, data: InvoiceEmailRequest, current_user: User = Depends(get_current_user)):
+    try:
+        inv = FeeInvoice.objects.get(id=invoice_id)
+        resolve_school_access(current_user, str(inv.school.id) if inv.school else None)
+        scoped_branch = resolve_branch_scope(current_user, None)
+        if scoped_branch and inv.student and inv.student.branch_code != scoped_branch:
+            raise HTTPException(403, "Access denied for this branch")
+        recipient_email = _get_invoice_recipient_email(inv, data.recipient_type, data.email)
+        _send_invoice_email(inv, recipient_email)
+        emailed_to = list(inv.emailed_to or [])
+        if recipient_email not in emailed_to:
+            emailed_to.append(recipient_email)
+            inv.update(emailed_to=emailed_to)
+        return success_response({"invoice_id": str(inv.id), "email": recipient_email}, "Invoice emailed successfully")
     except FeeInvoice.DoesNotExist:
         raise HTTPException(404, "Invoice not found")
 
@@ -408,7 +676,7 @@ async def get_fee_dues(
     query = FeeInvoice.objects(school=school, status__in=["Pending", "Partial", "Overdue"])
     
     if academic_year_id:
-        ay = AcademicYear.objects.get(id=academic_year_id)
+        ay = _resolve_academic_year(school, academic_year_id)
         query = query.filter(academic_year=ay)
     if branch_code:
         students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
@@ -445,7 +713,7 @@ async def fee_summary(
     query = FeeInvoice.objects(school=school)
     
     if academic_year_id:
-        ay = AcademicYear.objects.get(id=academic_year_id)
+        ay = _resolve_academic_year(school, academic_year_id)
         query = query.filter(academic_year=ay)
     if branch_code:
         students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))

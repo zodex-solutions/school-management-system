@@ -355,6 +355,7 @@ const FeesAPI = {
   getInvoices:    (p)    => API.get('/fees/invoice', p),
   listInvoices:   (p)    => API.get('/fees/invoice', p),
   getInvoice:     (id)   => API.get(`/fees/invoice/${id}`),
+  sendInvoiceEmail: (id, d) => API.post(`/fees/invoice/${id}/send-email`, d),
   recordPayment:  (d)    => API.post('/fees/payment', d),
   collectPayment: (d)    => API.post('/fees/payment', d),  // POST /fees/payment
   getDues:        (p)    => API.get('/fees/dues', p),

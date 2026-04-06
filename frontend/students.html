@@ -246,10 +246,10 @@
                   <option value="Re-Admission">Re-Admission</option>
                 </select>
               </div>
-              <div><label class="lbl">First Name *</label><input id="m_fn" type="text" class="finput" placeholder="First name" /></div>
+              <div><label class="lbl">First Name</label><input id="m_fn" type="text" class="finput" placeholder="First name" /></div>
               <div><label class="lbl">Middle Name</label><input id="m_mn" type="text" class="finput" placeholder="Middle name" /></div>
-              <div><label class="lbl">Last Name *</label><input id="m_ln" type="text" class="finput" placeholder="Last name" /></div>
-              <div><label class="lbl">Gender *</label>
+              <div><label class="lbl">Last Name</label><input id="m_ln" type="text" class="finput" placeholder="Last name" /></div>
+              <div><label class="lbl">Gender</label>
                 <select id="m_gnd" class="finput">
                   <option value="">Select</option>
                   <option value="Male">Male</option>
@@ -304,12 +304,12 @@
           <div>
             <h4 class="font-semibold text-gray-900 mb-3">Academic Details / Transport</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div><label class="lbl">Class/Course *</label>
+              <div><label class="lbl">Class/Course</label>
                 <select id="m_cls" class="finput" onchange="loadSections(); updateFeePreview()">
                   <option value="">Select class</option>
                 </select>
               </div>
-              <div><label class="lbl">Section *</label>
+              <div><label class="lbl">Section</label>
                 <select id="m_sec" class="finput">
                   <option value="">Select section</option>
                 </select>
@@ -321,8 +321,8 @@
               </div>
               <div><label class="lbl">Bus Stop</label><input id="m_bus_stop" type="text" class="finput" placeholder="Bus stop" /></div>
               <div><label class="lbl">Bus No</label><input id="m_bus_no" type="text" class="finput" placeholder="Bus no" /></div>
-              <div><label class="lbl">Charge / Month</label><input id="m_charge" type="number" class="finput" placeholder="0" readonly /></div>
-              <div><label class="lbl">Class Fee</label><input id="m_class_fee" type="number" class="finput" placeholder="0" readonly /></div>
+              <div><label class="lbl">Vehicle charges</label><input id="m_charge" type="number" class="finput" placeholder="0" readonly /></div>
+              <div><label class="lbl">Tution fee per month</label><input id="m_class_fee" type="number" class="finput" placeholder="0" readonly /></div>
               <div><label class="lbl">Total Fee</label><input id="m_total_fee" type="number" class="finput" placeholder="0" readonly /></div>
               <div><label class="lbl">Referral Type</label>
                 <select id="m_ref_type" class="finput" onchange="toggleReferralFields()">
@@ -330,14 +330,6 @@
                   <option value="Referral">Referral</option>
                   <option value="Walk-In">Walk-In</option>
                   <option value="Campaign">Campaign</option>
-                </select>
-              </div>
-              <div><label class="lbl">Admission Concession</label>
-                <select id="m_concession" class="finput" onchange="updateFeePreview()">
-                  <option value="" data-percent="0">Select</option>
-                  <option value="20% per month concession in Tuition Fees on Each Girls Student" data-percent="20">20% per month concession in Tuition Fees on Each Girls Student</option>
-                  <option value="50% per month concession in Tuition Fees on Second Younger" data-percent="50">50% per month concession in Tuition Fees on Second younger</option>
-                  <option value="100% per month concession in Tuition Fees on Third Child" data-percent="100">100% per month concession in Tuition Fees on Third Child</option>
                 </select>
               </div>
             </div>
@@ -657,11 +649,8 @@ async function loadStats() {
       const classFee = parseFloat(selectedClass?.dataset?.fee || '0') || 0;
       const transportFeePerMonth = parseFloat(document.getElementById('m_charge').value || '0') || 0;
       const selectedMonths = document.querySelectorAll('.m_month:checked').length;
-      const concessionEl = document.getElementById('m_concession');
-      const concessionPercent = parseFloat(concessionEl?.options?.[concessionEl.selectedIndex]?.dataset?.percent || '0') || 0;
-      const tuitionDiscount = classFee * (concessionPercent / 100);
       document.getElementById('m_class_fee').value = classFee;
-      document.getElementById('m_total_fee').value = Math.max(0, classFee - tuitionDiscount) + (transportFeePerMonth * selectedMonths);
+      document.getElementById('m_total_fee').value = classFee + (transportFeePerMonth * selectedMonths);
     }
 
     function toggleReferralFields() {
@@ -1146,7 +1135,6 @@ async function loadStats() {
       document.getElementById('m_class_fee').value = '';
       document.getElementById('m_total_fee').value = '';
       document.getElementById('m_charge').value = '';
-      document.getElementById('m_concession').value = '';
       editingStudentId = '';
       selectedSiblingStudents = [];
       siblingSearchCache = {};
@@ -1239,7 +1227,6 @@ async function loadStats() {
         setFormValue('m_ref_type', s.referral_type);
         setFormValue('m_ref_num', s.referral_number);
         setFormValue('m_ref_email', s.referral_email);
-        setFormValue('m_concession', s.admission_concession);
         document.getElementById('m_migration').checked = !!s.migration;
         document.getElementById('m_lateral').checked = !!s.lateral_entry;
         document.querySelectorAll('.m_month').forEach(el => {
@@ -1296,7 +1283,7 @@ async function loadStats() {
         aadhar_number: document.getElementById('m_aad').value || null,
         srn_no: document.getElementById('m_srn').value || null,
         school_id: currentSchoolId,
-        academic_year_id: ayId || '',
+        academic_year_id: ayId || null,
         classroom_id: document.getElementById('m_cls').value,
         section_id: document.getElementById('m_sec').value,
         branch_code: branchEl.value || null,
@@ -1326,8 +1313,6 @@ async function loadStats() {
         referral_type: document.getElementById('m_ref_type').value || null,
         referral_number: document.getElementById('m_ref_num').value || null,
         referral_email: document.getElementById('m_ref_email').value || null,
-        admission_concession: document.getElementById('m_concession').value || null,
-        admission_concession_percent: parseFloat(document.getElementById('m_concession').selectedOptions?.[0]?.dataset?.percent || '0') || 0,
         sibling_student_ids: selectedSiblingStudents.map(s => s.id),
         remarks: document.getElementById('m_remarks').value || null
       };
@@ -1335,9 +1320,6 @@ async function loadStats() {
 
     async function submitAdm() {
       if (!currentSchoolId) { showToast('Configure school first', 'error'); return; }
-      const fn = document.getElementById('m_fn').value.trim(), ln = document.getElementById('m_ln').value.trim();
-      const gnd = document.getElementById('m_gnd').value, cls = document.getElementById('m_cls').value, sec = document.getElementById('m_sec').value;
-      if (!fn || !ln || !gnd || !cls || !sec) { showToast('Fill all required fields (*)', 'error'); return; }
       try {
         const payload = buildStudentPayload();
         const r = editingStudentId

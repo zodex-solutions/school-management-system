@@ -35,11 +35,11 @@ def _ensure_student_scope(student: Student, current_user: User):
 
 class StudentAdmission(BaseModel):
     admission_no: Optional[str] = None
-    first_name: str
+    first_name: Optional[str] = None
     last_name: Optional[str] = ""
     middle_name: Optional[str] = None
     date_of_birth: Optional[datetime] = None
-    gender: str
+    gender: Optional[str] = "Other"
     religion: Optional[str] = None
     caste: Optional[str] = None
     nationality: str = "Indian"
@@ -53,8 +53,8 @@ class StudentAdmission(BaseModel):
     permanent_address_details: Optional[dict] = None
     school_id: str
     academic_year_id: str
-    classroom_id: str
-    section_id: str
+    classroom_id: Optional[str] = None
+    section_id: Optional[str] = None
     branch_code: Optional[str] = None
     branch_name: Optional[str] = None
     admission_date: Optional[datetime] = None
@@ -214,6 +214,26 @@ def _ensure_class_and_section(school: School, ay: AcademicYear, class_name: str,
     return classroom, section, class_created, section_created
 
 
+def _ensure_default_class_section(school: School, ay: AcademicYear) -> tuple[ClassRoom, Section]:
+    classroom, section, _, _ = _ensure_class_and_section(school, ay, "Unassigned", "A")
+    return classroom, section
+
+
+def _resolve_academic_year(school: School, academic_year_id: Optional[str]) -> AcademicYear:
+    if academic_year_id:
+        try:
+            return AcademicYear.objects.get(id=academic_year_id)
+        except Exception:
+            pass
+    current_year = AcademicYear.objects(school=school, is_current=True, is_active=True).first()
+    if current_year:
+        return current_year
+    fallback_year = AcademicYear.objects(school=school, is_active=True).order_by("-created_at").first()
+    if fallback_year:
+        return fallback_year
+    raise HTTPException(404, "Academic year not found")
+
+
 def _sync_student_transport(student: Student, route_id: Optional[str], payload: StudentAdmission):
     StudentTransport.objects(student=student, is_active=True).update(is_active=False)
     if not (payload.uses_transport and route_id):
@@ -259,25 +279,38 @@ async def admit_student(data: StudentAdmission, current_user: User = Depends(get
         data.school_id = resolve_school_access(current_user, data.school_id)
         data.branch_code = resolve_branch_scope(current_user, data.branch_code)
         school = School.objects.get(id=data.school_id)
-        ay = AcademicYear.objects.get(id=data.academic_year_id)
-        classroom = ClassRoom.objects.get(id=data.classroom_id)
-        section = Section.objects.get(id=data.section_id)
     except Exception as e:
         raise HTTPException(404, f"Reference not found: {str(e)}")
+    ay = _resolve_academic_year(school, data.academic_year_id)
+
+    classroom = None
+    section = None
+    if data.classroom_id and data.section_id:
+        try:
+            classroom = ClassRoom.objects.get(id=data.classroom_id)
+            section = Section.objects.get(id=data.section_id)
+        except Exception:
+            classroom = None
+            section = None
+    if not classroom or not section:
+        classroom, section = _ensure_default_class_section(school, ay)
     
     admission_no = (data.admission_no or "").strip() or generate_admission_no(school.code)
     if Student.objects(admission_no=admission_no).first():
         raise HTTPException(400, f"Student with admission number {admission_no} already exists")
     student_id = generate_id("STU")
+    first_name = (data.first_name or "").strip() or "Student"
+    last_name = (data.last_name or "").strip()
+    gender = data.gender or "Other"
     
     student = Student(
         admission_no=admission_no,
         student_id=student_id,
-        first_name=data.first_name,
-        last_name=data.last_name,
+        first_name=first_name,
+        last_name=last_name,
         middle_name=data.middle_name,
         date_of_birth=data.date_of_birth,
-        gender=data.gender,
+        gender=gender,
         religion=data.religion,
         caste=data.caste,
         admission_concession=data.admission_concession,
@@ -539,6 +572,7 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
             "photo": student.photo,
             "branch_code": student.branch_code,
             "branch_name": student.branch_name,
+            "academic_year_id": str(student.academic_year.id) if student.academic_year else None,
             "classroom_id": str(student.classroom.id) if student.classroom else None,
             "classroom_name": student.classroom.name if student.classroom else None,
             "class_fee": student.classroom.class_fee if student.classroom else 0,
@@ -891,9 +925,9 @@ async def import_students_csv(
         school_id = resolve_school_access(current_user, school_id)
         branch_code = resolve_branch_scope(current_user, branch_code)
         school = School.objects.get(id=school_id)
-        ay = AcademicYear.objects.get(id=academic_year_id)
     except Exception as e:
         raise HTTPException(404, f"Reference not found: {str(e)}")
+    ay = _resolve_academic_year(school, academic_year_id)
 
     raw_bytes = await file.read()
     try:
@@ -911,23 +945,24 @@ async def import_students_csv(
 
     for index, row in enumerate(reader, start=2):
         admission_no = _csv_value(row, "adm no", "admission no", "admission_no", "adm_no")
-        full_name = _csv_value(row, "name", "student name", "student_name")
+        full_name = _csv_value(row, "name", "student name", "student_name") or f"Student {admission_no or index}"
         class_name, section_name = _resolve_class_section(row)
 
-        if not admission_no or not full_name or not class_name or not section_name:
+        if not admission_no:
             skipped += 1
-            errors.append(f"Row {index}: admission no, name, class or section missing")
+            errors.append(f"Row {index}: admission no missing")
             continue
-
+        class_name = class_name or "Unassigned"
+        section_name = section_name or "A"
         classroom, section, class_created, section_created = _ensure_class_and_section(school, ay, class_name, section_name)
         classes_created += 1 if class_created else 0
         sections_created += 1 if section_created else 0
 
         first_name, middle_name, last_name = _split_name(full_name)
         if not first_name:
-            skipped += 1
-            errors.append(f"Row {index}: invalid student name")
-            continue
+            first_name = "Student"
+            middle_name = None
+            last_name = ""
 
         address = _csv_value(row, "address", "current_address")
         contact_no = _csv_value(row, "contact no", "contact_no", "mobile", "phone")
@@ -935,7 +970,7 @@ async def import_students_csv(
         srn_no = _csv_value(row, "srn no", "srn_no", "srn")
         father_name = _csv_value(row, "father name", "father_name")
         mother_name = _csv_value(row, "mother name", "mother_name")
-        gender = _normalize_gender(_csv_value(row, "gen", "gender"))
+        gender = _normalize_gender(_csv_value(row, "gen", "gender") or "Other")
         dob = _parse_import_date(_csv_value(row, "dob", "date of birth", "date_of_birth"))
         admission_date = _parse_import_date(_csv_value(row, "adm date", "admission date", "admission_date"))
         category = _csv_value(row, "category", "caste")
