@@ -299,7 +299,7 @@ function toggleSidebar() {
 }
 
 function logout() {
-  if (confirm('Logout karna chahte hain?')) {
+  if (confirm('Do you want to Logout')) {
     Auth.clearAuth();
     window.location.href = '/login';
   }
