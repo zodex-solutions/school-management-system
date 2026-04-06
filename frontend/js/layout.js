@@ -188,16 +188,16 @@ display:flex;align-items:center;gap:10px">
 
   <div style="width:36px;height:36px;border-radius:10px;
   
-  display:flex;align-items:center;justify-content:center;color:white;font-weight:700">
-      <img src="/public/logo.png" style="width:100%;height:100%;object-fit:cover"/>
+  display:flex;align-items:center;justify-content:center;font-weight:700">
+      <img src="/public/rs.jpeg" style="width:100%;height:100%;object-fit:cover; border-radius:8px"/>
   </div>
 
   <div>
     <div style="font-weight:800;font-size:14px;color:#111827">
-      Scholar Desk 
+      R S Memorial Public School
     </div>
-    <div style="font-size:11px;color:#9ca3af">
-      School ERP
+    <div style="font-size:10px;color:#9ca3af">
+      Learn Today for a Better Tomorrow
     </div>
   </div>
 
@@ -227,7 +227,7 @@ display:flex;align-items:center;gap:10px">
             ${user.full_name || 'Admin'}
           </div>
           <div style="font-size:11px;color:#9ca3af">
-            ${user.role_name || 'Super Admin'}
+            ${user.role_name || 'Powered by Zodex'}
           </div>
         </div>
 
