@@ -71,7 +71,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
                   <option value="">All Status</option><option value="Pending">Pending</option><option value="Partial">Partial</option><option value="Paid">Paid</option><option value="Overdue">Overdue</option>
                 </select>
               </div>
-              <button onclick="document.getElementById('invModal').style.display='flex';loadInvoiceClasses();loadInvoiceStructures()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg whitespace-nowrap">+ Create Invoice</button>
+              <button onclick="openInvoiceModal()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg whitespace-nowrap">+ Create Invoice</button>
             </div>
             <div id="invTable"></div>
           </div>
@@ -104,7 +104,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <div id="ftab2" class="p-5 hidden">
             <div class="flex justify-between mb-4">
               <h4 class="font-bold text-gray-900">Fee Structures</h4>
-              <button onclick="document.getElementById('structModal').style.display='flex';loadStructCats()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium">+ Create Structure</button>
+              <button onclick="openFeeStructureModal()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium">+ Create Structure</button>
             </div>
             <div id="structTable"></div>
           </div>
@@ -126,7 +126,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
   <!-- Invoice Modal -->
   <div id="invModal" class="modal-overlay" style="display:none">
     <div class="modal-box w-full max-w-3xl">
-      <div class="flex justify-between items-center px-6 py-4 border-b"><h3 class="font-bold text-gray-900">Create Invoice</h3><button onclick="document.getElementById('invModal').style.display='none'" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl text-lg">×</button></div>
+      <div class="flex justify-between items-center px-6 py-4 border-b"><h3 id="invoiceModalTitle" class="font-bold text-gray-900">Create Invoice</h3><button onclick="document.getElementById('invModal').style.display='none'" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl text-lg">×</button></div>
       <div class="px-6 py-5 grid grid-cols-1 xl:grid-cols-[1.1fr_.9fr] gap-6">
         <div class="space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -199,7 +199,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       </div>
       <div class="flex gap-3 px-6 py-4 border-t justify-end">
         <button onclick="document.getElementById('invModal').style.display='none'" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
-        <button onclick="createInvoice()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Create</button>
+        <button id="invoiceSubmitBtn" onclick="createInvoice()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Create</button>
       </div>
     </div>
   </div>
@@ -207,7 +207,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
   <!-- Fee Structure Modal -->
   <div id="structModal" class="modal-overlay" style="display:none">
     <div class="modal-box w-full max-w-md">
-      <div class="flex justify-between items-center px-6 py-4 border-b"><h3 class="font-bold text-gray-900">Create Fee Structure</h3><button onclick="document.getElementById('structModal').style.display='none'" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl text-lg">×</button></div>
+      <div class="flex justify-between items-center px-6 py-4 border-b"><h3 id="structModalTitle" class="font-bold text-gray-900">Create Fee Structure</h3><button onclick="document.getElementById('structModal').style.display='none'" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl text-lg">×</button></div>
       <div class="px-6 py-5 space-y-4">
         <div><label class="lbl">Structure Name *</label><input id="str_name" class="finput" placeholder="e.g. Class 10 Fee 2024-25"/></div>
         <div><label class="lbl">Class *</label><select id="str_cls" class="finput"><option value="">Select class</option></select></div>
@@ -219,7 +219,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       </div>
       <div class="flex gap-3 px-6 py-4 border-t justify-end">
         <button onclick="document.getElementById('structModal').style.display='none'" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
-        <button onclick="createFeeStructure()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
+        <button id="structSubmitBtn" onclick="createFeeStructure()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Save</button>
       </div>
     </div>
   </div>
@@ -243,6 +243,8 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     let invoiceStudentMeta = null;
     let invoiceClassCache = [];
     let paymentClassCache = [];
+    let editingFeeStructureId = '';
+    let editingInvoiceId = '';
     const invoiceConcessionOptions = [
       { label: 'Select', percent: 0 },
       { label: '20% per month concession in Tuition Fees on Each Girls Student', percent: 20 },
@@ -486,6 +488,104 @@ function statCard(title, value, icon, color) {
       document.getElementById('invEstimateStatus').textContent = 'Draft';
     }
 
+    function resetInvoiceModal() {
+      editingInvoiceId = '';
+      document.getElementById('invoiceModalTitle').textContent = 'Create Invoice';
+      document.getElementById('invoiceSubmitBtn').textContent = 'Create';
+      document.getElementById('inv_class').value = '';
+      document.getElementById('inv_section').innerHTML = '<option value="">Select section</option>';
+      document.getElementById('inv_student').innerHTML = '<option value="">Select student</option>';
+      document.getElementById('inv_structure').value = '';
+      document.getElementById('inv_transport_toggle').checked = false;
+      document.getElementById('inv_transport_meta').classList.add('hidden');
+      document.querySelectorAll('.inv_month').forEach(cb => cb.checked = false);
+      document.getElementById('inv_due').value = '';
+      document.getElementById('inv_disc').value = '0';
+      document.getElementById('inv_rem').value = '';
+      document.getElementById('inv_concession').value = '';
+      document.getElementById('inv_send_parent').checked = true;
+      document.getElementById('inv_send_student').checked = false;
+      document.getElementById('invItems').innerHTML = `
+        <div class="flex gap-2 items-center">
+          <input type="text" placeholder="Description" class="inv-desc finput flex-1" />
+          <input type="number" placeholder="Amount" class="inv-amt finput w-32" />
+          <button onclick="removeInvItem(this)" class="text-red-400 hover:text-red-600 text-lg px-2">×</button>
+        </div>`;
+      document.querySelectorAll('.inv-desc, .inv-amt').forEach(el => el.addEventListener('input', renderInvoiceEstimate));
+      invoiceStudentMeta = null;
+      renderInvoiceEstimate();
+    }
+
+    async function openInvoiceModal(invoiceId = '') {
+      document.getElementById('invModal').style.display = 'flex';
+      await loadInvoiceClasses();
+      await loadInvoiceStructures();
+      resetInvoiceModal();
+      if (!invoiceId) return;
+      try {
+        const res = await FeesAPI.getInvoice(invoiceId);
+        const inv = res?.data || {};
+        const studentRes = inv.student_id ? await StudentAPI.get(inv.student_id) : null;
+        const student = studentRes?.data || null;
+        editingInvoiceId = invoiceId;
+        document.getElementById('invoiceModalTitle').textContent = 'Edit Invoice';
+        document.getElementById('invoiceSubmitBtn').textContent = 'Update';
+        if (student?.classroom_id) {
+          document.getElementById('inv_class').value = student.classroom_id;
+          loadInvoiceSections();
+          document.getElementById('inv_section').value = student.section_id || '';
+          await loadInvStudents();
+          document.getElementById('inv_student').value = student.id || '';
+          await loadInvoiceStudentMeta();
+        }
+        document.getElementById('inv_concession').value = inv.concession_name || '';
+        document.getElementById('inv_due').value = inv.due_date ? String(inv.due_date).slice(0, 10) : '';
+        document.getElementById('inv_disc').value = inv.discount_amount || 0;
+        document.getElementById('inv_rem').value = inv.remarks || '';
+        document.getElementById('inv_transport_toggle').checked = Array.isArray(inv.items) && inv.items.some(item => String(item.category || '').toLowerCase().includes('transport'));
+        document.querySelectorAll('.inv_month').forEach(cb => cb.checked = Array.isArray(inv.transport_months) && inv.transport_months.includes(cb.value));
+        const matchingStructure = feeStructures.find(structure =>
+          Array.isArray(inv.items) &&
+          Array.isArray(structure.items) &&
+          structure.items.length === inv.items.filter(item => !String(item.category || '').toLowerCase().includes('transport')).length &&
+          structure.items.every(item => inv.items.some(invItem => invItem.category === item.category))
+        );
+        document.getElementById('inv_structure').value = matchingStructure?.id || '';
+        const manualItems = (inv.items || []).filter(item => {
+          const cat = String(item.category || '').toLowerCase();
+          const structureMatch = matchingStructure?.items?.some(structItem => structItem.category === item.category);
+          return !structureMatch && !cat.includes('transport');
+        });
+        document.getElementById('invItems').innerHTML = '';
+        if (manualItems.length) {
+          manualItems.forEach(item => {
+            addInvItem();
+            const rows = document.querySelectorAll('#invItems .flex');
+            const last = rows[rows.length - 1];
+            last.querySelector('.inv-desc').value = item.description || item.category || '';
+            last.querySelector('.inv-amt').value = item.base_amount || item.amount || 0;
+          });
+        } else {
+          addInvItem();
+        }
+        renderInvoiceEstimate();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteInvoice(invoiceId) {
+      if (!confirm('Delete this invoice?')) return;
+      try {
+        await FeesAPI.deleteInvoice(invoiceId);
+        showToast('Invoice deleted');
+        loadInvoices();
+        loadFeeStats();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
     function getInvoiceManualItems() {
       const descs = document.querySelectorAll('.inv-desc');
       const amts = document.querySelectorAll('.inv-amt');
@@ -660,7 +760,7 @@ function statCard(title, value, icon, color) {
       const concession = getSelectedInvoiceConcession();
       if (!items.length && !feeStructureId && !includeTransport) { showToast('Choose fee structure, add fee item, or include transport fee', 'error'); return; }
       try {
-        const r = await FeesAPI.createInvoice({
+        const payload = {
           school_id: schoolId,
           student_id: studId,
           academic_year_id: resolvedAyId,
@@ -673,7 +773,18 @@ function statCard(title, value, icon, color) {
           due_date: document.getElementById('inv_due').value ? new Date(document.getElementById('inv_due').value).toISOString() : null,
           discount_amount: parseFloat(document.getElementById('inv_disc').value) || 0,
           remarks: document.getElementById('inv_rem').value || null
-        });
+        };
+        const r = editingInvoiceId
+          ? await FeesAPI.updateInvoice(editingInvoiceId, payload)
+          : await FeesAPI.createInvoice(payload);
+        if (editingInvoiceId) {
+          showToast('Invoice updated successfully');
+          document.getElementById('invModal').style.display = 'none';
+          loadInvoices();
+          loadFeeStats();
+          resetInvoiceModal();
+          return;
+        }
         await downloadInvoicePdf(r.data.id, r.data.invoice_no);
         const sentMessages = [];
         if (document.getElementById('inv_send_parent').checked) {
@@ -694,8 +805,7 @@ function statCard(title, value, icon, color) {
         }
         showToast('Invoice ' + r.data.invoice_no + ' created! Net: ' + formatCurrency(r.data.net_amount) + (sentMessages.length ? ` | Sent to ${sentMessages.join(', ')}` : ''));
         document.getElementById('invModal').style.display = 'none'; loadInvoices(); loadFeeStats();
-        invoiceStudentMeta = null;
-        resetInvoiceEstimate();
+        resetInvoiceModal();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
@@ -716,7 +826,7 @@ function statCard(title, value, icon, color) {
           <td class="px-4 py-3 text-sm text-red-500 font-medium">${formatCurrency(inv.balance_amount)}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${formatDate(inv.due_date)}</td>
           <td class="px-4 py-3">${tdBadge(inv.status, inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'yellow' : inv.status === 'Overdue' ? 'red' : 'orange')}</td>
-          <td class="px-4 py-3 space-x-3"><button onclick="viewInvoice('${inv.id}')" class="text-xs text-blue-600 hover:underline">View</button><button onclick="downloadInvoicePdf('${inv.id}','${inv.invoice_no}')" class="text-xs text-emerald-600 hover:underline">PDF</button><button onclick="triggerInvoiceEmail('${inv.id}','parent').then(email=>showToast('Invoice sent to '+email)).catch(e=>showToast('Error: '+e.message,'error'))" class="text-xs text-violet-600 hover:underline">Send</button></td>
+          <td class="px-4 py-3 space-x-3"><button onclick="viewInvoice('${inv.id}')" class="text-xs text-blue-600 hover:underline">View</button><button onclick="openInvoiceModal('${inv.id}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="deleteInvoice('${inv.id}')" class="text-xs text-red-600 hover:underline">Delete</button><button onclick="downloadInvoicePdf('${inv.id}','${inv.invoice_no}')" class="text-xs text-teal-600 hover:underline">PDF</button><button onclick="triggerInvoiceEmail('${inv.id}','parent').then(email=>showToast('Invoice sent to '+email)).catch(e=>showToast('Error: '+e.message,'error'))" class="text-xs text-violet-600 hover:underline">Send</button></td>
         `);
         document.getElementById('invTable').innerHTML = buildTable(hdrs, rows, 'No invoices found');
       } catch (e) { document.getElementById('invTable').innerHTML = `<div class="text-center py-8 text-red-400">Error: ${e.message}</div>`; }
@@ -857,6 +967,51 @@ function statCard(title, value, icon, color) {
       if (totalInput) totalInput.value = total ? String(total) : '0';
     }
 
+    function resetFeeStructureModal() {
+      editingFeeStructureId = '';
+      document.getElementById('structModalTitle').textContent = 'Create Fee Structure';
+      document.getElementById('structSubmitBtn').textContent = 'Save';
+      document.getElementById('str_name').value = '';
+      document.getElementById('str_cls').value = '';
+      document.getElementById('str_inst').value = '1';
+      document.getElementById('str_late').value = '0';
+      document.querySelectorAll('.struct-cat-input').forEach(input => { input.value = ''; });
+      updateFeeStructureYearlyTotal();
+    }
+
+    async function openFeeStructureModal(structureId = '') {
+      document.getElementById('structModal').style.display = 'flex';
+      await loadStructCats();
+      resetFeeStructureModal();
+      if (!structureId) return;
+      const structure = feeStructures.find(item => item.id === structureId);
+      if (!structure) return;
+      editingFeeStructureId = structureId;
+      document.getElementById('structModalTitle').textContent = 'Edit Fee Structure';
+      document.getElementById('structSubmitBtn').textContent = 'Update';
+      document.getElementById('str_name').value = structure.name || '';
+      const classOption = Array.from(document.getElementById('str_cls').options).find(option => option.textContent === (structure.classroom || ''));
+      document.getElementById('str_cls').value = classOption?.value || '';
+      document.getElementById('str_inst').value = String(structure.installments || 1);
+      document.getElementById('str_late').value = structure.late_fee_per_day || 0;
+      document.querySelectorAll('.struct-cat-input').forEach(input => {
+        const code = input.dataset.code;
+        input.value = structure.fee_breakdown?.[code] ?? '';
+      });
+      updateFeeStructureYearlyTotal();
+    }
+
+    async function deleteFeeStructure(structureId) {
+      if (!confirm('Delete this fee structure?')) return;
+      try {
+        await FeesAPI.deleteStructure(structureId);
+        showToast('Fee structure deleted');
+        loadStructures();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
     async function ensureFeeStructureCategories() {
       if (!schoolId) return [];
       const existing = await FeesAPI.getCategories(schoolId);
@@ -899,8 +1054,16 @@ function statCard(title, value, icon, color) {
       if (!name || !cls) { showToast('Name and class required', 'error'); return; }
       const items = feeCats.map(c => ({ category_id: c.id, amount: parseFloat(document.getElementById(`cat_${c.id}`)?.value) || 0 }));
       try {
-        await FeesAPI.createStructure({ school_id: schoolId, academic_year_id: academicYearId, classroom_id: cls, name, items, installments: parseInt(document.getElementById('str_inst').value) || 1, late_fee_per_day: parseFloat(document.getElementById('str_late').value) || 0 });
-        showToast('Fee structure created!'); document.getElementById('structModal').style.display = 'none'; loadStructures();
+        const payload = { school_id: schoolId, academic_year_id: academicYearId, classroom_id: cls, name, items, installments: parseInt(document.getElementById('str_inst').value) || 1, late_fee_per_day: parseFloat(document.getElementById('str_late').value) || 0 };
+        if (editingFeeStructureId) {
+          await FeesAPI.updateStructure(editingFeeStructureId, payload);
+          showToast('Fee structure updated!');
+        } else {
+          await FeesAPI.createStructure(payload);
+          showToast('Fee structure created!');
+        }
+        document.getElementById('structModal').style.display = 'none';
+        loadStructures();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
@@ -909,7 +1072,7 @@ function statCard(title, value, icon, color) {
       try {
         const academicYearId = await resolveFeeAcademicYearId();
         const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: academicYearId || '' }); const data = r?.data || [];
-        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Tuition Fee Mly', 'Tuition Fee Yly Upto 30 April 2025'];
+        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Tuition Fee Mly', 'Tuition Fee Yly Upto 30 April 2025', ''];
         const rows = data.map(s => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${s.name}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${s.classroom || '-'}</td>
@@ -919,6 +1082,7 @@ function statCard(title, value, icon, color) {
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.ACT || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.TUI || 0)}</td>
           <td class="px-4 py-3 font-bold text-gray-900">${formatCurrency(s.fee_breakdown?.TUIY || s.total_amount || 0)}</td>
+          <td class="px-4 py-3 whitespace-nowrap"><button onclick="openFeeStructureModal('${s.id}')" class="text-xs text-blue-600 hover:underline mr-3">Edit</button><button onclick="deleteFeeStructure('${s.id}')" class="text-xs text-red-600 hover:underline">Delete</button></td>
         `);
         document.getElementById('structTable').innerHTML = buildTable(hdrs, rows, 'No fee structures');
       } catch (e) {}

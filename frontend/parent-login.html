@@ -371,6 +371,7 @@ async function sendMsg() {
 }
 
 function logout() {
+  if (!confirm('Do you want to Logout')) return;
   localStorage.removeItem('parent_token');
   localStorage.removeItem('parent_data');
   location.reload();

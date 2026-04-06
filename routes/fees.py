@@ -15,7 +15,7 @@ from models.institution import School, AcademicYear, ClassRoom, User
 from models.student import Student
 from models.transport import TransportRoute
 from utils.auth import get_current_user, resolve_school_access, resolve_branch_scope
-from utils.helpers import success_response, generate_invoice_no, generate_transaction_no
+from utils.helpers import success_response, generate_transaction_no
 from config import settings
 
 router = APIRouter(prefix="/fees", tags=["Fees Management"])
@@ -127,6 +127,21 @@ class FeeStructureCreate(BaseModel):
     grace_days: int = 0
 
 
+def _build_fee_structure_items(items: List[dict]):
+    from models.fees import FeeStructureItem
+
+    fee_items = []
+    for item in items:
+        cat = FeeCategory.objects.get(id=item['category_id'])
+        if not _is_allowed_fee_category(cat):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{cat.name} is not allowed in fee structure. Use only the approved fee fields."
+            )
+        fee_items.append(FeeStructureItem(category=cat, category_name=cat.name, amount=item['amount']))
+    return fee_items
+
+
 def _resolve_academic_year(school: School, academic_year_id: Optional[str] = None) -> AcademicYear:
     if academic_year_id:
         try:
@@ -157,27 +172,14 @@ async def create_fee_structure(data: FeeStructureCreate, current_user: User = De
     ay = _resolve_academic_year(school, data.academic_year_id)
     classroom = ClassRoom.objects.get(id=data.classroom_id)
     
-    from models.fees import FeeStructureItem
-    
     fs = FeeStructure(
         school=school, academic_year=ay, classroom=classroom,
         name=data.name, installments=data.installments,
         late_fee_per_day=data.late_fee_per_day,
         grace_days=data.grace_days
     )
-    
-    total = 0
-    for item in data.items:
-        cat = FeeCategory.objects.get(id=item['category_id'])
-        if not _is_allowed_fee_category(cat):
-            raise HTTPException(
-                status_code=400,
-                detail=f"{cat.name} is not allowed in fee structure. Use only the approved fee fields."
-            )
-        fi = FeeStructureItem(category=cat, category_name=cat.name, amount=item['amount'])
-        fs.items.append(fi)
-        total += item['amount']
-    
+
+    fs.items = _build_fee_structure_items(data.items)
     fs.total_amount = _build_fee_breakdown(fs.items)["TUIY"]
     fs.save()
     return success_response({"id": str(fs.id), "total_amount": fs.total_amount, "fee_breakdown": _build_fee_breakdown(fs.items)}, "Fee structure created")
@@ -206,11 +208,51 @@ async def list_fee_structures(
         "classroom": f.classroom.name if f.classroom else None,
         "total_amount": f.total_amount,
         "installments": f.installments,
+        "late_fee_per_day": f.late_fee_per_day,
         "items": [{"category": i.category_name, "amount": i.amount} for i in f.items],
         "fee_breakdown": _build_fee_breakdown(f.items),
         "yearly_label": YEARLY_TUITION_LABEL,
     } for f in query]
     return success_response(result)
+
+
+@router.put("/structure/{structure_id}")
+async def update_fee_structure(structure_id: str, data: FeeStructureCreate, current_user: User = Depends(get_current_user)):
+    fee_structure = FeeStructure.objects(id=structure_id, is_active=True).first()
+    if not fee_structure:
+        raise HTTPException(404, "Fee structure not found")
+
+    data.school_id = resolve_school_access(current_user, data.school_id)
+    if str(fee_structure.school.id) != data.school_id:
+        raise HTTPException(403, "Access denied")
+
+    school = School.objects.get(id=data.school_id)
+    ay = _resolve_academic_year(school, data.academic_year_id)
+    classroom = ClassRoom.objects.get(id=data.classroom_id)
+    fee_items = _build_fee_structure_items(data.items)
+    total_amount = _build_fee_breakdown(fee_items)["TUIY"]
+
+    fee_structure.update(
+        academic_year=ay,
+        classroom=classroom,
+        name=data.name,
+        items=fee_items,
+        installments=data.installments,
+        late_fee_per_day=data.late_fee_per_day,
+        grace_days=data.grace_days,
+        total_amount=total_amount
+    )
+    return success_response({"id": str(fee_structure.id), "total_amount": total_amount}, "Fee structure updated")
+
+
+@router.delete("/structure/{structure_id}")
+async def delete_fee_structure(structure_id: str, current_user: User = Depends(get_current_user)):
+    fee_structure = FeeStructure.objects(id=structure_id, is_active=True).first()
+    if not fee_structure:
+        raise HTTPException(404, "Fee structure not found")
+    resolve_school_access(current_user, str(fee_structure.school.id))
+    fee_structure.update(is_active=False)
+    return success_response(message="Fee structure deleted")
 
 
 # ─── Invoice ──────────────────────────────────────────────────────────────────
@@ -233,6 +275,13 @@ class InvoiceCreate(BaseModel):
 class InvoiceEmailRequest(BaseModel):
     recipient_type: str = "parent"
     email: Optional[str] = None
+
+
+def _generate_invoice_no() -> str:
+    year = datetime.now().year
+    start_of_year = datetime(year, 1, 1)
+    count = FeeInvoice.objects(invoice_date__gte=start_of_year).count() + 1
+    return f"INV/{year}{count:05d}"
 
 
 def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str], concession_percent: float = 0):
@@ -481,7 +530,7 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
         raise HTTPException(403, "Access denied for this branch")
     ay = _resolve_academic_year(school, data.academic_year_id or (str(student.academic_year.id) if student.academic_year else None))
     
-    invoice_no = generate_invoice_no(school.code)
+    invoice_no = _generate_invoice_no()
     items, selected_months = _build_invoice_items(
         student,
         data.fee_structure_id,
@@ -521,6 +570,70 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
         "concession_name": invoice.concession_name,
         "concession_percent": invoice.concession_percent
     }, "Invoice created successfully")
+
+
+@router.put("/invoice/{invoice_id}")
+async def update_invoice(invoice_id: str, data: InvoiceCreate, current_user: User = Depends(get_current_user)):
+    invoice = FeeInvoice.objects(id=invoice_id).first()
+    if not invoice:
+        raise HTTPException(404, "Invoice not found")
+
+    data.school_id = resolve_school_access(current_user, data.school_id)
+    if str(invoice.school.id) != data.school_id:
+        raise HTTPException(403, "Access denied")
+
+    student = Student.objects.get(id=data.student_id)
+    scoped_branch = resolve_branch_scope(current_user, None)
+    if scoped_branch and student.branch_code != scoped_branch:
+        raise HTTPException(403, "Access denied for this branch")
+
+    ay = _resolve_academic_year(invoice.school, data.academic_year_id or (str(student.academic_year.id) if student.academic_year else None))
+    items, selected_months = _build_invoice_items(
+        student,
+        data.fee_structure_id,
+        data.items,
+        data.include_transport,
+        data.transport_months,
+        data.concession_percent
+    )
+    if not items:
+        raise HTTPException(400, "Add at least one fee item or select a fee structure")
+
+    gross = sum(item['amount'] for item in items)
+    net = gross - data.discount_amount
+    already_paid = invoice.paid_amount or 0
+    balance_amount = max(0, net - already_paid)
+    status = "Paid" if balance_amount <= 0 else ("Partial" if already_paid > 0 else "Pending")
+
+    invoice.update(
+        student=student,
+        academic_year=ay,
+        due_date=data.due_date,
+        items=items,
+        transport_months=selected_months,
+        transport_route=student.transport_route_name,
+        concession_name=data.concession_name,
+        concession_percent=data.concession_percent or 0,
+        gross_amount=gross,
+        discount_amount=data.discount_amount,
+        net_amount=net,
+        balance_amount=balance_amount,
+        remarks=data.remarks,
+        status=status
+    )
+    return success_response({"id": str(invoice.id), "net_amount": net, "paid_amount": already_paid, "balance_amount": balance_amount}, "Invoice updated successfully")
+
+
+@router.delete("/invoice/{invoice_id}")
+async def delete_invoice(invoice_id: str, current_user: User = Depends(get_current_user)):
+    invoice = FeeInvoice.objects(id=invoice_id).first()
+    if not invoice:
+        raise HTTPException(404, "Invoice not found")
+    resolve_school_access(current_user, str(invoice.school.id))
+    if (invoice.paid_amount or 0) > 0:
+        raise HTTPException(400, "Paid invoice cannot be deleted")
+    invoice.update(status="Cancelled", balance_amount=0)
+    return success_response(message="Invoice deleted")
 
 
 @router.get("/invoice")
@@ -592,9 +705,11 @@ async def get_invoice(invoice_id: str, current_user: User = Depends(get_current_
             "id": str(inv.id),
             "invoice_no": inv.invoice_no,
             "student_name": inv.student.full_name if inv.student else None,
+            "student_id": str(inv.student.id) if inv.student else None,
             "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
             "due_date": inv.due_date.isoformat() if inv.due_date else None,
             "items": inv.items,
+            "transport_months": inv.transport_months or [],
             "concession_name": inv.concession_name,
             "concession_percent": inv.concession_percent,
             "gross_amount": inv.gross_amount,

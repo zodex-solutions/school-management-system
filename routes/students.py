@@ -234,6 +234,22 @@ def _resolve_academic_year(school: School, academic_year_id: Optional[str]) -> A
     raise HTTPException(404, "Academic year not found")
 
 
+def _address_details_fallback(details: Optional[dict], raw_address: Optional[str]) -> dict:
+    if details:
+        return details
+    if raw_address:
+        return {
+            "address": raw_address,
+            "village_area": None,
+            "post_office": None,
+            "city": None,
+            "state": None,
+            "pin_code": None,
+            "phone_no": None,
+        }
+    return {}
+
+
 def _sync_student_transport(student: Student, route_id: Optional[str], payload: StudentAdmission):
     StudentTransport.objects(student=student, is_active=True).update(is_active=False)
     if not (payload.uses_transport and route_id):
@@ -567,8 +583,8 @@ async def get_student(student_id: str, current_user: User = Depends(get_current_
             "email": student.email,
             "current_address": student.current_address,
             "permanent_address": student.permanent_address,
-            "current_address_details": student.current_address_details or {},
-            "permanent_address_details": student.permanent_address_details or {},
+            "current_address_details": _address_details_fallback(student.current_address_details, student.current_address),
+            "permanent_address_details": _address_details_fallback(student.permanent_address_details, student.permanent_address),
             "photo": student.photo,
             "branch_code": student.branch_code,
             "branch_name": student.branch_name,
@@ -965,6 +981,7 @@ async def import_students_csv(
             last_name = ""
 
         address = _csv_value(row, "address", "current_address")
+        permanent_address = _csv_value(row, "permanent_address") or address
         contact_no = _csv_value(row, "contact no", "contact_no", "mobile", "phone")
         aadhar_no = _csv_value(row, "aadhar no", "aadhaar no", "aadhar_number", "aadhaar_number")
         srn_no = _csv_value(row, "srn no", "srn_no", "srn")
@@ -994,7 +1011,9 @@ async def import_students_csv(
             "phone": contact_no,
             "email": _csv_value(row, "email"),
             "current_address": address,
-            "permanent_address": _csv_value(row, "permanent_address") or address,
+            "permanent_address": permanent_address,
+            "current_address_details": _address_details_fallback(None, address),
+            "permanent_address_details": _address_details_fallback(None, permanent_address),
             "school": school,
             "academic_year": ay,
             "classroom": classroom,
