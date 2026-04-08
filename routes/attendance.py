@@ -2,14 +2,50 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, date
+from math import radians, cos, sin, asin, sqrt
 from models.attendance import StudentAttendance, StaffAttendance, Holiday, AttendanceSummary, StudentAttendanceRecord, StaffAttendanceRecord
 from models.institution import School, AcademicYear, ClassRoom, Section, Subject, User
 from models.student import Student
 from models.staff import Staff
-from utils.auth import get_current_user
+from utils.auth import get_current_user, resolve_school_access
 from utils.helpers import success_response
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
+
+
+def _haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * asin(sqrt(a))
+    return 6371000 * c
+
+
+def _recount_staff(records: List[StaffAttendanceRecord]):
+    present_count = sum(1 for record in records if record.status == "Present")
+    absent_count = sum(1 for record in records if record.status == "Absent")
+    on_leave_count = sum(1 for record in records if record.status == "On-Leave")
+    return present_count, absent_count, on_leave_count
+
+
+def _serialize_staff_record(record: StaffAttendanceRecord):
+    return {
+        "staff_id": str(record.staff.id) if record.staff else None,
+        "staff_name": record.staff_name or (record.staff.full_name if record.staff else None),
+        "designation": record.designation or (record.staff.designation if record.staff else None),
+        "status": record.status,
+        "check_in_time": record.check_in_time,
+        "check_out_time": record.check_out_time,
+        "remarks": record.remarks,
+        "marked_via": record.marked_via,
+        "mark_latitude": record.mark_latitude,
+        "mark_longitude": record.mark_longitude,
+        "location_accuracy_meters": record.location_accuracy_meters,
+        "distance_from_school_meters": round(record.distance_from_school_meters or 0, 2) if record.distance_from_school_meters is not None else None,
+        "location_status": record.location_status,
+        "location_note": record.location_note,
+    }
 
 
 class AttendanceRecord(BaseModel):
@@ -293,6 +329,17 @@ class MarkStaffAttendance(BaseModel):
     records: List[StaffAttRecord]
 
 
+class StaffSelfCheckin(BaseModel):
+    school_id: str
+    date: Optional[datetime] = None
+    status: str = "Present"
+    check_in_time: Optional[str] = None
+    remarks: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    accuracy_meters: Optional[float] = None
+
+
 @router.post("/staff/mark")
 async def mark_staff_attendance(
     data: MarkStaffAttendance,
@@ -310,10 +357,15 @@ async def mark_staff_attendance(
         try:
             staff = Staff.objects.get(id=rec.staff_id)
             record = StaffAttendanceRecord(
-                staff=staff, status=rec.status,
+                staff=staff,
+                staff_name=staff.full_name,
+                designation=staff.designation,
+                status=rec.status,
                 check_in_time=rec.check_in_time,
                 check_out_time=rec.check_out_time,
-                remarks=rec.remarks
+                remarks=rec.remarks,
+                marked_via="Admin",
+                location_status="Admin Override"
             )
             records.append(record)
             if rec.status == "Present":
@@ -349,6 +401,133 @@ async def mark_staff_attendance(
         "absent": absent_count,
         "on_leave": on_leave_count
     }, "Staff attendance marked")
+
+
+@router.get("/staff")
+async def get_staff_attendance(
+    school_id: str,
+    date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    school_id = resolve_school_access(current_user, school_id)
+    school = School.objects.get(id=school_id)
+    target_date = datetime.fromisoformat(date).replace(hour=0, minute=0, second=0, microsecond=0) if date else datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    attendance = StaffAttendance.objects(school=school, date=target_date).first()
+    if not attendance:
+        return success_response({
+            "date": target_date.isoformat(),
+            "total_staff": 0,
+            "present_count": 0,
+            "absent_count": 0,
+            "on_leave_count": 0,
+            "records": []
+        })
+    return success_response({
+        "id": str(attendance.id),
+        "date": attendance.date.isoformat(),
+        "total_staff": attendance.total_staff or 0,
+        "present_count": attendance.present_count or 0,
+        "absent_count": attendance.absent_count or 0,
+        "on_leave_count": attendance.on_leave_count or 0,
+        "marked_by": attendance.marked_by,
+        "marked_at": attendance.marked_at.isoformat() if attendance.marked_at else None,
+        "records": [_serialize_staff_record(record) for record in (attendance.records or [])]
+    })
+
+
+@router.post("/staff/self-checkin")
+async def mark_my_staff_attendance(
+    data: StaffSelfCheckin,
+    current_user: User = Depends(get_current_user)
+):
+    school_id = resolve_school_access(current_user, data.school_id)
+    school = School.objects.get(id=school_id)
+    staff = Staff.objects(user_account=current_user, school=school, is_active=True).first()
+    if not staff:
+        raise HTTPException(403, "This user is not linked to any active staff profile")
+
+    geofence = getattr(school, "attendance_geofence", None)
+    enforce_geofence = bool(geofence and geofence.enforce_for_staff_attendance and geofence.latitude is not None and geofence.longitude is not None)
+    if enforce_geofence and (data.latitude is None or data.longitude is None):
+        raise HTTPException(400, "Location is required for staff attendance at this school")
+
+    distance_from_school = None
+    location_status = "Not Checked"
+    location_note = None
+    if geofence and geofence.latitude is not None and geofence.longitude is not None and data.latitude is not None and data.longitude is not None:
+        distance_from_school = _haversine_meters(float(data.latitude), float(data.longitude), float(geofence.latitude), float(geofence.longitude))
+        allowed_radius = float(geofence.radius_meters or 150)
+        if distance_from_school <= allowed_radius:
+            location_status = "Within Range"
+            location_note = f"Attendance marked within {allowed_radius:.0f}m school radius"
+        else:
+            location_status = "Outside Range"
+            location_note = f"Outside allowed school radius by {max(distance_from_school - allowed_radius, 0):.0f}m"
+            if enforce_geofence:
+                raise HTTPException(400, location_note)
+
+    att_date = (data.date or datetime.utcnow()).replace(hour=0, minute=0, second=0, microsecond=0)
+    attendance = StaffAttendance.objects(school=school, date=att_date).first()
+    check_in_time = data.check_in_time or datetime.now().strftime("%H:%M")
+    record = StaffAttendanceRecord(
+        staff=staff,
+        staff_name=staff.full_name,
+        designation=staff.designation,
+        status=data.status,
+        check_in_time=check_in_time,
+        remarks=data.remarks,
+        marked_via="Teacher Panel",
+        mark_latitude=data.latitude,
+        mark_longitude=data.longitude,
+        location_accuracy_meters=data.accuracy_meters,
+        distance_from_school_meters=distance_from_school,
+        location_status=location_status,
+        location_note=location_note
+    )
+
+    if attendance:
+        records = []
+        replaced = False
+        for existing_record in attendance.records or []:
+            if existing_record.staff and str(existing_record.staff.id) == str(staff.id):
+                records.append(record)
+                replaced = True
+            else:
+                records.append(existing_record)
+        if not replaced:
+            records.append(record)
+        attendance.records = records
+        present_count, absent_count, on_leave_count = _recount_staff(records)
+        attendance.total_staff = len(records)
+        attendance.present_count = present_count
+        attendance.absent_count = absent_count
+        attendance.on_leave_count = on_leave_count
+        attendance.marked_by = current_user.full_name
+        attendance.marked_at = datetime.utcnow()
+        attendance.save()
+    else:
+        present_count, absent_count, on_leave_count = _recount_staff([record])
+        attendance = StaffAttendance(
+            school=school,
+            date=att_date,
+            records=[record],
+            total_staff=1,
+            present_count=present_count,
+            absent_count=absent_count,
+            on_leave_count=on_leave_count,
+            marked_by=current_user.full_name
+        )
+        attendance.save()
+
+    return success_response({
+        "staff_id": str(staff.id),
+        "staff_name": staff.full_name,
+        "status": data.status,
+        "check_in_time": check_in_time,
+        "location_status": location_status,
+        "distance_from_school_meters": round(distance_from_school, 2) if distance_from_school is not None else None,
+        "geofence_enforced": enforce_geofence
+    }, "Your attendance has been marked")
 
 
 # ─── Holidays ─────────────────────────────────────────────────────────────────

@@ -1,14 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 from models.examination import Exam, MarksEntry, Result, SubjectResult
 from models.academic import Timetable, Homework, StudyMaterial, LessonPlan, Syllabus, OnlineClass, TimetableDay, TimetablePeriod
-from models.institution import School, AcademicYear, ClassRoom, Section, Subject, User
+from models.institution import School, AcademicYear, ClassRoom, Section, Subject, SubjectMapping, User
 from models.student import Student
 from models.staff import Staff
 from utils.auth import get_current_user
-from utils.helpers import success_response
+from utils.helpers import success_response, save_upload_file
 
 exam_router = APIRouter(prefix="/exams", tags=["Examinations"])
 academic_router = APIRouter(prefix="/academics", tags=["Academic Management"])
@@ -114,6 +114,14 @@ class MarksBulkEntry(BaseModel):
     entries: List[dict]  # [{student_id, theory_marks, practical_marks, is_absent}]
 
 
+class MarksMatrixEntry(BaseModel):
+    school_id: str
+    exam_id: str
+    classroom_id: str
+    section_id: str
+    entries: List[dict]  # [{student_id, marks:{subject_id: marks}}]
+
+
 @exam_router.post("/marks/bulk")
 async def enter_marks_bulk(data: MarksBulkEntry, current_user: User = Depends(get_current_user)):
     school = School.objects.get(id=data.school_id)
@@ -187,6 +195,116 @@ async def get_marks(
         "is_absent": m.is_absent
     } for m in query]
     return success_response(result)
+
+
+def _resolve_subjects_for_classroom(school: School, academic_year: AcademicYear, classroom: ClassRoom, section: Optional[Section] = None):
+    subject_ids = []
+    mapping_query = SubjectMapping.objects(
+        school=school,
+        academic_year=academic_year,
+        classroom=classroom,
+        is_active=True
+    )
+    if section:
+        mappings = list(mapping_query.filter(section=section)) + list(mapping_query.filter(section=None))
+    else:
+        mappings = list(mapping_query)
+    for mapping in mappings:
+        if mapping.subject and str(mapping.subject.id) not in subject_ids:
+            subject_ids.append(str(mapping.subject.id))
+    if subject_ids:
+        return [Subject.objects.get(id=sid) for sid in subject_ids if Subject.objects(id=sid, is_active=True).first()]
+    return list(Subject.objects(school=school, is_active=True).order_by('name'))
+
+
+@exam_router.get("/marks/matrix")
+async def get_marks_matrix(
+    school_id: str,
+    exam_id: str,
+    classroom_id: str,
+    section_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    school = School.objects.get(id=school_id)
+    exam = Exam.objects.get(id=exam_id)
+    classroom = ClassRoom.objects.get(id=classroom_id)
+    section = Section.objects.get(id=section_id)
+    subjects = _resolve_subjects_for_classroom(school, exam.academic_year, classroom, section)
+    subject_map = {str(subject.id): subject for subject in subjects}
+    students = list(Student.objects(school=school, classroom=classroom, section=section, is_active=True).order_by('first_name'))
+    existing_marks = MarksEntry.objects(exam=exam, classroom=classroom, section=section, student__in=students, subject__in=subjects)
+    marks_lookup = {}
+    for mark in existing_marks:
+      marks_lookup.setdefault(str(mark.student.id), {})[str(mark.subject.id)] = {
+          "theory_marks": mark.theory_marks,
+          "practical_marks": mark.practical_marks,
+          "total_marks": mark.total_marks,
+          "is_absent": mark.is_absent
+      }
+    return success_response({
+        "subjects": [{
+            "id": sid,
+            "name": subject_map[sid].name,
+            "max_marks": (subject_map[sid].max_theory_marks or 0) + (subject_map[sid].max_practical_marks or 0)
+        } for sid in subject_map],
+        "students": [{
+            "id": str(student.id),
+            "full_name": student.full_name,
+            "admission_no": student.admission_no,
+            "marks": marks_lookup.get(str(student.id), {})
+        } for student in students]
+    })
+
+
+@exam_router.post("/marks/matrix")
+async def save_marks_matrix(data: MarksMatrixEntry, current_user: User = Depends(get_current_user)):
+    school = School.objects.get(id=data.school_id)
+    exam = Exam.objects.get(id=data.exam_id)
+    classroom = ClassRoom.objects.get(id=data.classroom_id)
+    section = Section.objects.get(id=data.section_id)
+    subjects = _resolve_subjects_for_classroom(school, exam.academic_year, classroom, section)
+    subject_map = {str(subject.id): subject for subject in subjects}
+    saved = 0
+    for entry in data.entries:
+        student = Student.objects(id=entry.get('student_id')).first()
+        if not student:
+            continue
+        marks = entry.get('marks', {}) or {}
+        for subject_id, raw_marks in marks.items():
+            if subject_id not in subject_map:
+                continue
+            if raw_marks in [None, ""]:
+                continue
+            try:
+                obtained = float(raw_marks)
+            except (TypeError, ValueError):
+                continue
+            subject = subject_map[subject_id]
+            max_marks = (subject.max_theory_marks or 0) + (subject.max_practical_marks or 0)
+            existing = MarksEntry.objects(exam=exam, student=student, subject=subject).first()
+            payload = {
+                "theory_marks": obtained,
+                "practical_marks": 0,
+                "total_marks": obtained,
+                "max_marks": max_marks,
+                "is_absent": False,
+                "entered_by": current_user.full_name,
+                "entered_at": datetime.utcnow()
+            }
+            if existing:
+                existing.update(**payload)
+            else:
+                MarksEntry(
+                    school=school,
+                    exam=exam,
+                    student=student,
+                    subject=subject,
+                    classroom=classroom,
+                    section=section,
+                    **payload
+                ).save()
+            saved += 1
+    return success_response({"saved": saved}, f"Marks saved for {saved} subject entries")
 
 
 @exam_router.post("/{exam_id}/generate-results")
@@ -457,9 +575,31 @@ async def list_homework(
         "due_date": h.due_date.isoformat() if h.due_date else None,
         "max_marks": h.max_marks,
         "teacher": h.teacher.full_name if h.teacher else None,
-        "submission_count": len(h.submissions)
+        "submission_count": len(h.submissions),
+        "attachments": h.attachments or []
     } for h in query.order_by('-assigned_date')]
     return success_response(result)
+
+
+@academic_router.post("/homework/{homework_id}/attachment")
+async def upload_homework_attachment(
+    homework_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        homework = Homework.objects.get(id=homework_id, is_active=True)
+        file_path = await save_upload_file(file, "homework_attachments")
+        attachments = list(homework.attachments or [])
+        attachments.append(f"/uploads/{file_path}")
+        homework.update(attachments=attachments)
+        return success_response({
+            "file_path": file_path,
+            "file_url": f"/uploads/{file_path}",
+            "attachments": attachments
+        }, "Homework attachment uploaded")
+    except Homework.DoesNotExist:
+        raise HTTPException(404, "Homework not found")
 
 
 @academic_router.post("/study-material")

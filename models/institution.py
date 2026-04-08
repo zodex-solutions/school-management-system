@@ -79,6 +79,14 @@ class Branch(EmbeddedDocument):
     is_active = BooleanField(default=True)
 
 
+class AttendanceGeofence(EmbeddedDocument):
+    latitude = FloatField()
+    longitude = FloatField()
+    radius_meters = FloatField(default=150)
+    enforce_for_staff_attendance = BooleanField(default=False)
+    updated_at = DateTimeField(default=datetime.utcnow)
+
+
 class School(Document):
     name = StringField(required=True)
     code = StringField(required=True, unique=True)
@@ -97,6 +105,7 @@ class School(Document):
     website = StringField()
     social_links = EmbeddedDocumentField(SocialLinks)
     branches = ListField(EmbeddedDocumentField(Branch))
+    attendance_geofence = EmbeddedDocumentField(AttendanceGeofence)
     is_multi_branch = BooleanField(default=False)
     currency = StringField(default="INR")
     timezone = StringField(default="Asia/Kolkata")

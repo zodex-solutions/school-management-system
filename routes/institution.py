@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 from models.institution import (
     School, AcademicYear, ClassRoom, Section, Subject,
-    SubjectMapping, GradingSystem, GradeScale, User, Role, Permission
+    SubjectMapping, GradingSystem, GradeScale, User, Role, Permission, AttendanceGeofence
 )
 from utils.auth import get_current_user, require_permission, resolve_school_access, resolve_branch_scope
 from utils.helpers import success_response, error_response, paginate_query, doc_to_dict, save_upload_file
@@ -95,6 +95,13 @@ def _serialize_school(school: School):
         "website": school.website,
         "currency": school.currency,
         "address": _serialize_address(school.address),
+        "attendance_geofence": {
+            "latitude": school.attendance_geofence.latitude,
+            "longitude": school.attendance_geofence.longitude,
+            "radius_meters": school.attendance_geofence.radius_meters,
+            "enforce_for_staff_attendance": school.attendance_geofence.enforce_for_staff_attendance,
+            "updated_at": school.attendance_geofence.updated_at.isoformat() if school.attendance_geofence and school.attendance_geofence.updated_at else None
+        } if school.attendance_geofence else None,
         "branches": [{
             "name": branch.name,
             "code": branch.code,
@@ -154,6 +161,22 @@ async def update_school(school_id: str, data: dict, current_user: User = Depends
             data['logo'] = _normalize_logo_url(data.get('logo'))
         if 'address' in data:
             data['address'] = _build_address(data.get('address'))
+        if 'attendance_geofence' in data:
+            geofence = data.get('attendance_geofence') or {}
+            latitude = geofence.get('latitude')
+            longitude = geofence.get('longitude')
+            radius_meters = geofence.get('radius_meters', 150)
+            enforce = geofence.get('enforce_for_staff_attendance', False)
+            if latitude in ('', None) or longitude in ('', None):
+                data['attendance_geofence'] = None
+            else:
+                data['attendance_geofence'] = AttendanceGeofence(
+                    latitude=float(latitude),
+                    longitude=float(longitude),
+                    radius_meters=float(radius_meters or 150),
+                    enforce_for_staff_attendance=bool(enforce),
+                    updated_at=datetime.utcnow()
+                )
         if 'branches' in data:
             data['branches'] = _build_branches(data.get('branches', []))
             data['is_multi_branch'] = len(data['branches']) > 0

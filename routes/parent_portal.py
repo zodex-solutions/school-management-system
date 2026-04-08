@@ -254,7 +254,8 @@ async def child_homework(student_id: str, school_id: str, token: str = Query(...
         "title": h.title, "description": h.description,
         "given_date": h.assigned_date.isoformat() if h.assigned_date else None,
         "due_date": h.due_date.isoformat() if h.due_date else None,
-        "is_overdue": bool(h.due_date and h.due_date < datetime.utcnow())
+        "is_overdue": bool(h.due_date and h.due_date < datetime.utcnow()),
+        "attachments": h.attachments or []
     } for h in hw_list])
 
 

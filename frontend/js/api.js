@@ -50,7 +50,15 @@ const API = {
         return null;
       }
       const json = await res.json();
-      if (!res.ok) throw new Error(json.detail || json.message || `HTTP ${res.status}`);
+      if (!res.ok) {
+        let detail = json.detail || json.message || `HTTP ${res.status}`;
+        if (Array.isArray(detail)) {
+          detail = detail.map(item => item?.msg || JSON.stringify(item)).join(', ');
+        } else if (typeof detail === 'object' && detail !== null) {
+          detail = JSON.stringify(detail);
+        }
+        throw new Error(detail);
+      }
       return json;
     } catch (e) {
       if (e.message === 'Failed to fetch') throw new Error('Server se connect nahi ho raha. Backend chalu karo: uvicorn main:app --reload');
@@ -316,6 +324,7 @@ const StaffAPI = {
   list:             (p)     => API.get('/staff', p),
   get:              (id)    => API.get(`/staff/${id}`),
   update:           (id,d)  => API.put(`/staff/${id}`, d),
+  setActive:        (id,d)  => API.patch(`/staff/${id}/active`, d),
   createAssignment: (d)     => API.post('/staff/assignments', d),
   getAssignments:   (p)     => API.get('/staff/assignments', p),
   listAssignments:  (p)     => API.get('/staff/assignments', p),
@@ -337,6 +346,7 @@ const AttendanceAPI = {
   getStudentAtt:  (p)   => API.get('/attendance/student', p),
   getSummary:     (sid, date) => API.get(`/attendance/summary/${sid}`, { date }),
   markStaff:      (d)   => API.post('/attendance/staff/mark', d),
+  markMyStaff:    (d)   => API.post('/attendance/staff/self-checkin', d),
   getStaffAtt:    (p)   => API.get('/attendance/staff', p),
   getHolidays:    (sid) => API.get('/attendance/holiday', { school_id: sid }),
   addHoliday:     (d)   => API.post('/attendance/holiday', d),
@@ -374,6 +384,8 @@ const ExamAPI = {
   list:           (p)     => API.get('/exams', p),
   updateStatus:   (id,status)  => API.patch(`/exams/${id}/status?status=${encodeURIComponent(status)}`, {}),
   enterMarksBulk: (d)     => API.post('/exams/marks/bulk', d),
+  getMarksMatrix: (p)     => API.get('/exams/marks/matrix', p),
+  saveMarksMatrix:(d)     => API.post('/exams/marks/matrix', d),
   bulkMarks:      (d)     => API.post('/exams/marks/bulk', d),
   getMarks:       (p)     => API.get('/exams/marks', p),
   generateResults:(id,classId,secId) => API.post(`/exams/${id}/generate-results?classroom_id=${classId}&section_id=${secId}`, {}),
@@ -385,7 +397,16 @@ const ExamAPI = {
 // ACADEMICS  → prefix: /academics
 const AcademicAPI = {
   createTimetable:  (d)   => API.post('/academics/timetable', d),
-  getTimetable:     (p)   => API.get('/academics/timetable', p),
+  getTimetable:     (schoolIdOrParams, classroomId, sectionId) => {
+    if (typeof schoolIdOrParams === 'object' && schoolIdOrParams !== null) {
+      return API.get('/academics/timetable', schoolIdOrParams);
+    }
+    return API.get('/academics/timetable', {
+      school_id: schoolIdOrParams,
+      classroom_id: classroomId,
+      section_id: sectionId
+    });
+  },
   createHomework:   (d)   => API.post('/academics/homework', d),
   getHomework:      (p)   => API.get('/academics/homework', p),
   listHomework:     (p)   => API.get('/academics/homework', p),

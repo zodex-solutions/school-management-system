@@ -48,12 +48,21 @@ class StudentAttendance(Document):
 
 class StaffAttendanceRecord(EmbeddedDocument):
     staff = ReferenceField(Staff, required=True)
+    staff_name = StringField()
+    designation = StringField()
     status = StringField(choices=["Present", "Absent", "Late", "Half-Day", "On-Leave", "Holiday"])
     check_in_time = StringField()
     check_out_time = StringField()
     remarks = StringField()
     biometric_in = StringField()
     biometric_out = StringField()
+    marked_via = StringField(choices=["Admin", "Teacher Panel", "Mobile App", "Biometric"], default="Admin")
+    mark_latitude = FloatField()
+    mark_longitude = FloatField()
+    location_accuracy_meters = FloatField()
+    distance_from_school_meters = FloatField()
+    location_status = StringField(choices=["Not Checked", "Within Range", "Outside Range", "Admin Override"], default="Not Checked")
+    location_note = StringField()
 
 
 class StaffAttendance(Document):

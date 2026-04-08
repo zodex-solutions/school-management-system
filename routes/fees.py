@@ -848,6 +848,7 @@ async def get_fee_dues(
     school_id: str,
     academic_year_id: Optional[str] = None,
     branch_code: Optional[str] = None,
+    classroom_id: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
     school_id = resolve_school_access(current_user, school_id)
@@ -861,6 +862,10 @@ async def get_fee_dues(
     if branch_code:
         students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
         query = query.filter(student__in=students)
+    if classroom_id:
+        classroom = ClassRoom.objects.get(id=classroom_id)
+        students = list(Student.objects(school=school, classroom=classroom, is_active=True))
+        query = query.filter(student__in=students)
     
     total_due = sum(inv.balance_amount for inv in query)
     count = query.count()
@@ -869,8 +874,20 @@ async def get_fee_dues(
         "total_pending_invoices": count,
         "total_due_amount": total_due,
         "invoices": [{
+            "invoice_id": str(inv.id),
             "invoice_no": inv.invoice_no,
             "student_name": inv.student.full_name if inv.student else None,
+            "classroom_name": inv.student.classroom.name if inv.student and inv.student.classroom else None,
+            "section_name": inv.student.section.name if inv.student and inv.student.section else None,
+            "parent_phone": (
+                inv.student.parent_info.father_phone
+                if inv.student and inv.student.parent_info and inv.student.parent_info.father_phone else
+                inv.student.parent_info.mother_phone
+                if inv.student and inv.student.parent_info and inv.student.parent_info.mother_phone else
+                inv.student.parent_info.guardian_phone
+                if inv.student and inv.student.parent_info and inv.student.parent_info.guardian_phone else
+                inv.student.phone if inv.student else None
+            ),
             "net_amount": inv.net_amount,
             "paid_amount": inv.paid_amount,
             "balance": inv.balance_amount,

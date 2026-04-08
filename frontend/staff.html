@@ -58,6 +58,11 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
                 <select id="filterType" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                   <option value="">All Types</option><option value="Teaching">Teaching</option><option value="Non-Teaching">Non-Teaching</option><option value="Administrative">Administrative</option>
                 </select>
+                <select id="filterActive" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                  <option value="">All Staff</option>
+                  <option value="active">Active Only</option>
+                  <option value="inactive">Inactive Only</option>
+                </select>
               </div>
               <button onclick="openStaffModal()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg whitespace-nowrap">+ Add Staff</button>
             </div>
@@ -208,7 +213,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
   if (!schoolId) return;
 
   try {
-    const r = await StaffAPI.list({ school_id: schoolId, per_page: 100 });
+    const r = await StaffAPI.list({ school_id: schoolId, per_page: 100, active_status: '' });
     const all = r?.data || [];
 
     const teaching = all.filter(s => s.staff_type === 'Teaching').length;
@@ -232,10 +237,13 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       const params = { school_id: schoolId, per_page: 20 };
       const srch = document.getElementById('srchStaff').value.trim();
       const type = document.getElementById('filterType').value;
-      if (srch) params.search = srch; if (type) params.staff_type = type;
+      const activeStatus = document.getElementById('filterActive').value;
+      if (srch) params.search = srch;
+      if (type) params.staff_type = type;
+      if (activeStatus) params.active_status = activeStatus;
       try {
         const r = await StaffAPI.list(params); const staff = r?.data || [];
-        const hdrs = ['Emp ID', 'Name', 'Designation', 'Type', 'Dept', 'Phone', 'Salary', 'Status', ''];
+        const hdrs = ['Emp ID', 'Name', 'Designation', 'Type', 'Dept', 'Phone', 'Salary', 'Status', 'Access', ''];
         const rows = staff.map(s => `
           <td class="px-4 py-3 font-mono text-xs text-gray-500">${s.employee_id}</td>
           <td class="px-4 py-3"><div class="flex items-center gap-2">
@@ -248,10 +256,24 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <td class="px-4 py-3 text-sm text-gray-600">${s.phone}</td>
           <td class="px-4 py-3 text-sm font-medium text-gray-900">${formatCurrency(s.gross_salary)}</td>
           <td class="px-4 py-3">${tdBadge(s.employment_status, s.employment_status === 'Active' ? 'green' : s.employment_status === 'On-Leave' ? 'yellow' : 'gray')}</td>
-          <td class="px-4 py-3"><div class="flex items-center gap-3"><button onclick="viewStaff('${s.id}')" class="text-xs text-blue-600 hover:underline">View</button><button onclick="editStaff('${s.id}')" class="text-xs text-emerald-600 hover:underline">Edit</button></div></td>
+          <td class="px-4 py-3">${tdBadge(s.is_active ? 'Active' : 'Inactive', s.is_active ? 'green' : 'red')}</td>
+          <td class="px-4 py-3"><div class="flex items-center gap-3"><button onclick="viewStaff('${s.id}')" class="text-xs text-blue-600 hover:underline">View</button><button onclick="editStaff('${s.id}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="toggleStaffActive('${s.id}', ${s.is_active ? 'false' : 'true'})" class="text-xs ${s.is_active ? 'text-red-600' : 'text-emerald-600'} hover:underline">${s.is_active ? 'Deactivate' : 'Activate'}</button></div></td>
         `);
         document.getElementById('staffTable').innerHTML = buildTable(hdrs, rows, 'No staff found');
       } catch (e) { document.getElementById('staffTable').innerHTML = `<div class="text-center py-8 text-red-400">Error: ${e.message}</div>`; }
+    }
+
+    async function toggleStaffActive(id, nextState) {
+      const activate = String(nextState) === 'true';
+      if (!confirm(`${activate ? 'Activate' : 'Deactivate'} this staff member?`)) return;
+      try {
+        await StaffAPI.setActive(id, { is_active: activate });
+        showToast(`Staff ${activate ? 'activated' : 'deactivated'} successfully`);
+        loadStaff();
+        loadStaffStats();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
     }
 
     function resetStaffModal() {
@@ -498,6 +520,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     const dbLoad = debounce(() => loadStaff());
     document.getElementById('srchStaff').addEventListener('input', dbLoad);
     document.getElementById('filterType').addEventListener('change', loadStaff);
+    document.getElementById('filterActive').addEventListener('change', loadStaff);
     (async function initStaffPage() {
       schoolId = await initializeSchoolContext() || schoolId;
       loadStaffStats();

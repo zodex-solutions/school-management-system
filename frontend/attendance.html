@@ -241,6 +241,48 @@
           <!-- Staff Attendance -->
           <div id="atab2" class="p-6 hidden">
             <h4 class="font-bold text-gray-900 mb-4">Mark Staff Attendance</h4>
+            <div class="grid lg:grid-cols-2 gap-4 mb-5">
+              <div class="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <div class="text-sm font-semibold text-gray-900">Attendance Location Lock</div>
+                    <div class="text-xs text-gray-500">Teacher attendance school ke location ke andar hi mark hogi</div>
+                  </div>
+                  <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input id="geo_enforce" type="checkbox" class="w-4 h-4 accent-blue-600" />
+                    Enforce
+                  </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div><label class="lbl">Latitude</label><input id="geo_lat" class="finput" placeholder="28.613900" /></div>
+                  <div><label class="lbl">Longitude</label><input id="geo_lng" class="finput" placeholder="77.209000" /></div>
+                  <div><label class="lbl">Radius (m)</label><input id="geo_radius" type="number" min="20" class="finput" placeholder="150" /></div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button onclick="captureSchoolLocation()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Use Current Location</button>
+                  <button onclick="saveAttendanceGeofence()" class="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Save Location Rule</button>
+                </div>
+                <div id="geoStatus" class="text-xs text-gray-500">Location lock is currently not configured.</div>
+              </div>
+              <div class="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+                <div>
+                  <div class="text-sm font-semibold text-gray-900">Teacher Self Check-In</div>
+                  <div class="text-xs text-gray-500">Ye teacher app/panel se apni attendance mark karne ke liye hai</div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div><label class="lbl">My Status</label><select id="self_staff_status" class="finput">
+                      <option value="Present">Present</option>
+                      <option value="Late">Late</option>
+                      <option value="Half-Day">Half Day</option>
+                    </select></div>
+                  <div><label class="lbl">Check In Time</label><input id="self_staff_time" type="time" class="finput" /></div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button onclick="markMyAttendanceFromDevice()" class="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700">Mark My Attendance</button>
+                </div>
+                <div id="selfAttendanceStatus" class="text-xs text-gray-500">This works only when the login user is linked to a staff profile.</div>
+              </div>
+            </div>
             <div class="grid grid-cols-2 gap-4 mb-5">
               <div><label class="lbl">Date</label><input id="staff_att_date" type="date" class="finput" /></div>
               <div class="flex items-end"><button onclick="loadStaffForAtt()"
@@ -311,10 +353,14 @@
     let schoolId = localStorage.getItem('school_id');
     const ayId = localStorage.getItem('ay_id');
     let loadedStudents = [];
+    let schoolMeta = null;
 
     // Set today
     const today = new Date().toISOString().split('T')[0];
     ['att_date', 'view_date', 'staff_att_date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = today; });
+    const now = new Date();
+    const selfStaffTime = document.getElementById('self_staff_time');
+    if (selfStaffTime) selfStaffTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     function switchTab(idx) {
       document.querySelectorAll('.atab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
@@ -345,6 +391,88 @@
       } catch (e) {
         renderAttendanceSummary({});
       }
+    }
+
+    async function loadSchoolGeoSettings() {
+      if (!schoolId) return;
+      try {
+        const res = await SchoolAPI.get(schoolId);
+        schoolMeta = res?.data || null;
+        const geo = schoolMeta?.attendance_geofence || null;
+        document.getElementById('geo_lat').value = geo?.latitude ?? '';
+        document.getElementById('geo_lng').value = geo?.longitude ?? '';
+        document.getElementById('geo_radius').value = geo?.radius_meters ?? 150;
+        document.getElementById('geo_enforce').checked = !!geo?.enforce_for_staff_attendance;
+        document.getElementById('geoStatus').textContent = geo?.latitude != null && geo?.longitude != null
+          ? `School geofence set at ${geo.latitude}, ${geo.longitude} with radius ${geo.radius_meters || 150}m${geo.enforce_for_staff_attendance ? ' and strict enforcement ON' : ''}.`
+          : 'Location lock is currently not configured.';
+      } catch (e) {
+        document.getElementById('geoStatus').textContent = 'Could not load attendance location settings.';
+      }
+    }
+
+    async function captureSchoolLocation() {
+      if (!navigator.geolocation) { showToast('Browser location support not available', 'error'); return; }
+      navigator.geolocation.getCurrentPosition((pos) => {
+        document.getElementById('geo_lat').value = pos.coords.latitude.toFixed(6);
+        document.getElementById('geo_lng').value = pos.coords.longitude.toFixed(6);
+        if (!document.getElementById('geo_radius').value) document.getElementById('geo_radius').value = 150;
+        document.getElementById('geoStatus').textContent = `Current device location captured. Accuracy ${Math.round(pos.coords.accuracy || 0)}m`;
+      }, (err) => {
+        showToast(err?.message || 'Unable to fetch current location', 'error');
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    }
+
+    async function saveAttendanceGeofence() {
+      if (!schoolId) return;
+      const latitude = document.getElementById('geo_lat').value.trim();
+      const longitude = document.getElementById('geo_lng').value.trim();
+      const radius = parseFloat(document.getElementById('geo_radius').value) || 150;
+      const enforce = document.getElementById('geo_enforce').checked;
+      try {
+        await SchoolAPI.update(schoolId, {
+          attendance_geofence: latitude && longitude ? {
+            latitude: parseFloat(latitude),
+            longitude: parseFloat(longitude),
+            radius_meters: radius,
+            enforce_for_staff_attendance: enforce
+          } : null
+        });
+        showToast('Attendance location rule saved');
+        await loadSchoolGeoSettings();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
+    async function markMyAttendanceFromDevice() {
+      if (!schoolId) return;
+      if (!navigator.geolocation) { showToast('Browser location support not available', 'error'); return; }
+      document.getElementById('selfAttendanceStatus').textContent = 'Getting current location...';
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const res = await AttendanceAPI.markMyStaff({
+            school_id: schoolId,
+            date: new Date(document.getElementById('staff_att_date').value || today).toISOString(),
+            status: document.getElementById('self_staff_status').value,
+            check_in_time: document.getElementById('self_staff_time').value || null,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy_meters: pos.coords.accuracy || null
+          });
+          const data = res?.data || {};
+          document.getElementById('selfAttendanceStatus').textContent = `${data.staff_name || 'Staff'} marked ${data.status}. ${data.location_status || ''}${data.distance_from_school_meters != null ? ` • Distance ${Math.round(data.distance_from_school_meters)}m` : ''}`;
+          showToast(res?.message || 'Attendance marked');
+          loadAttendanceSummary();
+          loadStaffForAtt();
+        } catch (e) {
+          document.getElementById('selfAttendanceStatus').textContent = e.message || 'Unable to mark self attendance';
+          showToast('Error: ' + e.message, 'error');
+        }
+      }, (err) => {
+        document.getElementById('selfAttendanceStatus').textContent = err?.message || 'Unable to fetch location';
+        showToast(err?.message || 'Unable to fetch location', 'error');
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     }
 
     async function loadClassesForAtt() {
@@ -497,21 +625,29 @@
       try {
         const r = await StaffAPI.list({ school_id: schoolId, per_page: 100 });
         loadedStaff = r?.data || [];
+        let existingMap = {};
+        try {
+          const existing = await AttendanceAPI.getStaffAtt({ school_id: schoolId, date: document.getElementById('staff_att_date').value });
+          existingMap = Object.fromEntries((existing?.data?.records || []).map(record => [record.staff_id, record]));
+        } catch (e) { }
         document.getElementById('staffAttList').innerHTML = `
       <div class="overflow-x-auto rounded-xl border border-gray-200">
         <table class="w-full text-sm">
-          <thead><tr class="bg-gray-50 border-b"><th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Staff</th><th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Status</th><th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Check In</th></tr></thead>
+          <thead><tr class="bg-gray-50 border-b"><th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Staff</th><th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Status</th><th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Check In</th><th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Location</th></tr></thead>
           <tbody class="divide-y divide-gray-100">
             ${loadedStaff.map(s => `
+              ${(() => { const existing = existingMap[s.id] || {}; return `
               <tr class="hover:bg-gray-50">
                 <td class="px-4 py-3"><div class="font-medium text-gray-900">${s.full_name}</div><div class="text-xs text-gray-400">${s.designation}</div></td>
                 <td class="px-4 py-3">
                   <select id="satt_${s.id}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm">
-                    <option value="Present">Present</option><option value="Absent">Absent</option><option value="Late">Late</option><option value="Half-Day">Half Day</option><option value="On-Leave">On Leave</option>
+                    <option value="Present" ${existing.status === 'Present' ? 'selected' : ''}>Present</option><option value="Absent" ${existing.status === 'Absent' ? 'selected' : ''}>Absent</option><option value="Late" ${existing.status === 'Late' ? 'selected' : ''}>Late</option><option value="Half-Day" ${existing.status === 'Half-Day' ? 'selected' : ''}>Half Day</option><option value="On-Leave" ${existing.status === 'On-Leave' ? 'selected' : ''}>On Leave</option>
                   </select>
                 </td>
-                <td class="px-4 py-3"><input type="time" id="sin_${s.id}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm"/></td>
-              </tr>`).join('')}
+                <td class="px-4 py-3"><input type="time" id="sin_${s.id}" value="${existing.check_in_time || ''}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm"/></td>
+                <td class="px-4 py-3 text-xs text-gray-500">${existing.location_status ? `${existing.location_status}${existing.distance_from_school_meters != null ? ` • ${Math.round(existing.distance_from_school_meters)}m` : ''}` : '-'}</td>
+              </tr>`; })()}
+            `).join('')}
           </tbody>
         </table>
       </div>`;
@@ -575,6 +711,7 @@
     (async function initAttendancePage() {
       schoolId = await initializeSchoolContext() || schoolId;
       await loadClassesForAtt();
+      await loadSchoolGeoSettings();
       await loadAttendanceSummary();
     })();
 

@@ -215,9 +215,10 @@
               <div><label class="lbl">Section *</label><select id="mk_sec" class="finput">
                   <option value="">Select section</option>
                 </select></div>
-              <div><label class="lbl">Subject *</label><select id="mk_sub" class="finput">
+              <div id="mkSubWrap"><label class="lbl">Subject *</label><select id="mk_sub" class="finput">
                   <option value="">Select subject</option>
                 </select></div>
+              <div><label class="lbl">Entry Mode</label><select id="mk_mode" class="finput" onchange="toggleMarksMode()"><option value="single">Single Subject</option><option value="all">All Subjects At Once</option></select></div>
             </div>
             <button onclick="loadStudentsForMarks()"
               class="mb-4 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700">Load
@@ -310,6 +311,7 @@
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Examinations', 'Manage exams, marks and results');
     const schoolId = localStorage.getItem('school_id'), ayId = localStorage.getItem('ay_id');
     let marksStudents = [];
+    let marksMatrixSubjects = [];
     let latestResults = [];
 
     function switchExTab(idx) {
@@ -386,14 +388,46 @@
       if (!opt?.dataset.secs) return; JSON.parse(opt.dataset.secs).forEach(s => se.innerHTML += `<option value="${s.id}">${s.name}</option>`);
     }
 
+    function toggleMarksMode() {
+      const mode = document.getElementById('mk_mode').value;
+      document.getElementById('mkSubWrap').style.display = mode === 'single' ? 'block' : 'none';
+    }
+
     async function loadStudentsForMarks() {
       const examId = document.getElementById('mk_exam').value, clsId = document.getElementById('mk_cls').value, secId = document.getElementById('mk_sec').value, subId = document.getElementById('mk_sub').value;
-      if (!examId || !clsId || !secId || !subId) { showToast('Select all fields', 'error'); return; }
+      const mode = document.getElementById('mk_mode').value;
+      if (!examId || !clsId || !secId || (mode === 'single' && !subId)) { showToast('Select all required fields', 'error'); return; }
       try {
-        const r = await StudentAPI.list({ school_id: schoolId, classroom_id: clsId, section_id: secId, per_page: 100 });
-        marksStudents = r?.data || [];
-        const subEl = document.getElementById('mk_sub'); const maxMark = subEl.options[subEl.selectedIndex]?.dataset.max || 100;
-        document.getElementById('marksTable').innerHTML = `
+        if (mode === 'all') {
+          const r = await ExamAPI.getMarksMatrix({ school_id: schoolId, exam_id: examId, classroom_id: clsId, section_id: secId });
+          const matrix = r?.data || {};
+          marksStudents = matrix.students || [];
+          marksMatrixSubjects = matrix.subjects || [];
+          document.getElementById('marksTable').innerHTML = `
+      <div class="overflow-x-auto rounded-xl border border-gray-200">
+        <table class="w-full text-sm"><thead><tr class="bg-gray-50 border-b">
+          <th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Sr No.</th>
+          <th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">Student Name</th>
+          ${marksMatrixSubjects.map(subject => `<th class="px-4 py-3 text-xs uppercase text-gray-600 font-semibold whitespace-nowrap">${subject.name} (/ ${subject.max_marks || 100})</th>`).join('')}
+        </tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          ${marksStudents.map((student, index) => `
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-gray-500 text-sm">${index + 1}</td>
+              <td class="px-4 py-3"><div class="font-medium text-gray-900 text-sm">${student.full_name}</div><div class="text-xs text-gray-400">${student.admission_no}</div></td>
+              ${marksMatrixSubjects.map(subject => {
+                const existing = student.marks?.[subject.id]?.total_marks ?? '';
+                return `<td class="px-4 py-3 text-center"><input type="number" id="mk_${student.id}_${subject.id}" min="0" max="${subject.max_marks || 100}" class="w-24 px-2 py-1.5 rounded-lg border border-gray-200 text-center text-sm" placeholder="0" value="${existing}" /></td>`;
+              }).join('')}
+            </tr>`).join('')}
+        </tbody></table>
+      </div>`;
+        } else {
+          const r = await StudentAPI.list({ school_id: schoolId, classroom_id: clsId, section_id: secId, per_page: 100 });
+          marksStudents = r?.data || [];
+          marksMatrixSubjects = [];
+          const subEl = document.getElementById('mk_sub'); const maxMark = subEl.options[subEl.selectedIndex]?.dataset.max || 100;
+          document.getElementById('marksTable').innerHTML = `
       <div class="overflow-x-auto rounded-xl border border-gray-200">
         <table class="w-full text-sm"><thead><tr class="bg-gray-50 border-b">
           <th class="text-left px-4 py-3 text-xs uppercase text-gray-600 font-semibold">#</th>
@@ -413,16 +447,27 @@
             </tr>`).join('')}
         </tbody></table>
       </div>`;
+        }
         document.getElementById('marksActionRow').style.display = 'flex';
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
     async function saveMarks() {
       const examId = document.getElementById('mk_exam').value, clsId = document.getElementById('mk_cls').value, secId = document.getElementById('mk_sec').value, subId = document.getElementById('mk_sub').value;
-      const entries = marksStudents.map(s => ({ student_id: s.id, theory_marks: parseFloat(document.getElementById(`th_${s.id}`)?.value) || 0, practical_marks: parseFloat(document.getElementById(`pr_${s.id}`)?.value) || 0, is_absent: document.getElementById(`ab_${s.id}`)?.checked || false }));
+      const mode = document.getElementById('mk_mode').value;
       try {
-        const r = await ExamAPI.enterMarksBulk({ school_id: schoolId, exam_id: examId, classroom_id: clsId, section_id: secId, subject_id: subId, entries });
-        showToast(`Marks saved for ${r.data.saved} students!`);
+        if (mode === 'all') {
+          const entries = marksStudents.map(student => ({
+            student_id: student.id,
+            marks: Object.fromEntries(marksMatrixSubjects.map(subject => [subject.id, document.getElementById(`mk_${student.id}_${subject.id}`)?.value || null]))
+          }));
+          const r = await ExamAPI.saveMarksMatrix({ school_id: schoolId, exam_id: examId, classroom_id: clsId, section_id: secId, entries });
+          showToast(`Marks saved for ${r.data.saved} subject entries!`);
+        } else {
+          const entries = marksStudents.map(s => ({ student_id: s.id, theory_marks: parseFloat(document.getElementById(`th_${s.id}`)?.value) || 0, practical_marks: parseFloat(document.getElementById(`pr_${s.id}`)?.value) || 0, is_absent: document.getElementById(`ab_${s.id}`)?.checked || false }));
+          const r = await ExamAPI.enterMarksBulk({ school_id: schoolId, exam_id: examId, classroom_id: clsId, section_id: secId, subject_id: subId, entries });
+          showToast(`Marks saved for ${r.data.saved} students!`);
+        }
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 

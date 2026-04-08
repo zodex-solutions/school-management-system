@@ -111,9 +111,23 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
 
           <!-- Dues -->
           <div id="ftab3" class="p-5 hidden">
-            <div class="flex justify-between mb-4">
-              <h4 class="font-bold text-gray-900">Fee Dues Report</h4>
-              <button onclick="loadDues()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium">Refresh</button>
+            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-4">
+              <div>
+                <h4 class="font-bold text-gray-900">Fee Dues Report</h4>
+                <p class="text-sm text-slate-500 mt-1">Class teacher ke follow-up ke liye class aur parent contact ke saath report.</p>
+              </div>
+              <div class="flex flex-col sm:flex-row gap-3">
+                <div class="min-w-[220px]">
+                  <label class="lbl">Class Filter</label>
+                  <select id="dues_class_filter" class="finput" onchange="loadDues()">
+                    <option value="">All Classes</option>
+                  </select>
+                </div>
+                <div class="flex gap-2 items-end">
+                  <button onclick="loadDues()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium">Refresh</button>
+                  <button onclick="printDuesReport()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Print</button>
+                </div>
+              </div>
             </div>
             <div id="duesTable"></div>
           </div>
@@ -243,6 +257,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     let invoiceStudentMeta = null;
     let invoiceClassCache = [];
     let paymentClassCache = [];
+    let duesClassCache = [];
     let editingFeeStructureId = '';
     let editingInvoiceId = '';
     const invoiceConcessionOptions = [
@@ -324,7 +339,10 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         await loadPaymentClasses();
         await loadPayStudents();
       }
-      if (!document.getElementById('ftab3').classList.contains('hidden')) await loadDues();
+      if (!document.getElementById('ftab3').classList.contains('hidden')) {
+        await loadDuesClasses();
+        await loadDues();
+      }
     }
 
     function switchFeeTab(idx) {
@@ -340,7 +358,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       if (idx === 0) loadInvoices();
       if (idx === 1) { loadPaymentClasses(); loadPayStudents(); }
       if (idx === 2) loadStructures();
-      if (idx === 3) loadDues();
+      if (idx === 3) { loadDuesClasses(); loadDues(); }
     }
 async function loadFeeStats() {
   if (!schoolId) return;
@@ -871,6 +889,20 @@ function statCard(title, value, icon, color) {
       } catch (e) {}
     }
 
+    async function loadDuesClasses() {
+      if (!schoolId) return;
+      try {
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await ClassAPI.list(schoolId, academicYearId);
+        duesClassCache = r?.data || [];
+        const filter = document.getElementById('dues_class_filter');
+        const current = filter.value || '';
+        filter.innerHTML = '<option value="">All Classes</option>' +
+          duesClassCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        if (current && duesClassCache.some(c => c.id === current)) filter.value = current;
+      } catch (e) {}
+    }
+
     function loadPaySections() {
       const classEl = document.getElementById('pay_class');
       const selectedOption = classEl?.selectedOptions?.[0];
@@ -1092,17 +1124,20 @@ function statCard(title, value, icon, color) {
       if (!schoolId) { document.getElementById('duesTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
       try {
         const academicYearId = await resolveFeeAcademicYearId();
-        const r = await FeesAPI.getDues({ school_id: schoolId, academic_year_id: academicYearId || '', branch_code: selectedBranchCode }); const d = r?.data || {};
+        const classroomId = document.getElementById('dues_class_filter')?.value || '';
+        const r = await FeesAPI.getDues({ school_id: schoolId, academic_year_id: academicYearId || '', branch_code: selectedBranchCode, classroom_id: classroomId }); const d = r?.data || {};
         document.getElementById('duesTable').innerHTML = `
           <div class="grid grid-cols-3 gap-4 mb-5">
             <div class="bg-red-50 rounded-xl p-4 text-center"><div class="text-2xl font-bold text-red-600">${d.total_pending_invoices || 0}</div><div class="text-xs text-red-500 mt-0.5">Pending Invoices</div></div>
             <div class="bg-orange-50 rounded-xl p-4 text-center"><div class="text-2xl font-bold text-orange-600">${formatCurrency(d.total_due_amount || 0)}</div><div class="text-xs text-orange-500 mt-0.5">Total Due Amount</div></div>
             <div class="bg-yellow-50 rounded-xl p-4 text-center"><div class="text-2xl font-bold text-yellow-600">${(d.invoices || []).filter(i => i.status === 'Overdue').length}</div><div class="text-xs text-yellow-600 mt-0.5">Overdue Invoices</div></div>
           </div>` + buildTable(
-          ['Invoice No', 'Student', 'Net Amount', 'Paid', 'Balance', 'Due Date', 'Status'],
+          ['Invoice No', 'Student', 'Class', 'Parent Phone', 'Net Amount', 'Paid', 'Balance', 'Due Date', 'Status'],
           (d.invoices || []).map(inv => `
             <td class="px-4 py-3 font-mono text-xs text-gray-500">${inv.invoice_no}</td>
             <td class="px-4 py-3 font-medium text-gray-900 text-sm">${inv.student_name || '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${inv.classroom_name || '-'}${inv.section_name ? ` / ${inv.section_name}` : ''}</td>
+            <td class="px-4 py-3 text-sm">${inv.parent_phone ? `<a href="tel:${inv.parent_phone}" class="text-blue-600 hover:underline font-medium">${inv.parent_phone}</a>` : '<span class="text-gray-400">-</span>'}</td>
             <td class="px-4 py-3 text-sm font-medium">${formatCurrency(inv.net_amount)}</td>
             <td class="px-4 py-3 text-sm text-emerald-600">${formatCurrency(inv.paid_amount)}</td>
             <td class="px-4 py-3 text-sm text-red-500 font-bold">${formatCurrency(inv.balance)}</td>
@@ -1110,6 +1145,42 @@ function statCard(title, value, icon, color) {
             <td class="px-4 py-3">${tdBadge(inv.status, inv.status === 'Overdue' ? 'red' : 'orange')}</td>
           `), 'No dues found');
       } catch (e) { document.getElementById('duesTable').innerHTML = `<div class="text-center py-8 text-red-400">Error: ${e.message}</div>`; }
+    }
+
+    function printDuesReport() {
+      const tableHtml = document.getElementById('duesTable')?.innerHTML || '';
+      if (!tableHtml.trim()) { showToast('Load dues report first', 'error'); return; }
+      const className = document.getElementById('dues_class_filter')?.selectedOptions?.[0]?.textContent || 'All Classes';
+      const branchName = document.getElementById('feeBranchFilter')?.selectedOptions?.[0]?.textContent || 'All Branches';
+      const printWindow = window.open('', '_blank', 'width=1280,height=900');
+      if (!printWindow) { showToast('Popup blocked. Allow popups to print report.', 'error'); return; }
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Dues Report</title>
+            <style>
+              body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}
+              h1{margin:0 0 6px;font-size:24px}
+              p{margin:0 0 12px;color:#475569}
+              table{width:100%;border-collapse:collapse;margin-top:16px}
+              th,td{border:1px solid #cbd5e1;padding:10px;text-align:left;font-size:12px;vertical-align:top}
+              th{background:#f8fafc;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
+              .rounded-xl,.rounded-2xl{border-radius:0 !important}
+              .grid{display:flex;gap:12px;margin-bottom:20px}
+              .grid > div{flex:1;border:1px solid #e2e8f0;padding:14px}
+              a{color:#0f172a;text-decoration:none}
+            </style>
+          </head>
+          <body>
+            <h1>Fee Dues Report</h1>
+            <p>Class: ${className} | Branch: ${branchName} | Printed: ${new Date().toLocaleString()}</p>
+            ${tableHtml}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 300);
     }
 
     document.getElementById('invStatus').addEventListener('change', loadInvoices);

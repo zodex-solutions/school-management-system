@@ -110,6 +110,7 @@ async def list_staff(
     staff_type: Optional[str] = None,
     department: Optional[str] = None,
     employment_status: Optional[str] = None,
+    active_status: Optional[str] = None,
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -121,13 +122,17 @@ async def list_staff(
     except School.DoesNotExist:
         raise HTTPException(404, "School not found")
     
-    query = Staff.objects(school=school, is_active=True)
+    query = Staff.objects(school=school)
     if staff_type:
         query = query.filter(staff_type=staff_type)
     if department:
         query = query.filter(department=department)
     if employment_status:
         query = query.filter(employment_status=employment_status)
+    if active_status == "active":
+        query = query.filter(is_active=True)
+    elif active_status == "inactive":
+        query = query.filter(is_active=False)
     if search:
         query = query.filter(__raw__={"$or": [
             {"first_name": {"$regex": search, "$options": "i"}},
@@ -152,6 +157,7 @@ async def list_staff(
         "department": s.department,
         "employment_type": s.employment_type,
         "employment_status": s.employment_status,
+        "is_active": s.is_active,
         "joining_date": s.joining_date.isoformat() if s.joining_date else None,
         "gross_salary": s.gross_salary,
         "photo": s.photo
@@ -235,6 +241,32 @@ async def update_staff(staff_id: str, data: dict, current_user: User = Depends(g
             )
         staff.update(**data)
         return success_response(message="Staff updated successfully")
+    except Staff.DoesNotExist:
+        raise HTTPException(404, "Staff not found")
+
+
+class StaffActiveToggle(BaseModel):
+    is_active: bool
+
+
+@router.patch("/{staff_id}/active")
+async def update_staff_active_status(staff_id: str, data: StaffActiveToggle, current_user: User = Depends(get_current_user)):
+    try:
+        staff = Staff.objects.get(id=staff_id)
+        resolve_school_access(current_user, str(staff.school.id) if staff.school else None)
+        staff.update(is_active=data.is_active, updated_at=datetime.utcnow())
+        staff.reload()
+        if staff.user_account:
+            try:
+                staff.user_account.update(is_active=data.is_active, updated_at=datetime.utcnow())
+            except Exception:
+                pass
+        if not data.is_active:
+            TeacherAssignment.objects(teacher=staff, is_active=True).update(is_active=False)
+        return success_response({
+            "id": str(staff.id),
+            "is_active": data.is_active
+        }, f"Staff {'activated' if data.is_active else 'deactivated'} successfully")
     except Staff.DoesNotExist:
         raise HTTPException(404, "Staff not found")
 
