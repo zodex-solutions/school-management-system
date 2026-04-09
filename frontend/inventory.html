@@ -208,9 +208,13 @@
           </div>
           <!-- Stock Items -->
           <div id="ivtab1" class="p-5 hidden">
-            <div class="flex justify-between mb-4">
-              <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" id="lowStockOnly"
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
+              <div class="flex gap-2 flex-wrap items-end">
+                <div><label class="lbl">Search</label><input id="stockSearch" class="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm" placeholder="Item, code or class" /></div>
+                <div><label class="lbl">Class</label><input id="stockClassFilter" class="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm" placeholder="Filter by class" /></div>
+                <label class="flex items-center gap-2 text-sm cursor-pointer px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50"><input type="checkbox" id="lowStockOnly"
                   class="accent-blue-600" onchange="loadStockItems()" /><span>Low stock only</span></label>
+              </div>
               <button onclick="document.getElementById('stockModal').style.display='flex'"
                 class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">+ Add
                 Item</button>
@@ -309,6 +313,7 @@
               <option value="Cleaning">Cleaning</option>
               <option value="Lab Consumable">Lab Consumable</option>
               <option value="Sports">Sports</option>
+              <option value="Books">Books</option>
               <option value="Other">Other</option>
             </select></div>
           <div><label class="lbl">Unit</label><select id="sk_unit" class="finput">
@@ -326,6 +331,7 @@
               placeholder="0" /></div>
         </div>
         <div class="grid grid-cols-2 gap-4">
+          <div><label class="lbl">Class</label><input id="sk_class" class="finput" placeholder="e.g. 5th, Nursery" /></div>
           <div><label class="lbl">Min Stock Alert</label><input id="sk_min" type="number" class="finput" value="10" />
           </div>
           <div><label class="lbl">Location</label><input id="sk_loc" class="finput" placeholder="Store room" /></div>
@@ -386,6 +392,7 @@
     document.getElementById('sidebarContainer').innerHTML = renderSidebar('inventory');
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Inventory & Assets', 'Manage school assets and stock');
     const schoolId = localStorage.getItem('school_id');
+    let editingStockItemId = '';
 
     function switchTab(idx) {
       document.querySelectorAll('.ivtab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
@@ -462,15 +469,18 @@ lucide.createIcons();
     async function loadStockItems() {
       if (!schoolId) { document.getElementById('stockTable').innerHTML = '<div class="text-center py-8 text-gray-400">Configure school first</div>'; return; }
       const lowOnly = document.getElementById('lowStockOnly').checked;
+      const search = document.getElementById('stockSearch').value.trim();
+      const className = document.getElementById('stockClassFilter').value.trim();
       try {
-        const r = await InventoryAPI.getStockItems(schoolId, lowOnly); const items = r?.data || [];
+        const r = await InventoryAPI.getStockItems(schoolId, lowOnly, search, className); const items = r?.data || [];
         // Load items into transaction select too
         const opts = '<option value="">Select item</option>' + items.map(i => `<option value="${i.id}">${i.item_name} (${i.current_stock} ${i.unit})</option>`).join('');
         document.getElementById('txnItemSel').innerHTML = opts; document.getElementById('txn_item').innerHTML = opts;
-        const hdrs = ['Item Name', 'Code', 'Category', 'Stock', 'Unit', 'Min Stock', 'Unit Price', 'Value', 'Alert'];
+        const hdrs = ['Item Name', 'Code', 'Class', 'Category', 'Stock', 'Unit', 'Min Stock', 'Unit Price', 'Value', 'Alert', 'Action'];
         const rows = items.map(i => `
       <td class="px-4 py-3 font-medium text-gray-900 text-sm">${i.item_name}</td>
       <td class="px-4 py-3 font-mono text-xs text-gray-500">${i.item_code}</td>
+      <td class="px-4 py-3 text-sm text-gray-600">${i.class_name || '-'}</td>
       <td class="px-4 py-3 text-sm text-gray-600">${i.category}</td>
       <td class="px-4 py-3 text-center font-bold text-lg ${i.is_low_stock ? 'text-red-600' : 'text-gray-900'}">${i.current_stock}</td>
       <td class="px-4 py-3 text-sm text-gray-500">${i.unit}</td>
@@ -478,6 +488,7 @@ lucide.createIcons();
       <td class="px-4 py-3 text-sm font-medium text-gray-900">${formatCurrency(i.unit_price)}</td>
       <td class="px-4 py-3 font-medium text-gray-900 text-sm">${formatCurrency(i.stock_value)}</td>
       <td class="px-4 py-3">${i.is_low_stock ? '<span class="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold">LOW STOCK</span>' : ''}</td>
+      <td class="px-4 py-3 whitespace-nowrap"><button onclick='editStockItem(${JSON.stringify(JSON.stringify(i))})' class="text-xs text-blue-600 hover:underline mr-3">Edit</button><button onclick="deleteStockItem('${i.id}')" class="text-xs text-red-500 hover:underline">Delete</button></td>
     `);
         document.getElementById('stockTable').innerHTML = buildTable(hdrs, rows, 'No stock items');
       } catch (e) { }
@@ -488,8 +499,41 @@ lucide.createIcons();
       const name = document.getElementById('sk_name').value.trim(), code = document.getElementById('sk_code').value.trim();
       if (!name || !code) { showToast('Name and code required', 'error'); return; }
       try {
-        await InventoryAPI.addStockItem({ school_id: schoolId, item_name: name, item_code: code, category: document.getElementById('sk_cat').value, unit: document.getElementById('sk_unit').value, current_stock: parseFloat(document.getElementById('sk_stock').value) || 0, unit_price: parseFloat(document.getElementById('sk_price').value) || 0, minimum_stock: parseFloat(document.getElementById('sk_min').value) || 10, location: document.getElementById('sk_loc').value || null });
-        showToast('Stock item added!'); document.getElementById('stockModal').style.display = 'none'; loadStockItems(); loadStats();
+        const payload = { school_id: schoolId, item_name: name, item_code: code, class_name: document.getElementById('sk_class').value || null, category: document.getElementById('sk_cat').value, unit: document.getElementById('sk_unit').value, current_stock: parseFloat(document.getElementById('sk_stock').value) || 0, unit_price: parseFloat(document.getElementById('sk_price').value) || 0, minimum_stock: parseFloat(document.getElementById('sk_min').value) || 10, location: document.getElementById('sk_loc').value || null };
+        if (editingStockItemId) {
+          await InventoryAPI.updateStockItem(editingStockItemId, payload);
+          showToast('Stock item updated!');
+        } else {
+          await InventoryAPI.addStockItem(payload);
+          showToast('Stock item added!');
+        }
+        editingStockItemId = '';
+        document.getElementById('stockModal').style.display = 'none'; loadStockItems(); loadStats();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function editStockItem(raw) {
+      const item = JSON.parse(raw);
+      editingStockItemId = item.id;
+      document.getElementById('stockModal').style.display = 'flex';
+      document.getElementById('sk_name').value = item.item_name || '';
+      document.getElementById('sk_code').value = item.item_code || '';
+      document.getElementById('sk_class').value = item.class_name || '';
+      document.getElementById('sk_cat').value = item.category || 'Other';
+      document.getElementById('sk_unit').value = item.unit || 'Nos';
+      document.getElementById('sk_stock').value = item.current_stock || 0;
+      document.getElementById('sk_price').value = item.unit_price || 0;
+      document.getElementById('sk_min').value = item.minimum_stock || 10;
+      document.getElementById('sk_loc').value = item.location || '';
+    }
+
+    async function deleteStockItem(id) {
+      if (!confirm('Delete this stock item?')) return;
+      try {
+        await InventoryAPI.deleteStockItem(id);
+        showToast('Stock item deleted');
+        loadStockItems();
+        loadStats();
       } catch (e) { showToast('Error: ' + e.message, 'error'); }
     }
 
@@ -529,6 +573,9 @@ lucide.createIcons();
     const dbLoad = debounce(() => loadAssets(1));
     document.getElementById('assetSearch').addEventListener('input', dbLoad);
     document.getElementById('assetTypeFilter').addEventListener('change', () => loadAssets(1));
+    const dbStockLoad = debounce(() => loadStockItems());
+    document.getElementById('stockSearch').addEventListener('input', dbStockLoad);
+    document.getElementById('stockClassFilter').addEventListener('input', dbStockLoad);
     loadStats(); loadAssets();
   </script>
 </body>

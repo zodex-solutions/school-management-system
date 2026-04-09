@@ -66,10 +66,30 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <!-- Invoices -->
           <div id="ftab0" class="p-5">
             <div class="flex flex-col sm:flex-row gap-3 justify-between mb-4">
-              <div class="flex gap-2 flex-wrap">
-                <select id="invStatus" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">All Status</option><option value="Pending">Pending</option><option value="Partial">Partial</option><option value="Paid">Paid</option><option value="Overdue">Overdue</option>
-                </select>
+              <div class="flex gap-2 flex-wrap items-end">
+                <div>
+                  <label class="lbl">Invoice View</label>
+                  <select id="invStatus" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Invoices</option>
+                    <option value="Due">Open Dues</option>
+                    <option value="Completed">Completed Fees</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Partial">Partial</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Overdue">Overdue</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="lbl">Class</label>
+                  <select id="invClassFilter" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Classes</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="lbl">Father Name</label>
+                  <input id="invFatherFilter" type="text" placeholder="Search father name" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-52" />
+                </div>
+                <button onclick="loadInvoices()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Apply</button>
               </div>
               <button onclick="openInvoiceModal()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg whitespace-nowrap">+ Create Invoice</button>
             </div>
@@ -225,7 +245,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       <div class="px-6 py-5 space-y-4">
         <div><label class="lbl">Structure Name *</label><input id="str_name" class="finput" placeholder="e.g. Class 10 Fee 2024-25"/></div>
         <div><label class="lbl">Class *</label><select id="str_cls" class="finput"><option value="">Select class</option></select></div>
-        <div><label class="lbl">Installments</label><select id="str_inst" class="finput"><option value="1">Annual (1 payment)</option><option value="2">Half-yearly (2 payments)</option><option value="4">Quarterly (4 payments)</option><option value="12">Monthly (12 payments)</option></select></div>
+        <div><label class="lbl">Installments</label><select id="str_inst" class="finput"><option value="1">Yearly / Annual (1 payment)</option><option value="2">Half-yearly (2 payments)</option><option value="4">Quarterly (4 payments)</option><option value="12">Monthly (12 payments)</option></select></div>
         <div><label class="lbl">Late Fee per Day (₹)</label><input id="str_late" type="number" class="finput" value="0"/></div>
         <div id="strCatItems" class="space-y-2">
           <label class="lbl">Fee Categories</label>
@@ -271,7 +291,8 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       { name: 'Admission Fee', code: 'ADM' },
       { name: 'Annual Examination Fee', code: 'EXAM' },
       { name: 'Stationary kit / Activity Charge', code: 'ACT' },
-      { name: 'Tuition Fee Mly', code: 'TUI' }
+      { name: 'Tuition Fee Monthly', code: 'TUI' },
+      { name: 'Books Fee', code: 'BOOK' }
     ];
     const initialFeeTab = feePageParams.get('tab');
 
@@ -334,7 +355,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
 
     async function refreshFeeViews() {
       await resolveFeeAcademicYearId();
-      await Promise.allSettled([loadFeeStats(), loadInvoices()]);
+      await Promise.allSettled([loadFeeStats(), loadInvoiceFilterClasses(), loadInvoices()]);
       if (!document.getElementById('ftab1').classList.contains('hidden')) {
         await loadPaymentClasses();
         await loadPayStudents();
@@ -404,6 +425,19 @@ function statCard(title, value, icon, color) {
         document.getElementById('inv_class').innerHTML = '<option value="">Select class</option>' +
           invoiceClassCache.map(c => `<option value="${c.id}" data-name="${c.name}" data-secs='${JSON.stringify(c.sections || [])}'>${c.name}</option>`).join('');
         loadInvoiceSections();
+      } catch (e) {}
+    }
+
+    async function loadInvoiceFilterClasses() {
+      if (!schoolId) return;
+      try {
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await ClassAPI.list(schoolId, academicYearId);
+        const classes = r?.data || [];
+        const sel = document.getElementById('invClassFilter');
+        const current = sel.value || '';
+        sel.innerHTML = '<option value="">All Classes</option>' + classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        if (current && classes.some(c => c.id === current)) sel.value = current;
       } catch (e) {}
     }
 
@@ -832,19 +866,37 @@ function statCard(title, value, icon, color) {
       const academicYearId = await resolveFeeAcademicYearId();
       const params = { school_id: schoolId, branch_code: selectedBranchCode, per_page: 20 };
       const stat = document.getElementById('invStatus').value; if (stat) params.status = stat;
+      const classroomId = document.getElementById('invClassFilter').value; if (classroomId) params.classroom_id = classroomId;
+      const fatherName = document.getElementById('invFatherFilter').value.trim(); if (fatherName) params.father_name = fatherName;
       if (academicYearId) params.academic_year_id = academicYearId;
       try {
         const r = await FeesAPI.getInvoices(params); const invs = r?.data || [];
-        const hdrs = ['Invoice No', 'Student', 'Net Amount', 'Paid', 'Balance', 'Due Date', 'Status', ''];
+        const hdrs = ['Invoice No', 'Student', 'Father', 'Class', 'Net Amount', 'Balance', 'Status', ''];
         const rows = invs.map(inv => `
           <td class="px-4 py-3 font-mono text-xs text-gray-600">${inv.invoice_no}</td>
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${inv.student_name || '-'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${inv.father_name || '-'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${inv.classroom_name || '-'}${inv.section_name ? ` / ${inv.section_name}` : ''}</td>
           <td class="px-4 py-3 text-sm font-medium">${formatCurrency(inv.net_amount)}</td>
-          <td class="px-4 py-3 text-sm text-emerald-600 font-medium">${formatCurrency(inv.paid_amount)}</td>
           <td class="px-4 py-3 text-sm text-red-500 font-medium">${formatCurrency(inv.balance_amount)}</td>
-          <td class="px-4 py-3 text-sm text-gray-600">${formatDate(inv.due_date)}</td>
           <td class="px-4 py-3">${tdBadge(inv.status, inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'yellow' : inv.status === 'Overdue' ? 'red' : 'orange')}</td>
-          <td class="px-4 py-3 space-x-3"><button onclick="viewInvoice('${inv.id}')" class="text-xs text-blue-600 hover:underline">View</button><button onclick="openInvoiceModal('${inv.id}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="deleteInvoice('${inv.id}')" class="text-xs text-red-600 hover:underline">Delete</button><button onclick="downloadInvoicePdf('${inv.id}','${inv.invoice_no}')" class="text-xs text-teal-600 hover:underline">PDF</button><button onclick="triggerInvoiceEmail('${inv.id}','parent').then(email=>showToast('Invoice sent to '+email)).catch(e=>showToast('Error: '+e.message,'error'))" class="text-xs text-violet-600 hover:underline">Send</button></td>
+          <td class="px-4 py-3"><div class="flex gap-1">
+            <button onclick="viewInvoice('${inv.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="View">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            </button>
+            ${inv.status !== 'Paid' ? `<button onclick="openInvoiceModal('${inv.id}')" class="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Edit">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            </button>
+            <button onclick="deleteInvoice('${inv.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Delete">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>` : ''}
+            <button onclick="downloadInvoicePdf('${inv.id}','${inv.invoice_no}')" class="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg" title="PDF">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-3-3m3 3l3-3"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 16.5A2.5 2.5 0 0017.5 14H17a5 5 0 10-10 0h-.5A2.5 2.5 0 004 16.5 2.5 2.5 0 006.5 19h11a2.5 2.5 0 002.5-2.5z"/></svg>
+            </button>
+            <button onclick="triggerInvoiceEmail('${inv.id}','parent').then(email=>showToast('Invoice sent to '+email)).catch(e=>showToast('Error: '+e.message,'error'))" class="p-1.5 text-violet-600 hover:bg-violet-50 rounded-lg" title="Send">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8m-18 8h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+            </button>
+          </div></td>
         `);
         document.getElementById('invTable').innerHTML = buildTable(hdrs, rows, 'No invoices found');
       } catch (e) { document.getElementById('invTable').innerHTML = `<div class="text-center py-8 text-red-400">Error: ${e.message}</div>`; }
@@ -1104,7 +1156,7 @@ function statCard(title, value, icon, color) {
       try {
         const academicYearId = await resolveFeeAcademicYearId();
         const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: academicYearId || '' }); const data = r?.data || [];
-        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Tuition Fee Mly', 'Tuition Fee Yly Upto 30 April 2025', ''];
+        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Tuition Fee Monthly', 'Tuition Fee Yearly Upto 30 April 2025', ''];
         const rows = data.map(s => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${s.name}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${s.classroom || '-'}</td>
@@ -1184,6 +1236,8 @@ function statCard(title, value, icon, color) {
     }
 
     document.getElementById('invStatus').addEventListener('change', loadInvoices);
+    document.getElementById('invClassFilter').addEventListener('change', loadInvoices);
+    document.getElementById('invFatherFilter').addEventListener('input', debounce(() => loadInvoices()));
     document.getElementById('inv_structure').addEventListener('change', renderInvoiceEstimate);
     document.getElementById('inv_transport_toggle').addEventListener('change', renderInvoiceEstimate);
     document.getElementById('inv_disc').addEventListener('input', renderInvoiceEstimate);

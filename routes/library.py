@@ -19,6 +19,7 @@ async def add_book(data: dict, current_user: User = Depends(get_current_user)):
         school=school,
         title=data['title'],
         author=data['author'],
+        class_name=data.get('class_name'),
         isbn=data.get('isbn'),
         publisher=data.get('publisher'),
         edition=data.get('edition'),
@@ -44,6 +45,7 @@ async def add_book(data: dict, current_user: User = Depends(get_current_user)):
 async def list_books(
     school_id: str,
     search: Optional[str] = None,
+    class_name: Optional[str] = None,
     category_id: Optional[str] = None,
     available_only: bool = False,
     page: int = Query(1, ge=1),
@@ -60,6 +62,8 @@ async def list_books(
         ]})
     if category_id:
         query = query.filter(category=BookCategory.objects.get(id=category_id))
+    if class_name:
+        query = query.filter(class_name=class_name)
     if available_only:
         query = query.filter(available_copies__gt=0)
 
@@ -67,6 +71,7 @@ async def list_books(
     books = query.order_by('title').skip((page-1)*per_page).limit(per_page)
     result = [{
         "id": str(b.id), "title": b.title, "author": b.author,
+        "class_name": b.class_name,
         "isbn": b.isbn, "publisher": b.publisher,
         "total_copies": b.total_copies, "available_copies": b.available_copies,
         "rack_number": b.rack_number, "is_digital": b.is_digital,

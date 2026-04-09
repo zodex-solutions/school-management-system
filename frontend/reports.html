@@ -187,6 +187,10 @@
           </select>
           <input id="reportMonth" type="month"
             class="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none shadow-sm" />
+          <input id="feeStartDate" type="date"
+            class="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none shadow-sm" />
+          <input id="feeEndDate" type="date"
+            class="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none shadow-sm" />
           <button onclick="loadAllReports()"
             class="px-5 py-2.5 bg-blue-600 flex items-center gap-2 text-white rounded-xl text-sm font-semibold shadow-lg hover:bg-blue-700">  <span data-lucide="refresh-cw" class="w-4 h-4"></span>
 
@@ -206,7 +210,7 @@
             <canvas id="attendanceChart" height="200"></canvas>
           </div>
           <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">  <span data-lucide="wallet" class="w-4 h-4"></span> Fee Collection (Monthly)</h4>
+            <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">  <span data-lucide="wallet" class="w-4 h-4"></span> Fee Collection</h4>
             <canvas id="feeChart" height="200"></canvas>
           </div>
         </div>
@@ -266,6 +270,9 @@
     // Set default month
     const now = new Date();
     document.getElementById('reportMonth').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    document.getElementById('feeStartDate').value = rangeStart.toISOString().split('T')[0];
+    document.getElementById('feeEndDate').value = now.toISOString().split('T')[0];
 
     let charts = {};
     function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
@@ -334,13 +341,15 @@
     async function loadFeeCollection() {
       if (!schoolId) return;
       const yr = document.getElementById('reportMonth').value?.split('-')[0] || now.getFullYear();
+      const startDate = document.getElementById('feeStartDate').value || '';
+      const endDate = document.getElementById('feeEndDate').value || '';
       try {
-        const r = await ReportsAPI.feesMonthly(schoolId, yr); const data = r?.data || [];
+        const r = await ReportsAPI.feesMonthly(schoolId, yr, startDate, endDate); const data = r?.data || [];
         destroyChart('feeChart');
         charts['feeChart'] = new Chart(document.getElementById('feeChart'), {
           type: 'bar',
           data: {
-            labels: data.map(d => d.month_name),
+            labels: data.map(d => d.label || d.month_name),
             datasets: [{ label: 'Collected (₹)', data: data.map(d => d.collected), backgroundColor: 'rgba(59,130,246,0.8)', borderRadius: 6 }]
           },
           options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString() } } } }
@@ -436,6 +445,8 @@
     }
 
     document.getElementById('reportMonth').addEventListener('change', loadAllReports);
+    document.getElementById('feeStartDate').addEventListener('change', loadFeeCollection);
+    document.getElementById('feeEndDate').addEventListener('change', loadFeeCollection);
     loadAllReports();
     lucide.createIcons();
   </script>

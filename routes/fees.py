@@ -26,21 +26,28 @@ ALLOWED_FEE_STRUCTURE_CATEGORIES = [
     {"name": "Annual Examination Fee", "code": "EXAM"},
     {"name": "Stationary kit / Activity Charge", "code": "ACT"},
     {"name": "Tuition Fee Mly", "code": "TUI"},
+    {"name": "Books Fee", "code": "BOOK"},
 ]
 YEARLY_TUITION_LABEL = "Tuition Fee Yly Upto 30 April 2025"
 
 ALLOWED_CATEGORY_BY_CODE = {item["code"]: item for item in ALLOWED_FEE_STRUCTURE_CATEGORIES}
 ALLOWED_CATEGORY_BY_NAME = {item["name"].lower(): item for item in ALLOWED_FEE_STRUCTURE_CATEGORIES}
+ALLOWED_CATEGORY_ALIASES = {
+    "tuition fee monthly": "TUI",
+    "tuition fee yearly": "TUI",
+    "books fee": "BOOK",
+}
 
 
 def _normalize_fee_category(name: str, code: str):
     normalized_name = (name or "").strip()
     normalized_code = (code or "").strip().upper()
-    allowed = ALLOWED_CATEGORY_BY_CODE.get(normalized_code) or ALLOWED_CATEGORY_BY_NAME.get(normalized_name.lower())
+    alias_code = ALLOWED_CATEGORY_ALIASES.get(normalized_name.lower())
+    allowed = ALLOWED_CATEGORY_BY_CODE.get(normalized_code or alias_code or "") or ALLOWED_CATEGORY_BY_NAME.get(normalized_name.lower())
     if not allowed:
         raise HTTPException(
             status_code=400,
-            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Tuition Fee Mly",
+            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Tuition Fee Mly, Books Fee",
         )
     return allowed["name"], allowed["code"]
 
@@ -65,7 +72,7 @@ def _build_fee_breakdown(items: List) -> dict:
             code = matched["code"] if matched else ""
         if code in breakdown:
             breakdown[code] = float(getattr(entry, "amount", 0) or 0)
-    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + (breakdown["TUI"] * 12)
+    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + breakdown["BOOK"] + (breakdown["TUI"] * 12)
     return breakdown
 
 
@@ -281,7 +288,7 @@ def _generate_invoice_no() -> str:
     year = datetime.now().year
     start_of_year = datetime(year, 1, 1)
     count = FeeInvoice.objects(invoice_date__gte=start_of_year).count() + 1
-    return f"INV/{year}{count:05d}"
+    return f"INV-{str(year)[-2:]}{count:02d}"
 
 
 def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str], concession_percent: float = 0):
@@ -642,7 +649,9 @@ async def list_invoices(
     student_id: Optional[str] = None,
     academic_year_id: Optional[str] = None,
     branch_code: Optional[str] = None,
+    classroom_id: Optional[str] = None,
     status: Optional[str] = None,
+    father_name: Optional[str] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user)
@@ -661,8 +670,24 @@ async def list_invoices(
     if branch_code:
         students = list(Student.objects(school=school, branch_code=branch_code, is_active=True))
         query = query.filter(student__in=students)
+    if classroom_id:
+        classroom = ClassRoom.objects.get(id=classroom_id)
+        students = list(Student.objects(school=school, classroom=classroom, is_active=True))
+        query = query.filter(student__in=students)
     if status:
-        query = query.filter(status=status)
+        if status == "Due":
+            query = query.filter(status__in=["Pending", "Partial", "Overdue"])
+        elif status == "Completed":
+            query = query.filter(status="Paid")
+        else:
+            query = query.filter(status=status)
+    if father_name:
+        students = list(Student.objects(
+            school=school,
+            is_active=True,
+            __raw__={"parent_info.father_name": {"$regex": father_name, "$options": "i"}}
+        ))
+        query = query.filter(student__in=students)
     
     total = query.count()
     invoices = query.order_by('-created_at').skip((page - 1) * per_page).limit(per_page)
@@ -672,6 +697,9 @@ async def list_invoices(
         "invoice_no": inv.invoice_no,
         "student_name": inv.student.full_name if inv.student else None,
         "student_id": str(inv.student.id) if inv.student else None,
+        "father_name": inv.student.parent_info.father_name if inv.student and inv.student.parent_info else None,
+        "classroom_name": inv.student.classroom.name if inv.student and inv.student.classroom else None,
+        "section_name": inv.student.section.name if inv.student and inv.student.section else None,
         "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
         "due_date": inv.due_date.isoformat() if inv.due_date else None,
         "gross_amount": inv.gross_amount,

@@ -17,7 +17,6 @@ var NAV_GROUPS = [
       { icon: 'users',      label: 'Students',      href: '/students',      module: 'students',      color: '#10b981' },
       { icon: 'user-tie',   label: 'Staff & HR',    href: '/staff',         module: 'staff',         color: '#f59e0b' },
       { icon: 'graduation', label: 'Admissions',    href: '/admissions',    module: 'admissions',    color: '#f97316' },
-      { icon: 'parents',    label: 'Parent Portal', href: '/parent-portal', module: 'parent-portal', color: '#ec4899' },
     ]
   },
   {

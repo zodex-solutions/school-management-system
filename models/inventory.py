@@ -54,9 +54,10 @@ class StockItem(Document):
     school = ReferenceField(School, required=True)
     item_name = StringField(required=True)
     item_code = StringField(required=True)
+    class_name = StringField()
     category = StringField(choices=[
         'Stationery', 'Cleaning', 'Lab Consumable',
-        'Sports', 'Food', 'Electrical', 'Other'
+        'Sports', 'Food', 'Electrical', 'Books', 'Other'
     ])
     unit = StringField(default='Nos')  # Nos, Kg, Litre, Box
     current_stock = FloatField(default=0)

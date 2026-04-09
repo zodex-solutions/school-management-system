@@ -115,8 +115,44 @@ async def attendance_monthly_trend(school_id: str, year: int = None, month: int 
 
 
 @router.get("/fees/monthly-collection")
-async def fees_monthly_collection(school_id: str, year: int = None, current_user: User = Depends(get_current_user)):
+async def fees_monthly_collection(
+    school_id: str,
+    year: int = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
     school = School.objects.get(id=school_id)
+    if start_date and end_date:
+        start = datetime.fromisoformat(start_date)
+        end = datetime.fromisoformat(end_date)
+        if end < start:
+            raise HTTPException(400, "End date must be after start date")
+        txns = PaymentTransaction.objects(school=school, payment_date__gte=start, payment_date__lt=end + timedelta(days=1), status='Success').order_by('payment_date')
+        range_days = max((end.date() - start.date()).days + 1, 1)
+        buckets = {}
+        if range_days <= 45:
+            for txn in txns:
+                key = txn.payment_date.strftime('%Y-%m-%d')
+                buckets.setdefault(key, {"label": txn.payment_date.strftime('%d %b'), "collected": 0, "transaction_count": 0})
+                buckets[key]["collected"] += txn.amount or 0
+                buckets[key]["transaction_count"] += 1
+        else:
+            for txn in txns:
+                key = txn.payment_date.strftime('%Y-%m')
+                buckets.setdefault(key, {"label": txn.payment_date.strftime('%b %Y'), "collected": 0, "transaction_count": 0})
+                buckets[key]["collected"] += txn.amount or 0
+                buckets[key]["transaction_count"] += 1
+        result = []
+        for key in sorted(buckets.keys()):
+            result.append({
+                "bucket": key,
+                "label": buckets[key]["label"],
+                "collected": buckets[key]["collected"],
+                "transaction_count": buckets[key]["transaction_count"]
+            })
+        return success_response(result)
+
     yr = year or datetime.utcnow().year
     monthly = []
     for m in range(1, 13):
@@ -127,6 +163,7 @@ async def fees_monthly_collection(school_id: str, year: int = None, current_user
         monthly.append({
             "month": m,
             "month_name": ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m],
+            "label": ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m],
             "collected": collected,
             "transaction_count": txns.count()
         })

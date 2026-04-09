@@ -18,6 +18,7 @@ class Book(Document):
     school = ReferenceField(School, required=True)
     title = StringField(required=True)
     author = StringField(required=True)
+    class_name = StringField()
     isbn = StringField()
     publisher = StringField()
     edition = StringField()

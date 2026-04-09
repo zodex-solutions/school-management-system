@@ -106,6 +106,7 @@ async def add_stock_item(data: dict, current_user: User = Depends(get_current_us
         school=school,
         item_name=data['item_name'],
         item_code=data['item_code'],
+        class_name=data.get('class_name'),
         category=data.get('category', 'Other'),
         unit=data.get('unit', 'Nos'),
         current_stock=data.get('current_stock', 0),
@@ -119,14 +120,23 @@ async def add_stock_item(data: dict, current_user: User = Depends(get_current_us
 
 
 @inventory_router.get("/stock-item")
-async def list_stock_items(school_id: str, low_stock: bool = False, current_user: User = Depends(get_current_user)):
+async def list_stock_items(school_id: str, low_stock: bool = False, search: Optional[str] = None, class_name: Optional[str] = None, current_user: User = Depends(get_current_user)):
     school = School.objects.get(id=school_id)
     query = StockItem.objects(school=school, is_active=True)
+    if class_name:
+        query = query.filter(class_name=class_name)
+    if search:
+        query = query.filter(__raw__={"$or": [
+            {"item_name": {"$regex": search, "$options": "i"}},
+            {"item_code": {"$regex": search, "$options": "i"}},
+            {"class_name": {"$regex": search, "$options": "i"}}
+        ]})
     items = list(query)
     if low_stock:
         items = [i for i in items if i.current_stock <= i.minimum_stock]
     result = [{
         "id": str(i.id), "item_name": i.item_name, "item_code": i.item_code,
+        "class_name": i.class_name,
         "category": i.category, "unit": i.unit,
         "current_stock": i.current_stock, "minimum_stock": i.minimum_stock,
         "unit_price": i.unit_price, "location": i.location,
@@ -134,6 +144,27 @@ async def list_stock_items(school_id: str, low_stock: bool = False, current_user
         "stock_value": i.current_stock * i.unit_price
     } for i in items]
     return success_response(result)
+
+
+@inventory_router.put("/stock-item/{item_id}")
+async def update_stock_item(item_id: str, data: dict, current_user: User = Depends(get_current_user)):
+    try:
+        item = StockItem.objects.get(id=item_id)
+        data.pop('id', None)
+        data.pop('school_id', None)
+        item.update(**data)
+        return success_response(message="Stock item updated")
+    except StockItem.DoesNotExist:
+        raise HTTPException(404, "Stock item not found")
+
+
+@inventory_router.delete("/stock-item/{item_id}")
+async def delete_stock_item(item_id: str, current_user: User = Depends(get_current_user)):
+    try:
+        StockItem.objects.get(id=item_id).update(is_active=False)
+        return success_response(message="Stock item deleted")
+    except StockItem.DoesNotExist:
+        raise HTTPException(404, "Stock item not found")
 
 
 @inventory_router.post("/stock-transaction")
