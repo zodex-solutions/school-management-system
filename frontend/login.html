@@ -1,135 +1,8 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scholar Desk | Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Specific Wave Shape using clip-path */
-      .wave-shape::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 420px; /* Adjust this to control how far down the white section goes */
-  background: white;
-  z-index: 1;
-
-  clip-path: polygon(
-    0% 0%, 
-    100% 0%, 
-    100% 30%, 
-    15% 15%, 
-    65% 70%, 
-    45% 65%, 
-    35% 45%, 
-    0% 35%
-  );
-  
-  clip-path: path('M0,0 L1100,0 L1100,180 C950,250 850,450 600,380 C400,320 200,450 0,350 Z');
-}
-        .bg-dots {
-            background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
-            background-size: 30px 30px;
-        }
-    </style>
-</head>
-<body class="bg-slate-50 bg-dots min-h-screen flex items-center justify-center p-4">
-
-    <div class="main-container flex flex-col lg:flex-row w-full max-w-6xl h-auto lg:h-[85vh]   rounded-xl overflow-hidden relative">
-        
-        <div class="left-panel wave-shape relative flex-1 rounded-xl shadow-2xl border lg:flex-[1.2] bg-[#0076b6] p-10 flex flex-col items-center overflow-hidden">
-            <div class="absolute w-[300px] h-[300px] border-2 border-white/10 rounded-full -bottom-12 -left-12 z-0"></div>
-            <div class="absolute w-[450px] h-[450px] border-2 border-white/10 rounded-full top-36 -right-36 z-0"></div>
-            
-            <div class="content-overlay relative z-10 flex flex-col items-center w-full h-full">
-                <img src="/public/rs.jpeg" alt="Logo" class="w-24 h-24 mb-5">
-                <h1 class="text-[#1b4d70] text-2xl lg:text-3xl font-extrabold text-center mb-20 tracking-wide uppercase">
-                    R.S Memorial Public School
-                </h1>
-                
-                <a href="#" class="bg-white text-[#0076b6] px-6 py-2.5 rounded-full font-bold text-sm shadow-md mb-10 hover:bg-slate-50 transition-colors">
-                    Need Help?
-                </a>
-                
-                <div class="contact-details text-white text-center text-sm leading-loose space-y-1">
-                    <p>📞 +91-9599773499 &nbsp; +91-9891009943/44</p>
-                    <p>💬 +91-9220400364 &nbsp; +91-9220400906</p>
-                    <p>☎️ 01285-221533</p>
-                    <p>✉️ helpdesk@campuspro.in</p>
-                </div>
-            </div>
-            
-            <div class="absolute bottom-5 w-full text-center text-white/60 text-[11px] z-10 hidden lg:block">
-                Copyright © 2022-25 CampusPro Technologies Private Limited
-            </div>
-        </div>
-
-        <div class="right-panel flex-1  flex items-center justify-center p-6 lg:p-10 z-20">
-            <div class="login-card border bg-white w-full max-w-md p-8 lg:p-10 rounded-2xl shadow-xl lg:-ml-40 relative">
-                <div class="absolute -top-9 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="1.5">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                    </svg>
-                </div>
-
-                <form onsubmit="handleLogin(event)" class="space-y-4">
-                    <div class="form-group">
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1.5">User Id</label>
-                        <div class="relative">
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
-                            <input type="text" id="username" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-md bg-[#f2f7fb] text-sm focus:outline-none focus:ring-1 focus:ring-[#0076b6]" placeholder="Admin1" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1.5">Password</label>
-                        <div class="relative">
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">🔒</span>
-                            <input type="password" id="password" class="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-md bg-[#f2f7fb] text-sm focus:outline-none focus:ring-1 focus:ring-[#0076b6]" placeholder="********" required>
-                            <span class="eye-icon absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 text-xs">👁️</span>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1.5">School Name</label>
-                        <input type="text" class="w-full px-4 py-2.5 border border-gray-200 rounded-md bg-white text-gray-700 text-sm focus:outline-none" value="R.S MEMORIAL PUBLIC SCHOOL Village Tatarpur, Teh. Tapukara, Dis" readonly>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1.5">Academic Session</label>
-                        <input type="text" class="w-full px-4 py-2.5 border border-gray-200 rounded-md bg-white text-gray-700 text-sm focus:outline-none" value="2026-2027" readonly>
-                    </div>
-
-                    <button type="submit" class="login-submit w-full py-3.5 bg-[#0076b6] text-white font-bold rounded-md hover:bg-[#005a8b] transition-all shadow-lg active:scale-[0.98]">
-                        LOGIN
-                    </button>
-
-                    <div class="footer-links text-center pt-2 text-[11px] text-[#0076b6] font-semibold">
-                        <a href="#" class="hover:underline">Terms of Service</a> | <a href="#" class="hover:underline">Privacy Policy</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="w-full text-center text-gray-400 text-[11px] py-4 lg:hidden">
-            Copyright © 2022-25 CampusPro Technologies Private Limited
-        </div>
-    </div>
-
-  
-</body>
-</html> -->
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-   <script src="https://cdn.tailwindcss.com"></script>
-
+  <script src="https://cdn.tailwindcss.com"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scholar Desk</title>
   <style>
@@ -142,23 +15,23 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      /* padding: 10px; */
     }
 
-    .container {
+    /* Container: Desktop pe same, Mobile pe bg-transparent taaki panels alag dikhein */
+    .container-custom {
       display: flex;
-      width: 950px;
+      width: 100%;
+      max-width: 1150px;
       min-height: 580px;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.18);
-      background: white;
+      position: relative;
+      flex-direction: row; /* Desktop default */
     }
 
     /* LEFT PANEL */
     .left-panel {
       flex: 1.5;
       background: white;
-      border-radius: 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -174,20 +47,6 @@
       z-index: 2;
     }
 
-    .logo-circle {
-      width: 110px;
-      height: 110px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #1e7a34, #2ecc71);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 4px solid #f5c518;
-      overflow: hidden;
-      position: relative;
-    }
-
-    /* SVG Badge Logo */
     .logo-svg {
       width: 100px;
       height: 100px;
@@ -203,17 +62,6 @@
       padding: 0 20px;
     }
 
-    /* Wave blue section */
-    .blue-section {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #1a7ec8;
-      padding: 40px 30px 28px;
-      clip-path: ellipse(110% 100% at 50% 100%);
-    }
-
     .wave-container {
       position: absolute;
       bottom: 0;
@@ -227,21 +75,6 @@
       bottom: 0;
       width: 100%;
       height: 100%;
-    }
-
-    .help-content {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 340px;
-      background: linear-gradient(180deg, #1a8fd1 0%, #1273b0 100%);
-      clip-path: ellipse(120% 95% at 50% 100%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 70px 20px 30px;
     }
 
     .need-help-btn {
@@ -270,10 +103,6 @@
       font-size: 13.5px;
     }
 
-    .contact-row .icon {
-      font-size: 14px;
-    }
-
     .copyright {
       position: absolute;
       bottom: 12px;
@@ -287,93 +116,42 @@
 
     /* RIGHT PANEL */
     .right-panel {
-      width: 320px;
-      /* background: white; */
+      flex: 1;
       display: flex;
-      flex-direction: column;
+      align-items: center;
       justify-content: center;
       padding: 40px 32px;
-      border-left: 1px solid #e8edf2;
+      z-index: 20;
     }
 
-    .form-group {
-      margin-bottom: 20px;
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 40px;
+      position: relative;
     }
 
+    /* Desktop only overlap - NO CHANGE */
+    @media (min-width: 1024px) {
+      .login-card {
+        margin-left: -160px; 
+      }
+      .container-custom {
+        /* border-radius: 16px; */
+        overflow: hidden;
+      }
+    }
+
+    .form-group { margin-bottom: 20px; }
     .form-group label {
       display: block;
-      font-size: 14px;
-      font-weight: 600;
-      color: #222;
+      font-size: 11px;
+      font-weight: 700;
+      color: #374151;
+      text-transform: uppercase;
       margin-bottom: 6px;
     }
 
-    .input-wrapper {
-      display: flex;
-      align-items: center;
-      border: 1.5px solid #d0d8e4;
-      border-radius: 6px;
-      overflow: hidden;
-      background: white;
-    }
-
-    .input-wrapper:focus-within {
-      border-color: #1a7ec8;
-    }
-
-    .input-icon {
-      padding: 10px 12px;
-      color: #888;
-      font-size: 16px;
-      background: #f7f9fc;
-      border-right: 1px solid #d0d8e4;
-    }
-
-    .input-wrapper input {
-      flex: 1;
-      padding: 10px 12px;
-      border: none;
-      outline: none;
-      font-size: 14px;
-      color: #333;
-      background: white;
-    }
-
-    .input-wrapper input::placeholder {
-      color: #aaa;
-    }
-
-    .school-name-field {
-      border: 1.5px solid #d0d8e4;
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-size: 14px;
-      color: #333;
-      background: #f7f9fc;
-      width: 100%;
-    }
-
-    .login-btn {
-      width: 100%;
-      background: #1a7ec8;
-      /* #1a8fd1 0%, #1273b0 */
-      color: white;
-      border: none;
-      padding: 13px;
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 8px;
-      letter-spacing: 0.5px;
-      transition: background 0.2s;
-    }
-
-    .login-btn:hover {
-      background: #1565a8;
-    }
-
-    /* Decorative blue corner top-right */
     .corner-deco {
       position: absolute;
       top: 0;
@@ -384,160 +162,118 @@
       border-radius: 0 0 0 60px;
       z-index: 1;
     }
+
+    /* MOBILE VIEW: Separating the containers */
+    @media (max-width: 1023px) {
+      body {
+        display: block; /* Scrolling allow karne ke liye */
+        /* padding: 20px 10px; */
+      }
+      .container-custom {
+        flex-direction: column;
+        min-height: auto;
+        gap: 20px; /* Dono container ke beech gap */
+      }
+      .left-panel {
+        padding-bottom: 250px; 
+        border-radius: 20px; /* Mobile pe standalone look */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      .wave-container {
+        height: 280px;
+      }
+      .right-panel {
+        padding: 0;
+        margin-top: 0; /* No overlap on mobile */
+      }
+      .login-card {
+        margin-left: 0;
+        /* box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); */
+        border-radius: 20px;
+      }
+    }
   </style>
 </head>
 <body>
 
-<div class="main-container flex flex-col lg:flex-row w-full max-w-6xl h-auto lg:h-[85vh]   rounded-xl overflow-hidden relative" style="position:relative;">
-
-  <!-- Top right corner decoration -->
-  
-  <!-- LEFT PANEL -->
-  <div class="left-panel">
+<div class="container-custom ">
+  <div class="left-panel lg:rounded-2xl rounded-none shadow-lg ">
     <div class="corner-deco"></div>
 
-    <div class="logo-area">
-     <img src="/public/rs.jpeg" alt="Logo" class="logo-svg">
+    <div class="logo-area  ">
+      <img src="/public/rs.jpeg" alt="Logo" class="logo-svg">
       <div class="school-name">R.S MEMORIAL PUBLIC SCHOOL</div>
-      <div class="text-[13px] text-gray-500 ">Learn Today for a Better Tomorrow</div>
+      <div class="text-[13px] text-gray-500">Learn Today for a Better Tomorrow</div>
     </div>
 
-    <!-- Wave + Blue Help Section -->
     <div class="wave-container">
       <svg class="wave-bg" viewBox="0 0 560 350" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <path d="M0,80 C80,20 200,100 300,60 C400,20 480,80 560,50 L560,350 L0,350 Z" fill="#1a8fd1"/>
         <path d="M0,95 C100,40 200,110 310,75 C420,40 490,90 560,65 L560,350 L0,350 Z" fill="#1273b0"/>
-        <!-- Decorative circles -->
-        <!-- <circle cx="80" cy="230" r="60" fill="rgba(255,255,255,0.06)"/>
-        <circle cx="80" cy="230" r="40" fill="#1273b0"/> -->
         <circle cx="20" cy="230" r="120" fill="rgba(255,255,255,0.05)"/>
         <circle cx="20" cy="230" r="80" fill="#1273b0"/>
         <circle cx="520" cy="150" r="80" fill="rgba(255,255,255,0.05)"/>
         <circle cx="520" cy="150" r="55" fill="#1273b0"/>
       </svg>
 
-      <!-- Help content overlay -->
       <div style="position:absolute; top:80px; left:0; right:0; bottom:30px; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:2;">
         <button class="need-help-btn">Need Help?</button>
-
         <div class="contact-info">
-          <!-- <div class="contact-row">
-            <span class="icon">📞</span>
-            <span>+91-9599773499 &nbsp; +91-9891009943/44</span>
-          </div>
-          <div class="contact-row">
-            <span class="icon">💬</span>
-            <span>+91-9220400364 &nbsp; +91-9220400906</span>
-          </div> -->
-          <div class="contact-row">
-            <span>School Chairman :- Mukesh Yadav
-</span>
-          </div>
-          <div class="contact-row">
-            <span class="icon">☎</span>
-            <span>+91 92140 14070</span>
-          </div>
-          <!-- <div class="contact-row">
-            <span class="icon">✉</span>
-            <span>helpdesk@campuspro.in</span>
-          </div> -->
+          <div class="contact-row"><span>School Chairman :- Mukesh Yadav</span></div>
+          <div class="contact-row"><span class="icon">☎</span><span>+91 92140 14070</span></div>
         </div>
       </div>
-
       <div class="copyright">Copyright &copy; 2026-27 Scholar Desk ERP</div>
     </div>
-
   </div>
 
-      <div class="right-panel flex-1  flex items-center justify-center p-6 lg:p-10 z-20">
-            <div class="login-card border bg-white w-full max-w-md p-8 lg:p-10 rounded-2xl shadow-xl lg:-ml-40 relative">
-                <div class="absolute -top-9 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="1.5">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                    </svg>
-                </div>
+  <div class="right-panel lg:rounded-2xl rounded-none">
+    <div class="login-card lg:rounded-2xl rounded-none  lg:shadow-lg lg:bg-white lg:relative">
+      <div class="lg:flex hidden lg:absolute -top-9 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
 
-                <form onsubmit="handleLogin(event)" class="space-y-4">
-                    <div class="form-group">
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1.5">User Id</label>
-                        <div class="relative">
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
-                            <input type="text" id="username" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-md bg-[#f2f7fb] text-sm focus:outline-none focus:ring-1 focus:ring-[#0076b6]" placeholder="Admin1" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1.5">Password</label>
-                        <div class="relative">
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">🔒</span>
-                            <input type="password" id="password" class="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-md bg-[#f2f7fb] text-sm focus:outline-none focus:ring-1 focus:ring-[#0076b6]" placeholder="********" required>
-                            <span class="eye-icon absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 text-xs">👁️</span>
-                        </div>
-                    </div>
-
-                   
-
-                    <button type="submit" class="login-submit w-full py-3.5 bg-[#0076b6] text-white font-bold rounded-md hover:bg-[#005a8b] transition-all shadow-lg active:scale-[0.98]">
-                        LOGIN
-                    </button>
-
-                    <div class="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-[#0f4c81] space-y-1">
-                        <p><strong>Admin / Teacher / Staff Login:</strong> Please log in from this page using your username or email and password.</p>
-                        <p><strong>Parent Login:</strong> Please log in through the Parent Portal.</p>
-                        <a href="/parent-login" class="inline-flex mt-1 text-[#0076b6] font-semibold hover:underline">Open Parent Portal →</a>
-                    </div>
-
-                    <!-- <div class="footer-links text-center pt-2 text-[11px] text-[#0076b6] font-semibold">
-                        <a href="#" class="hover:underline">Terms of Service</a> | <a href="#" class="hover:underline">Privacy Policy</a>
-                    </div> -->
-                </form>
-            </div>
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div class="form-group">
+          <label>User Id</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+            <input type="text" id="username" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-md bg-[#f2f7fb] text-sm focus:outline-none focus:ring-1 focus:ring-[#0076b6]" placeholder="Admin1" required>
+          </div>
         </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">🔒</span>
+            <input type="password" id="password" class="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-md bg-[#f2f7fb] text-sm focus:outline-none focus:ring-1 focus:ring-[#0076b6]" placeholder="********" required>
+            <span class="eye-icon absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 text-xs">👁️</span>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 bg-[#0076b6] text-white font-bold rounded-md hover:bg-[#005a8b] transition-all shadow-lg active:scale-[0.98]">
+          LOGIN
+        </button>
+
+        <div class="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-[#0f4c81] space-y-1">
+          <p><strong>Admin / Teacher / Staff Login:</strong> Please log in from this page.</p>
+          <p><strong>Parent Login:</strong> Please log in through the Parent Portal.</p>
+          <a href="/parent-login" class="inline-flex mt-1 text-[#0076b6] font-semibold hover:underline">Open Parent Portal →</a>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
-  <script src="js/api.js"></script>
-    <script>
-    if (localStorage.getItem('access_token')) location.href = '/dashboard';
+<script>
+  document.querySelector('.eye-icon').addEventListener('click', function() {
+    const input = document.getElementById('password');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+  async function handleLogin(event) { event.preventDefault(); }
+</script>
 
-    async function handleLogin(event) {
-      event.preventDefault();
-      const u = document.getElementById('username').value.trim();
-      const p = document.getElementById('password').value;
-      
-      if (!u || !p) {
-        alert('Username and password required');
-        return;
-      }
-
-      const btn = event.target.querySelector('.login-submit');
-      const originalText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Signing in...';
-
-      try {
-        const res = await AuthAPI.login(u, p);
-        if (res && res.success) {
-          Auth.setAuth(res.data.access_token, res.data.user);
-          await initializeSchoolContext(true);
-          btn.style.background = '#10b981';
-          btn.textContent = 'Success!';
-          setTimeout(() => location.href = '/dashboard', 500);
-        } else {
-          alert(res?.message || 'Login failed');
-          btn.disabled = false;
-          btn.textContent = originalText;
-        }
-      } catch (e) {
-        alert(e.message || 'Cannot connect to server');
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
-    }
-
-    document.querySelector('.eye-icon').addEventListener('click', function() {
-      const input = document.getElementById('password');
-      input.type = input.type === 'password' ? 'text' : 'password';
-    });
-    </script>
 </body>
 </html>
