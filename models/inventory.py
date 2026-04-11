@@ -20,8 +20,9 @@ class Asset(Document):
     category = ReferenceField(AssetCategory)
     asset_type = StringField(choices=[
         'Furniture', 'Electronics', 'Lab Equipment', 'Sports',
-        'Vehicle', 'Building', 'Computer', 'Library', 'Other'
+        'Vehicle', 'Building', 'Computer', 'Library', 'Book', 'Note Book', 'Other'
     ])
+    class_name = StringField()
     brand = StringField()
     model_no = StringField()
     serial_no = StringField()

@@ -10,6 +10,18 @@ from utils.helpers import success_response, generate_employee_id, save_upload_fi
 router = APIRouter(prefix="/staff", tags=["Staff & HR"])
 
 
+def _resolve_current_staff(current_user: User, school: Optional[School] = None) -> Staff:
+    staff = Staff.objects(user_account=current_user).first()
+    if not staff and current_user.email:
+        query = Staff.objects(email=current_user.email)
+        if school:
+            query = query.filter(school=school)
+        staff = query.first()
+    if not staff:
+        raise HTTPException(404, "Staff profile not linked with this login")
+    return staff
+
+
 class StaffCreate(BaseModel):
     first_name: str
     last_name: Optional[str] = ""
@@ -365,7 +377,7 @@ async def upload_assignment_file(
 # ─── Leave Management ─────────────────────────────────────────────────────────
 
 class LeaveApply(BaseModel):
-    staff_id: str
+    staff_id: Optional[str] = None
     school_id: str
     leave_type_id: str
     from_date: datetime
@@ -377,11 +389,17 @@ class LeaveApply(BaseModel):
 @router.post("/leave/apply")
 async def apply_leave(data: LeaveApply, current_user: User = Depends(get_current_user)):
     try:
-        staff = Staff.objects.get(id=data.staff_id)
-        school = School.objects.get(id=data.school_id)
+        school = School.objects.get(id=resolve_school_access(current_user, data.school_id))
+        staff = Staff.objects.get(id=data.staff_id) if data.staff_id else _resolve_current_staff(current_user, school)
         leave_type = LeaveType.objects.get(id=data.leave_type_id)
     except Exception as e:
         raise HTTPException(404, f"Reference not found: {str(e)}")
+
+    if staff.school != school:
+        raise HTTPException(400, "Selected staff does not belong to this school")
+
+    if data.to_date < data.from_date:
+        raise HTTPException(400, "To date cannot be before from date")
     
     total_days = (data.to_date - data.from_date).days + 1
     
@@ -400,6 +418,47 @@ async def apply_leave(data: LeaveApply, current_user: User = Depends(get_current
     
     application.save()
     return success_response({"id": str(application.id), "total_days": total_days}, "Leave application submitted")
+
+
+@router.get("/leave/types")
+async def get_leave_types(school_id: str, current_user: User = Depends(get_current_user)):
+    school_id = resolve_school_access(current_user, school_id)
+    school = School.objects.get(id=school_id)
+    defaults = [
+        {"name": "Casual Leave", "code": "CL", "total_days": 12, "is_paid": True, "applicable_to": "All"},
+        {"name": "Sick Leave", "code": "SL", "total_days": 10, "is_paid": True, "applicable_to": "All"},
+        {"name": "Emergency Leave", "code": "EL", "total_days": 5, "is_paid": False, "applicable_to": "All"},
+    ]
+    for item in defaults:
+        if not LeaveType.objects(school=school, code=item["code"], is_active=True).first():
+            LeaveType(school=school, **item).save()
+    leave_types = LeaveType.objects(school=school, is_active=True).order_by('name')
+    return success_response([{
+        "id": str(leave_type.id),
+        "name": leave_type.name,
+        "code": leave_type.code,
+        "total_days": leave_type.total_days,
+        "is_paid": leave_type.is_paid,
+        "applicable_to": leave_type.applicable_to
+    } for leave_type in leave_types])
+
+
+@router.get("/me/profile")
+async def get_my_staff_profile(school_id: str, current_user: User = Depends(get_current_user)):
+    school_id = resolve_school_access(current_user, school_id)
+    school = School.objects.get(id=school_id)
+    staff = _resolve_current_staff(current_user, school)
+    return success_response({
+        "id": str(staff.id),
+        "employee_id": staff.employee_id,
+        "full_name": staff.full_name,
+        "designation": staff.designation,
+        "staff_type": staff.staff_type,
+        "department": staff.department,
+        "employment_status": staff.employment_status,
+        "phone": staff.phone,
+        "email": staff.email
+    })
 
 
 @router.get("/leave/applications")

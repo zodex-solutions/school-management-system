@@ -152,11 +152,11 @@
               <p id="welcomeDate" style="color:rgba(255,255,255,.55);font-size:.875rem"></p>
             </div>
             <div class="hidden sm:flex gap-3">
-              <a href="/students"
+              <a id="welcomeStudentBtn" href="/students"
                 style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:.875rem;padding:.625rem 1.125rem;color:#fff;font-size:.875rem;font-weight:600;text-decoration:none;backdrop-filter:blur(8px);transition:all .15s"
                 onmouseover="this.style.background='rgba(255,255,255,.2)'"
                 onmouseout="this.style.background='rgba(255,255,255,.12)'">+ Admit Student</a>
-             <a href="/reports"
+             <a id="welcomeReportsBtn" href="/reports"
   style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
   border-radius:.875rem;padding:.625rem 1.125rem;color:#fff;font-size:.875rem;
   font-weight:600;text-decoration:none;backdrop-filter:blur(8px);
@@ -188,50 +188,56 @@
 
   <!-- Total Students -->
   <div id="overviewStudentsCard" class=" rounded-2xl p-6 bg-white  border border-grey-50  hover:shadow-sm cursor-pointer transition">
-    <div class="flex items-center justify-between">
-      <div>
+    <div class="">
+     <div class="flex items-center justify-between">
+       <div>
         <p class="text-black text-sm">Total Students</p>
         <h2 id="overviewStudentsValue" class="text-3xl font-bold text-black mt-1">0</h2>
-        <span id="overviewStudentsText" class="text-xs text-gray-500">
-          Total number of students currently enrolled
-        </span>
       </div>
-      <div class="bg-blue-500/20 text-blue-400 p-3 rounded-xl">
-        <span id="icon-students"></span>
+        <div class="bg-blue-500/20 text-blue-400 p-3 rounded-xl">
+          <span id="icon-students"></span>
+        </div>
       </div>
+      <span id="overviewStudentsText" class="text-xs text-gray-500">
+        Total number of students currently enrolled
+      </span>
     </div>
   </div>
 
   <!-- Total Fee -->
   <div id="overviewPendingFeeCard" class=" rounded-2xl p-6 bg-white  border border-grey-50  hover:shadow-sm cursor-pointer transition">
-    <div class="flex items-center justify-between">
-      <div>
+ <div class="">
+     <div class="flex items-center justify-between">      <div>
         <p class="text-black text-sm">Pending Fee</p>
         <h2 id="overviewPendingFeeValue" class="text-3xl font-bold text-black mt-1">₹0</h2>
-        <span id="overviewPendingFeeText" class="text-xs text-gray-500">
-          Total pending fee from students
-        </span>
       </div>
       <div class="bg-green-500/20 text-xl text-green-400 p-2 px-4 rounded-xl">
         ₹
       </div>
     </div>
+    <span id="overviewPendingFeeText" class="text-xs text-gray-500">
+      Total pending fee from students
+    </span>
+    </div>
+
   </div>
 
   <!-- Total Schools -->
   <div id="overviewStaffCard" class=" rounded-2xl p-6 bg-white  border border-grey-50  hover:shadow-sm cursor-pointer transition">
-    <div class="flex items-center justify-between">
-      <div>
+ <div class="">
+     <div class="flex items-center justify-between">       <div>
         <p class="text-black text-sm">Total Staff</p>
         <h2 id="overviewStaffValue" class="text-3xl font-bold text-black mt-1">0</h2>
-        <span id="overviewStaffText" class="text-xs text-gray-500">
-          Total staff members in the system
-        </span>
       </div>
       <div class="bg-purple-500/20 text-purple-400 p-3 rounded-xl">
-       <span id="icon-staff"></span>
+        <span id="icon-staff"></span>
       </div>
     </div>
+      <span id="overviewStaffText" class="text-xs text-gray-500">
+        Total staff members in the system
+      </span>
+    </div>
+
   </div>
 
 
@@ -255,7 +261,7 @@
                 →</a>
             </div>
           <div id="recentStudents"
-  style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:#94a3b8;text-align:center">
+  style="display:flex;flex-direction:column;align-items:left;justify-content:start;padding:0rem;color:#94a3b8;text-align:left">
   <div id="icon-empty-students"
        style="margin-bottom:.75rem;display:flex;align-items:center;justify-content:center">
   </div>
@@ -283,7 +289,7 @@
                   </div>
                 </div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-top:.75rem">
+              <div class="flex flex-col gap-3">
                 <div
                   style="background:#f0fdf4;border-radius:.875rem;padding:.875rem;text-align:center;border:1px solid #bbf7d0">
                   <div id="fsCollected"
@@ -351,46 +357,49 @@
       window.location.href = '/staff';
     });
 
+    document.getElementById('welcomeStudentBtn').style.display = hasModuleAccess('students') ? 'inline-flex' : 'none';
+    document.getElementById('welcomeReportsBtn').style.display = hasModuleAccess('reports') ? 'inline-flex' : 'none';
+
     // Quick actions
     const actions = [
-      { icon: getIcon('student'), label: 'Admit New Student', href: '/students', color: '#6366f1' },
-      { icon: getIcon('calendar'), label: 'Mark Attendance', href: '/attendance', color: '#10b981' },
-      { icon: getIcon('money'), label: 'Collect Fee', href: '/fees', color: '#f59e0b' },
-      { icon: getIcon('exam'), label: 'Enter Exam Marks', href: '/exams', color: '#ef4444' },
-      { icon: getIcon('staff'), label: 'Add Staff Member', href: '/staff', color: '#8b5cf6' },
-      { icon: getIcon('certificate'), label: 'Issue Certificate', href: '/certificates', color: '#0ea5e9' },
+      { icon: getIcon('student'), label: 'Admit New Student', href: '/students', module: 'students', color: '#6366f1' },
+      { icon: getIcon('calendar'), label: 'Mark Attendance', href: '/attendance', module: 'attendance', color: '#10b981' },
+      { icon: getIcon('money'), label: 'Collect Fee', href: '/fees', module: 'fees', color: '#f59e0b' },
+      { icon: getIcon('exam'), label: 'Enter Exam Marks', href: '/exams', module: 'exams', color: '#ef4444' },
+      { icon: getIcon('staff'), label: 'Add Staff Member', href: '/staff', module: 'staff', color: '#8b5cf6' },
+      { icon: getIcon('certificate'), label: 'Issue Certificate', href: '/certificates', module: 'certificates', color: '#0ea5e9' },
     ];
-    
-    document.getElementById('quickActions').innerHTML = actions.map(a =>
+    const filteredActions = actions.filter(a => hasModuleAccess(a.module));
+    document.getElementById('quickActions').innerHTML = filteredActions.map(a =>
       `<a href="${a.href}" class="quick-btn">
     <div style="width:2.25rem;height:2.25rem;background:${a.color}15;border-radius:.625rem;display:flex;align-items:center;justify-content:center;font-size:1.125rem;flex-shrink:0">${a.icon}</div>
     <span style="font-size:.875rem;font-weight:600;color:#374151">${a.label}</span>
     <svg style="width:1rem;height:1rem;color:#d1d5db;margin-left:auto;flex-shrink:0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
   </a>`
-    ).join('');
+    ).join('') || '<div class="text-sm text-gray-400 text-center py-6">No quick actions available for this role</div>';
 
     // Module grid
    const modules = [
-  { icon: 'building-2', label: 'Institution', href: '/institution', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
-  { icon: 'graduation-cap', label: 'Students', href: '/students', bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
-  { icon: 'users', label: 'Staff & HR', href: '/staff', bg: '#fefce8', border: '#fef08a', text: '#a16207' },
-  { icon: 'book-open', label: 'Academics', href: '/academics', bg: '#faf5ff', border: '#e9d5ff', text: '#7e22ce' },
-  { icon: 'file-text', label: 'Exams', href: '/exams', bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' },
-  { icon: 'indian-rupee', label: 'Fees', href: '/fees', bg: '#fff7ed', border: '#fed7aa', text: '#c2410c' },
-  { icon: 'calendar-days', label: 'Attendance', href: '/attendance', bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46' },
-  { icon: 'bus', label: 'Transport', href: '/transport', bg: '#f0fdfa', border: '#99f6e4', text: '#0f766e' },
-  { icon: 'library', label: 'Library', href: '/library', bg: '#eef2ff', border: '#c7d2fe', text: '#4338ca' },
-  { icon: 'boxes', label: 'Inventory', href: '/inventory', bg: '#f7fee7', border: '#d9f99d', text: '#3f6212' },
-  { icon: 'heart-pulse', label: 'Health', href: '/health', bg: '#fdf2f8', border: '#fbcfe8', text: '#be185d' },
-  { icon: 'message-circle', label: 'Communication', href: '/communication', bg: '#faf5ff', border: '#e9d5ff', text: '#6b21a8' },
-  { icon: 'bar-chart-3', label: 'Reports', href: '/reports', bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af' },
-  { icon: 'home', label: 'Hostel', href: '/hostel', bg: '#fefce8', border: '#fef08a', text: '#92400e' },
-  { icon: 'briefcase', label: 'Payroll', href: '/payroll', bg: '#f0fdf4', border: '#bbf7d0', text: '#14532d' },
-  { icon: 'graduation-cap', label: 'Admissions', href: '/admissions', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412' },
-  { icon: 'scroll-text', label: 'Certificates', href: '/certificates', bg: '#faf5ff', border: '#ddd6fe', text: '#5b21b6' },
-  { icon: 'users-round', label: 'Parents', href: '/parent-portal', bg: '#fdf2f8', border: '#f9a8d4', text: '#9d174d' },
+  { icon: 'building-2', label: 'Institution', href: '/institution', module: 'institution', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
+  { icon: 'graduation-cap', label: 'Students', href: '/students', module: 'students', bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
+  { icon: 'users', label: 'Staff & HR', href: '/staff', module: 'staff', bg: '#fefce8', border: '#fef08a', text: '#a16207' },
+  { icon: 'book-open', label: 'Academics', href: '/academics', module: 'academics', bg: '#faf5ff', border: '#e9d5ff', text: '#7e22ce' },
+  { icon: 'file-text', label: 'Exams', href: '/exams', module: 'exams', bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' },
+  { icon: 'indian-rupee', label: 'Fees', href: '/fees', module: 'fees', bg: '#fff7ed', border: '#fed7aa', text: '#c2410c' },
+  { icon: 'calendar-days', label: 'Attendance', href: '/attendance', module: 'attendance', bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46' },
+  { icon: 'bus', label: 'Transport', href: '/transport', module: 'transport', bg: '#f0fdfa', border: '#99f6e4', text: '#0f766e' },
+  { icon: 'library', label: 'Library', href: '/library', module: 'library', bg: '#eef2ff', border: '#c7d2fe', text: '#4338ca' },
+  { icon: 'boxes', label: 'Inventory', href: '/inventory', module: 'inventory', bg: '#f7fee7', border: '#d9f99d', text: '#3f6212' },
+  { icon: 'heart-pulse', label: 'Health', href: '/health', module: 'health', bg: '#fdf2f8', border: '#fbcfe8', text: '#be185d' },
+  { icon: 'message-circle', label: 'Communication', href: '/communication', module: 'communication', bg: '#faf5ff', border: '#e9d5ff', text: '#6b21a8' },
+  { icon: 'bar-chart-3', label: 'Reports', href: '/reports', module: 'reports', bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af' },
+  { icon: 'home', label: 'Hostel', href: '/hostel', module: 'hostel', bg: '#fefce8', border: '#fef08a', text: '#92400e' },
+  { icon: 'briefcase', label: 'Payroll', href: '/payroll', module: 'payroll', bg: '#f0fdf4', border: '#bbf7d0', text: '#14532d' },
+  { icon: 'graduation-cap', label: 'Admissions', href: '/admissions', module: 'admissions', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412' },
+  { icon: 'scroll-text', label: 'Certificates', href: '/certificates', module: 'certificates', bg: '#faf5ff', border: '#ddd6fe', text: '#5b21b6' },
+  { icon: 'users-round', label: 'Parents', href: '/parent-portal', module: 'parents', bg: '#fdf2f8', border: '#f9a8d4', text: '#9d174d' },
 ];
-    document.getElementById('moduleGrid').innerHTML = modules.map(m =>
+    document.getElementById('moduleGrid').innerHTML = modules.filter(m => hasModuleAccess(m.module)).map(m =>
       `<a href="${m.href}" class="module-card" style="background:${m.bg};border-color:${m.border}">
     <div data-lucide="${m.icon}" style="width:28px;height:28px;"></div>
     <div style="font-family:Outfit,sans-serif;font-size:.875rem;font-weight:700;color:${m.text}">${m.label}</div>

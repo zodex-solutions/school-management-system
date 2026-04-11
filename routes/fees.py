@@ -27,6 +27,7 @@ ALLOWED_FEE_STRUCTURE_CATEGORIES = [
     {"name": "Stationary kit / Activity Charge", "code": "ACT"},
     {"name": "Tuition Fee Mly", "code": "TUI"},
     {"name": "Books Fee", "code": "BOOK"},
+    {"name": "Note Book Fee", "code": "NOTE"},
 ]
 YEARLY_TUITION_LABEL = "Tuition Fee Yly Upto 30 April 2025"
 
@@ -36,6 +37,8 @@ ALLOWED_CATEGORY_ALIASES = {
     "tuition fee monthly": "TUI",
     "tuition fee yearly": "TUI",
     "books fee": "BOOK",
+    "note book fee": "NOTE",
+    "notebook fee": "NOTE",
 }
 
 
@@ -47,7 +50,7 @@ def _normalize_fee_category(name: str, code: str):
     if not allowed:
         raise HTTPException(
             status_code=400,
-            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Tuition Fee Mly, Books Fee",
+            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Tuition Fee Mly, Books Fee, Note Book Fee",
         )
     return allowed["name"], allowed["code"]
 
@@ -72,7 +75,7 @@ def _build_fee_breakdown(items: List) -> dict:
             code = matched["code"] if matched else ""
         if code in breakdown:
             breakdown[code] = float(getattr(entry, "amount", 0) or 0)
-    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + breakdown["BOOK"] + (breakdown["TUI"] * 12)
+    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + breakdown["BOOK"] + breakdown["NOTE"] + (breakdown["TUI"] * 12)
     return breakdown
 
 
@@ -294,32 +297,43 @@ def _generate_invoice_no() -> str:
 def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str], concession_percent: float = 0):
     built_items = list(items or [])
     concession_percent = concession_percent or 0
+    selected_months = transport_months or []
+    tuition_month_count = len(selected_months) if selected_months else 1
 
     if fee_structure_id:
         structure = FeeStructure.objects.get(id=fee_structure_id)
         for item in structure.items:
-            amount = item.amount
+            is_tuition_like = bool(item.category_name and "tuition" in item.category_name.lower())
+            months_label = f" ({', '.join(selected_months)})" if is_tuition_like and selected_months else ""
+            base_amount = float(item.amount or 0)
+            if is_tuition_like:
+                base_amount = base_amount * tuition_month_count
+            amount = base_amount
             discount_amount = 0
-            if concession_percent > 0 and item.category_name and "tuition" in item.category_name.lower():
+            if concession_percent > 0 and is_tuition_like:
                 discount_amount = round(amount * concession_percent / 100, 2)
                 amount = max(0, amount - discount_amount)
             built_items.append({
                 "category": item.category_name,
-                "description": item.category_name,
-                "base_amount": item.amount,
+                "description": f"{item.category_name}{months_label}",
+                "base_amount": base_amount,
                 "concession_percent": concession_percent if discount_amount else 0,
                 "discount_amount": discount_amount,
-                "amount": amount
+                "amount": amount,
+                "months": selected_months if is_tuition_like and selected_months else []
             })
     elif student.classroom and getattr(student.classroom, "class_fee", 0):
-        discount_amount = round(student.classroom.class_fee * concession_percent / 100, 2) if concession_percent > 0 else 0
+        months_label = f" ({', '.join(selected_months)})" if selected_months else ""
+        base_amount = float(student.classroom.class_fee or 0) * tuition_month_count
+        discount_amount = round(base_amount * concession_percent / 100, 2) if concession_percent > 0 else 0
         built_items.append({
             "category": "Class Fee",
-            "description": f"{student.classroom.name} Class Fee",
-            "base_amount": student.classroom.class_fee,
+            "description": f"{student.classroom.name} Class Fee{months_label}",
+            "base_amount": base_amount,
             "concession_percent": concession_percent if discount_amount else 0,
             "discount_amount": discount_amount,
-            "amount": max(0, student.classroom.class_fee - discount_amount)
+            "amount": max(0, base_amount - discount_amount),
+            "months": selected_months if selected_months else []
         })
 
     selected_months = transport_months or (student.transport_months or [])

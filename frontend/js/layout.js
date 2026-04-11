@@ -54,6 +54,14 @@ var NAV_GROUPS = [
   }
 ];
 
+var ROLE_MODULE_PRESETS = {
+  teacher: ['dashboard', 'students', 'staff', 'academics', 'exams', 'attendance', 'communication'],
+  parent: ['dashboard'],
+  student: ['dashboard', 'academics', 'exams', 'attendance', 'fees', 'communication'],
+  accountant: ['dashboard', 'students', 'fees', 'reports'],
+  hr: ['dashboard', 'staff', 'payroll', 'attendance', 'reports'],
+};
+
 var LAYOUT_ICONS = {
   'grid':        '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   'home':        '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/>',
@@ -83,13 +91,42 @@ function _sbIcon(name, size) {
   return '<svg style="width:' + size + ';height:' + size + ';flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (LAYOUT_ICONS[name] || '') + '</svg>';
 }
 
+function getAccessibleModules(user) {
+  user = user || getUser() || {};
+  if (user.is_superadmin) return null;
+  var explicitPermissions = Array.isArray(user.permissions) ? user.permissions.filter(function(permission) {
+    return permission && permission.can_view;
+  }).map(function(permission) {
+    return String(permission.module || '').trim().toLowerCase();
+  }).filter(Boolean) : [];
+  if (explicitPermissions.length) return explicitPermissions;
+
+  var roleName = String(user.role_name || user.role || '').trim().toLowerCase();
+  if (!roleName) return null;
+  if (roleName.indexOf('super') !== -1 || roleName.indexOf('admin') !== -1 || roleName.indexOf('principal') !== -1) return null;
+  if (roleName.indexOf('teacher') !== -1 || roleName.indexOf('faculty') !== -1) return ROLE_MODULE_PRESETS.teacher;
+  if (roleName.indexOf('parent') !== -1) return ROLE_MODULE_PRESETS.parent;
+  if (roleName.indexOf('student') !== -1) return ROLE_MODULE_PRESETS.student;
+  if (roleName.indexOf('account') !== -1 || roleName.indexOf('fee') !== -1) return ROLE_MODULE_PRESETS.accountant;
+  if (roleName.indexOf('hr') !== -1 || roleName.indexOf('human resource') !== -1) return ROLE_MODULE_PRESETS.hr;
+  return null;
+}
+
+function hasModuleAccess(module) {
+  var accessibleModules = getAccessibleModules(getUser() || {});
+  if (!accessibleModules) return true;
+  return accessibleModules.indexOf(String(module || '').toLowerCase()) !== -1;
+}
+
 function renderSidebar(activeModule) {
   var user = getUser() || {};
   var nameParts = (user.full_name || 'Admin').split(' ');
   var initials = nameParts.map(w => w[0] || '').join('').substring(0, 2).toUpperCase();
+  var accessibleModules = getAccessibleModules(user);
 
   var navHTML = NAV_GROUPS.map(group => {
     var items = group.items.map(item => {
+      if (accessibleModules && accessibleModules.indexOf(String(item.module || '').toLowerCase()) === -1) return '';
       var isActive = activeModule === item.module;
 
       var iconBg   = isActive ? item.color : '#f3f4f6';
@@ -123,6 +160,8 @@ function renderSidebar(activeModule) {
         ${isActive ? `<span style="width:5px;height:5px;border-radius:50%;background:${item.color}"></span>` : ''}
       </a>`;
     }).join('');
+
+    if (!items.trim()) return '';
 
     return `
     <div style="margin-bottom:6px">
@@ -226,7 +265,7 @@ display:flex;align-items:center;gap:10px">
             ${user.full_name || 'Admin'}
           </div>
           <div style="font-size:11px;color:#9ca3af">
-            ${user.role_name || 'Powered by Zodex'}
+            ${user.role_name || 'Administrator'}
           </div>
         </div>
 
@@ -246,6 +285,15 @@ display:flex;align-items:center;gap:10px">
   `;
 }
 function renderTopbar(title, subtitle) {
+  var reportsButton = hasModuleAccess('reports')
+    ? '<a href="/reports" ' +
+      'style="display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;' +
+      'background:#f5f3ff;border:1px solid #e0e7ff;color:#6366f1;font-size:12px;font-weight:600;' +
+      'text-decoration:none;transition:all 0.15s;white-space:nowrap" ' +
+      'onmouseover="this.style.background=\'#ede9fe\'" onmouseout="this.style.background=\'#f5f3ff\'">' +
+        _sbIcon('chart', '13px') + ' Reports' +
+      '</a>'
+    : '';
   return '<style>' +
     '.edu-topbar{position:sticky;top:0;z-index:30;' +
     'background:rgba(248,250,252,0.96);' +
@@ -272,13 +320,7 @@ function renderTopbar(title, subtitle) {
           '<span style="width:6px;height:6px;border-radius:50%;background:#10b981;flex-shrink:0;display:inline-block"></span>' +
           '<span id="edu-tb-time"></span>' +
         '</div>' +
-        '<a href="/reports" ' +
-        'style="display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;' +
-        'background:#f5f3ff;border:1px solid #e0e7ff;color:#6366f1;font-size:12px;font-weight:600;' +
-        'text-decoration:none;transition:all 0.15s;white-space:nowrap" ' +
-        'onmouseover="this.style.background=\'#ede9fe\'" onmouseout="this.style.background=\'#f5f3ff\'">' +
-          _sbIcon('chart', '13px') + ' Reports' +
-        '</a>' +
+        reportsButton +
       '</div>' +
     '</div>' +
   '</header>';

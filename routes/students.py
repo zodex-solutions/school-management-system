@@ -438,14 +438,17 @@ async def list_students(
         query = query.filter(admission_status=admission_status)
     
     if search:
-        import re
-        pattern = re.compile(search, re.IGNORECASE)
         query = query.filter(
             __raw__={"$or": [
                 {"first_name": {"$regex": search, "$options": "i"}},
                 {"last_name": {"$regex": search, "$options": "i"}},
                 {"admission_no": {"$regex": search, "$options": "i"}},
-                {"student_id": {"$regex": search, "$options": "i"}}
+                {"student_id": {"$regex": search, "$options": "i"}},
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"parent_info.father_name": {"$regex": search, "$options": "i"}},
+                {"parent_info.father_phone": {"$regex": search, "$options": "i"}},
+                {"parent_info.mother_phone": {"$regex": search, "$options": "i"}},
+                {"parent_info.guardian_phone": {"$regex": search, "$options": "i"}}
             ]}
         )
     

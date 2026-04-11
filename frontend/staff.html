@@ -44,10 +44,10 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
 
         <div style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
           <div class="flex border-b border-gray-100 px-2 gap-1">
-            <button onclick="switchTab(0)" class="stab px-5 py-4 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">All Staff</button>
-            <button onclick="switchTab(1)" class="stab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Assignments</button>
-            <button onclick="switchTab(2)" class="stab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Leave</button>
-            <button onclick="switchTab(3)" class="stab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Salary</button>
+            <button id="staffTabAll" onclick="switchTab(0)" class="stab px-5 py-4 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">All Staff</button>
+            <button id="staffTabAssignments" onclick="switchTab(1)" class="stab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Assignments</button>
+            <button id="staffTabLeave" onclick="switchTab(2)" class="stab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Leave</button>
+            <button id="staffTabSalary" onclick="switchTab(3)" class="stab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Salary</button>
           </div>
 
           <!-- All Staff -->
@@ -80,8 +80,12 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
 
           <!-- Leave -->
           <div id="stab2" class="p-5 hidden">
-            <div class="flex justify-between mb-4">
-              <h4 class="font-bold text-gray-900">Leave Applications</h4>
+            <div class="flex justify-between items-center mb-4">
+              <div>
+                <h4 class="font-bold text-gray-900">Leave Applications</h4>
+                <p id="leaveSubtitle" class="text-sm text-gray-500 mt-1">Staff leave requests and approvals</p>
+              </div>
+              <button id="applyLeaveBtn" onclick="openLeaveModal()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium">+ Apply Leave</button>
             </div>
             <div id="leaveTable"></div>
           </div>
@@ -189,6 +193,30 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     </div>
   </div>
 
+  <!-- Leave Apply Modal -->
+  <div id="leaveModal" class="modal-overlay" style="display:none">
+    <div class="modal-box w-full max-w-md">
+      <div class="flex justify-between items-center px-6 py-4 border-b">
+        <h3 class="font-bold text-gray-900">Apply Leave</h3>
+        <button onclick="document.getElementById('leaveModal').style.display='none'" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl text-lg">×</button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div><label class="lbl">Staff</label><input id="lv_staff_name" class="finput" readonly /></div>
+        <div><label class="lbl">Leave Type *</label><select id="lv_type" class="finput"><option value="">Select leave type</option></select></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">From Date *</label><input id="lv_from" type="date" class="finput" /></div>
+          <div><label class="lbl">To Date *</label><input id="lv_to" type="date" class="finput" /></div>
+        </div>
+        <div><label class="lbl">Substitute Staff</label><select id="lv_substitute" class="finput"><option value="">Optional substitute</option></select></div>
+        <div><label class="lbl">Reason *</label><textarea id="lv_reason" rows="3" class="finput resize-none" placeholder="Reason for leave"></textarea></div>
+      </div>
+      <div class="flex gap-3 px-6 py-4 border-t justify-end">
+        <button onclick="document.getElementById('leaveModal').style.display='none'" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
+        <button onclick="submitLeaveApplication()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Submit Leave</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl text-white font-medium shadow-2xl"></div>
 
   <script src="js/api.js"></script>
@@ -199,7 +227,10 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     document.getElementById('topbarContainer').innerHTML = renderTopbar('Staff & HR', 'Manage staff, assignments, leave and payroll');
     let schoolId = localStorage.getItem('school_id');
     const ayId = localStorage.getItem('ay_id');
+    const currentUser = getUser() || {};
+    const isTeacherSide = ['teacher', 'faculty', 'staff'].some(role => String(currentUser.role_name || '').toLowerCase().includes(role));
     let editingStaffId = '';
+    let currentStaffProfile = null;
 
     function switchTab(idx) {
       document.querySelectorAll('.stab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
@@ -207,6 +238,16 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       if (idx === 1) { loadAssignments(); loadAssignFormData(); }
       if (idx === 2) loadLeaves();
       if (idx === 3) loadSalaryStaff();
+    }
+
+    async function loadCurrentStaffProfile() {
+      if (!schoolId) return;
+      try {
+        const r = await StaffAPI.getMyProfile(schoolId);
+        currentStaffProfile = r?.data || null;
+      } catch (e) {
+        currentStaffProfile = null;
+      }
     }
 
    async function loadStaffStats() {
@@ -464,7 +505,9 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     async function loadLeaves() {
       if (!schoolId) { document.getElementById('leaveTable').innerHTML = '<p class="text-gray-400 text-sm p-4">Configure school first</p>'; return; }
       try {
-        const r = await StaffAPI.getLeaves({ school_id: schoolId }); const data = r?.data || [];
+        const params = { school_id: schoolId };
+        if (isTeacherSide && currentStaffProfile?.id) params.staff_id = currentStaffProfile.id;
+        const r = await StaffAPI.getLeaves(params); const data = r?.data || [];
         const hdrs = ['Staff', 'Leave Type', 'From', 'To', 'Days', 'Status', 'Actions'];
         const rows = data.map(l => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${l.staff_name || '-'}</td>
@@ -474,7 +517,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <td class="px-4 py-3 text-sm text-gray-600">${l.total_days}</td>
           <td class="px-4 py-3">${tdBadge(l.status, l.status === 'Approved' ? 'green' : l.status === 'Rejected' ? 'red' : l.status === 'Pending' ? 'yellow' : 'gray')}</td>
           <td class="px-4 py-3"><div class="flex gap-1">
-            ${l.status === 'Pending' ? `<button onclick="leaveAction('${l.id}','approve')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-200">Approve</button><button onclick="leaveAction('${l.id}','reject')" class="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium hover:bg-red-200">Reject</button>` : ''}
+            ${!isTeacherSide && l.status === 'Pending' ? `<button onclick="leaveAction('${l.id}','approve')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-200">Approve</button><button onclick="leaveAction('${l.id}','reject')" class="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium hover:bg-red-200">Reject</button>` : '<span class="text-xs text-gray-400">-</span>'}
           </div></td>
         `);
         document.getElementById('leaveTable').innerHTML = buildTable(hdrs, rows, 'No leave applications');
@@ -482,8 +525,78 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     }
 
     async function leaveAction(id, action) {
-      try { await StaffAPI.leaveAction(id, action); showToast(`Leave ${action}d`); loadLeaves(); }
+      try { await StaffAPI.leaveAction(id, { action }); showToast(`Leave ${action}d`); loadLeaves(); }
       catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function openLeaveModal() {
+      if (!schoolId) { showToast('Configure school first', 'error'); return; }
+      await Promise.allSettled([loadCurrentStaffProfile(), loadLeaveTypes(), loadLeaveSubstitutes()]);
+      if (!currentStaffProfile) {
+        showToast('Current login is not linked with any staff profile', 'error');
+        return;
+      }
+      document.getElementById('lv_staff_name').value = `${currentStaffProfile.full_name || ''}${currentStaffProfile.employee_id ? ` (${currentStaffProfile.employee_id})` : ''}`;
+      document.getElementById('lv_from').value = '';
+      document.getElementById('lv_to').value = '';
+      document.getElementById('lv_reason').value = '';
+      document.getElementById('lv_type').value = '';
+      document.getElementById('lv_substitute').value = '';
+      document.getElementById('leaveModal').style.display = 'flex';
+    }
+
+    async function loadLeaveTypes() {
+      if (!schoolId) return;
+      try {
+        const r = await StaffAPI.getLeaveTypes(schoolId);
+        const types = r?.data || [];
+        document.getElementById('lv_type').innerHTML = '<option value="">Select leave type</option>' +
+          types.map(type => `<option value="${type.id}">${type.name} (${type.total_days} days)</option>`).join('');
+      } catch (e) {
+        document.getElementById('lv_type').innerHTML = '<option value="">No leave types</option>';
+      }
+    }
+
+    async function loadLeaveSubstitutes() {
+      if (!schoolId) return;
+      try {
+        const r = await StaffAPI.list({ school_id: schoolId, per_page: 100, active_status: 'active' });
+        const staff = (r?.data || []).filter(item => item.id !== currentStaffProfile?.id);
+        document.getElementById('lv_substitute').innerHTML = '<option value="">Optional substitute</option>' +
+          staff.map(item => `<option value="${item.id}">${item.full_name} (${item.designation || item.employee_id || ''})</option>`).join('');
+      } catch (e) {
+        document.getElementById('lv_substitute').innerHTML = '<option value="">Optional substitute</option>';
+      }
+    }
+
+    async function submitLeaveApplication() {
+      if (!schoolId) { showToast('Configure school first', 'error'); return; }
+      if (!currentStaffProfile?.id) { showToast('Current login is not linked with staff profile', 'error'); return; }
+      const leaveTypeId = document.getElementById('lv_type').value;
+      const fromDate = document.getElementById('lv_from').value;
+      const toDate = document.getElementById('lv_to').value;
+      const reason = document.getElementById('lv_reason').value.trim();
+      if (!leaveTypeId || !fromDate || !toDate || !reason) {
+        showToast('Fill all required leave fields', 'error');
+        return;
+      }
+      try {
+        const payload = {
+          school_id: schoolId,
+          staff_id: currentStaffProfile.id,
+          leave_type_id: leaveTypeId,
+          from_date: new Date(fromDate).toISOString(),
+          to_date: new Date(toDate).toISOString(),
+          reason,
+          substitute_id: document.getElementById('lv_substitute').value || null
+        };
+        const r = await StaffAPI.applyLeave(payload);
+        showToast(`Leave applied successfully for ${r?.data?.total_days || 0} day(s)`);
+        document.getElementById('leaveModal').style.display = 'none';
+        loadLeaves();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
     }
 
     async function loadSalaryStaff() {
@@ -523,6 +636,20 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     document.getElementById('filterActive').addEventListener('change', loadStaff);
     (async function initStaffPage() {
       schoolId = await initializeSchoolContext() || schoolId;
+      await loadCurrentStaffProfile();
+      if (isTeacherSide) {
+        document.getElementById('staffTabAll').style.display = 'none';
+        document.getElementById('staffTabAssignments').style.display = 'none';
+        document.getElementById('staffTabSalary').style.display = 'none';
+        document.getElementById('stab0').classList.add('hidden');
+        document.getElementById('stab1').classList.add('hidden');
+        document.getElementById('stab3').classList.add('hidden');
+        switchTab(2);
+      }
+      document.getElementById('applyLeaveBtn').style.display = currentStaffProfile ? 'inline-flex' : 'none';
+      document.getElementById('leaveSubtitle').textContent = isTeacherSide
+        ? 'Apply leave and track your leave application status'
+        : 'Staff leave requests and approvals';
       loadStaffStats();
       loadStaff();
     })();

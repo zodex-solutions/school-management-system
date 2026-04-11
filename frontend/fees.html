@@ -61,6 +61,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
             <button onclick="switchFeeTab(1)" class="ftab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">Collect Payment</button>
             <button onclick="switchFeeTab(2)" class="ftab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">Fee Structure</button>
             <button onclick="switchFeeTab(3)" class="ftab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">Dues Report</button>
+            <button onclick="switchFeeTab(4)" class="ftab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">Fee Estimate</button>
           </div>
 
           <!-- Invoices -->
@@ -150,6 +151,99 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
               </div>
             </div>
             <div id="duesTable"></div>
+          </div>
+
+          <!-- Fee Estimate -->
+          <div id="ftab4" class="p-5 hidden">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
+              <div>
+                <h4 class="font-bold text-gray-900">Fee Estimate Calculator</h4>
+                <p class="text-sm text-slate-500 mt-1">Manual student details ke saath fee estimate banao. Ye sirf preview hai, save ya invoice create nahi hoga.</p>
+              </div>
+              <button onclick="resetFeeEstimateForm()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Reset Estimate</button>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-[1.1fr_.9fr] gap-6">
+              <div class="space-y-4">
+                <div class="rounded-2xl border border-slate-200 bg-blue-50 p-4 text-sm text-blue-900">
+                  <div class="font-semibold">Estimate only</div>
+                  <div class="text-xs mt-1 text-blue-700">Manual details fill karke class fee, fee structure, transport route aur additional items ke according total aur baki amount dekho.</div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label class="lbl">Student Name</label><input id="est_student_name" class="finput" placeholder="Student name" /></div>
+                  <div><label class="lbl">Admission No</label><input id="est_admission_no" class="finput" placeholder="Admission no" /></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label class="lbl">Father Name</label><input id="est_father_name" class="finput" placeholder="Father name" /></div>
+                  <div><label class="lbl">Phone Number</label><input id="est_phone" class="finput" placeholder="Phone number" /></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label class="lbl">Class *</label><select id="est_class" class="finput" onchange="loadEstimateSections(); loadEstimateStructures(); renderFeeEstimate()"><option value="">Select class</option></select></div>
+                  <div><label class="lbl">Section</label><select id="est_section" class="finput" onchange="renderFeeEstimate()"><option value="">Select section</option></select></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label class="lbl">Concession</label><select id="est_concession" class="finput"></select></div>
+                  <div><label class="lbl">Fee Structure</label><select id="est_structure" class="finput"><option value="">Select fee structure</option></select></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label class="lbl">Transport Route</label><select id="est_route" class="finput"><option value="">No transport</option></select></div>
+                  <div><label class="lbl">Paid Amount (₹)</label><input id="est_paid" type="number" class="finput" value="0" /></div>
+                </div>
+                <div>
+                  <label class="lbl">Transport Months</label>
+                  <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-sm text-gray-700">
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Apr" />Apr</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="May" />May</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Jun" />Jun</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Jul" />Jul</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Aug" />Aug</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Sep" />Sep</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Oct" />Oct</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Nov" />Nov</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Dec" />Dec</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Jan" />Jan</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Feb" />Feb</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="est_month w-4 h-4 accent-blue-600" value="Mar" />Mar</label>
+                  </div>
+                </div>
+                <div id="estItemsContainer">
+                  <label class="lbl">Additional Fee Items</label>
+                  <div id="estItems" class="space-y-2">
+                    <div class="flex gap-2 items-center">
+                      <input type="text" placeholder="Description" class="est-desc finput flex-1" />
+                      <input type="number" placeholder="Amount" class="est-amt finput w-32" />
+                      <button onclick="removeEstItem(this)" class="text-red-400 hover:text-red-600 text-lg px-2">×</button>
+                    </div>
+                  </div>
+                  <button onclick="addEstItem()" class="mt-2 text-blue-600 text-sm hover:underline font-medium">+ Add Item</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label class="lbl">Discount (₹)</label><input id="est_discount" type="number" class="finput" value="0" /></div>
+                  <div><label class="lbl">Notes</label><input id="est_notes" class="finput" placeholder="Optional remarks" /></div>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Estimate Summary</p>
+                  <div id="estStudentSummary" class="mt-3 text-sm text-slate-500">Manual student details bharo aur class select karke estimate preview dekho.</div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-slate-900">Fee Breakdown</h4>
+                    <span id="estStatus" class="text-xs font-medium text-slate-400">Draft</span>
+                  </div>
+                  <div id="estEstimateLines" class="space-y-2 text-sm text-slate-600">
+                    <div class="rounded-xl bg-slate-50 px-3 py-3 text-slate-400">No estimate yet</div>
+                  </div>
+                  <div class="mt-4 space-y-2 border-t border-slate-100 pt-3 text-sm">
+                    <div class="flex justify-between"><span class="text-slate-500">Gross</span><span id="estGross" class="font-semibold text-slate-900">₹0.00</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Manual Discount</span><span id="estDiscountValue" class="font-semibold text-red-500">₹0.00</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Net Fee</span><span id="estNet" class="font-semibold text-blue-700">₹0.00</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Paid</span><span id="estPaidValue" class="font-semibold text-emerald-600">₹0.00</span></div>
+                    <div class="flex justify-between text-base"><span class="font-semibold text-slate-900">Balance / Baki Fee</span><span id="estBalance" class="font-bold text-red-600">₹0.00</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -278,6 +372,8 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     let invoiceClassCache = [];
     let paymentClassCache = [];
     let duesClassCache = [];
+    let estimateClassCache = [];
+    let estimateRouteCache = [];
     let editingFeeStructureId = '';
     let editingInvoiceId = '';
     const invoiceConcessionOptions = [
@@ -292,7 +388,8 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       { name: 'Annual Examination Fee', code: 'EXAM' },
       { name: 'Stationary kit / Activity Charge', code: 'ACT' },
       { name: 'Tuition Fee Monthly', code: 'TUI' },
-      { name: 'Books Fee', code: 'BOOK' }
+      { name: 'Books Fee', code: 'BOOK' },
+      { name: 'Note Book Fee', code: 'NOTE' }
     ];
     const initialFeeTab = feePageParams.get('tab');
 
@@ -364,6 +461,9 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         await loadDuesClasses();
         await loadDues();
       }
+      if (!document.getElementById('ftab4').classList.contains('hidden')) {
+        await loadEstimateModule();
+      }
     }
 
     function switchFeeTab(idx) {
@@ -380,6 +480,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       if (idx === 1) { loadPaymentClasses(); loadPayStudents(); }
       if (idx === 2) loadStructures();
       if (idx === 3) { loadDuesClasses(); loadDues(); }
+      if (idx === 4) loadEstimateModule();
     }
 async function loadFeeStats() {
   if (!schoolId) return;
@@ -671,28 +772,33 @@ function statCard(title, value, icon, color) {
       const concession = getSelectedInvoiceConcession();
       const concessionPercent = concession.percent;
       const selectedMonths = Array.from(document.querySelectorAll('.inv_month:checked')).map(el => el.value);
+      const tuitionMonthCount = selectedMonths.length || 1;
       const includeTransport = document.getElementById('inv_transport_toggle').checked;
       const manualDiscount = parseFloat(document.getElementById('inv_disc').value) || 0;
 
       if (structure && Array.isArray(structure.items) && structure.items.length) {
         structure.items.forEach(item => {
-          const baseAmount = parseFloat(item.amount) || 0;
           const isTuitionLike = String(item.category || '').toLowerCase().includes('tuition');
+          const baseAmount = (parseFloat(item.amount) || 0) * (isTuitionLike ? tuitionMonthCount : 1);
           const concessionAmount = isTuitionLike ? (baseAmount * concessionPercent / 100) : 0;
           lines.push({
             label: item.category || 'Fee Item',
-            meta: concessionAmount ? `${concessionPercent}% concession applied` : 'Fee structure item',
+            meta: isTuitionLike && selectedMonths.length
+              ? `${selectedMonths.join(', ')}${concessionAmount ? ` • ${concessionPercent}% concession applied` : ''}`
+              : (concessionAmount ? `${concessionPercent}% concession applied` : 'Fee structure item'),
             amount: Math.max(0, baseAmount - concessionAmount),
             baseAmount,
             discountAmount: concessionAmount
           });
         });
       } else if ((parseFloat(invoiceStudentMeta.class_fee) || 0) > 0) {
-        const baseAmount = parseFloat(invoiceStudentMeta.class_fee) || 0;
+        const baseAmount = (parseFloat(invoiceStudentMeta.class_fee) || 0) * tuitionMonthCount;
         const concessionAmount = baseAmount * concessionPercent / 100;
         lines.push({
           label: 'Monthly Tuition Fee',
-          meta: concessionAmount ? `${concessionPercent}% concession applied` : `${invoiceStudentMeta.classroom_name || 'Class'} monthly fee`,
+          meta: selectedMonths.length
+            ? `${invoiceStudentMeta.classroom_name || 'Class'} monthly fee • ${selectedMonths.join(', ')}${concessionAmount ? ` • ${concessionPercent}% concession applied` : ''}`
+            : (concessionAmount ? `${concessionPercent}% concession applied` : `${invoiceStudentMeta.classroom_name || 'Class'} monthly fee`),
           amount: Math.max(0, baseAmount - concessionAmount),
           baseAmount,
           discountAmount: concessionAmount
@@ -773,6 +879,258 @@ function statCard(title, value, icon, color) {
       renderInvoiceEstimate();
     }
     function removeInvItem(btn) { btn.parentElement.remove(); renderInvoiceEstimate(); }
+
+    async function loadEstimateModule() {
+      await Promise.allSettled([loadEstimateClasses(), loadEstimateRoutes(), loadEstimateStructures()]);
+      renderFeeEstimate();
+    }
+
+    async function loadEstimateClasses() {
+      if (!schoolId) return;
+      try {
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await ClassAPI.list(schoolId, academicYearId);
+        estimateClassCache = r?.data || [];
+        const select = document.getElementById('est_class');
+        const current = select.value || '';
+        select.innerHTML = '<option value="">Select class</option>' +
+          estimateClassCache.map(c => `<option value="${c.id}" data-name="${c.name}" data-fee="${c.class_fee || 0}" data-secs='${JSON.stringify(c.sections || [])}'>${c.name}</option>`).join('');
+        if (current && estimateClassCache.some(c => c.id === current)) select.value = current;
+        loadEstimateSections();
+      } catch (e) {}
+    }
+
+    function loadEstimateSections() {
+      const classEl = document.getElementById('est_class');
+      const selectedOption = classEl?.selectedOptions?.[0];
+      let sections = [];
+      try {
+        sections = JSON.parse(selectedOption?.dataset?.secs || '[]');
+      } catch (e) {
+        sections = [];
+      }
+      const sectionSelect = document.getElementById('est_section');
+      const current = sectionSelect.value || '';
+      sectionSelect.innerHTML = '<option value="">Select section</option>' +
+        sections.map(sec => `<option value="${sec.id}">${sec.name}</option>`).join('');
+      if (current && sections.some(sec => sec.id === current)) sectionSelect.value = current;
+    }
+
+    async function loadEstimateRoutes() {
+      if (!schoolId) return;
+      try {
+        const r = await TransportAPI.getRoutes(schoolId, selectedBranchCode);
+        estimateRouteCache = r?.data || [];
+        const select = document.getElementById('est_route');
+        const current = select.value || '';
+        select.innerHTML = '<option value="">No transport</option>' +
+          estimateRouteCache.map(route => `<option value="${route.id}" data-name="${route.route_name}" data-fee="${route.fee_per_month || 0}">${route.route_name} • ${formatCurrency(route.fee_per_month || 0)}/month</option>`).join('');
+        if (current && estimateRouteCache.some(route => route.id === current)) select.value = current;
+      } catch (e) {}
+    }
+
+    async function loadEstimateStructures() {
+      if (!schoolId) return;
+      try {
+        const academicYearId = await resolveFeeAcademicYearId();
+        const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: academicYearId || '' });
+        feeStructures = r?.data || feeStructures;
+        const selectedClassName = document.getElementById('est_class')?.selectedOptions?.[0]?.dataset?.name || '';
+        const filteredStructures = selectedClassName ? feeStructures.filter(s => !s.classroom || s.classroom === selectedClassName) : feeStructures;
+        const select = document.getElementById('est_structure');
+        const current = select.value || '';
+        select.innerHTML = '<option value="">Select fee structure</option>' +
+          filteredStructures.map(s => `<option value="${s.id}">${s.name} (${s.classroom || 'All'})</option>`).join('');
+        if (current && filteredStructures.some(s => s.id === current)) select.value = current;
+      } catch (e) {}
+    }
+
+    function getSelectedEstimateConcession() {
+      const option = document.getElementById('est_concession')?.selectedOptions?.[0];
+      return {
+        name: option?.value || '',
+        percent: parseFloat(option?.dataset?.percent || '0') || 0
+      };
+    }
+
+    function getSelectedEstimateStructure() {
+      const structureId = document.getElementById('est_structure').value;
+      return feeStructures.find(structure => structure.id === structureId) || null;
+    }
+
+    function getEstimateManualItems() {
+      const descs = document.querySelectorAll('.est-desc');
+      const amts = document.querySelectorAll('.est-amt');
+      const items = [];
+      descs.forEach((d, i) => {
+        const amount = parseFloat(amts[i]?.value);
+        if (d.value.trim() && !isNaN(amount) && amount > 0) {
+          items.push({ label: d.value.trim(), amount });
+        }
+      });
+      return items;
+    }
+
+    function buildFeeEstimate() {
+      const classOption = document.getElementById('est_class')?.selectedOptions?.[0];
+      const structure = getSelectedEstimateStructure();
+      const concession = getSelectedEstimateConcession();
+      const concessionPercent = concession.percent;
+      const selectedMonths = Array.from(document.querySelectorAll('.est_month:checked')).map(el => el.value);
+      const tuitionMonthCount = selectedMonths.length || 1;
+      const routeOption = document.getElementById('est_route')?.selectedOptions?.[0];
+      const routeFee = parseFloat(routeOption?.dataset?.fee || '0') || 0;
+      const classFee = parseFloat(classOption?.dataset?.fee || '0') || 0;
+      const manualDiscount = parseFloat(document.getElementById('est_discount').value) || 0;
+      const paidAmount = parseFloat(document.getElementById('est_paid').value) || 0;
+      const lines = [];
+
+      if (structure && Array.isArray(structure.items) && structure.items.length) {
+        structure.items.forEach(item => {
+          const isTuitionLike = String(item.category || '').toLowerCase().includes('tuition');
+          const baseAmount = (parseFloat(item.amount) || 0) * (isTuitionLike ? tuitionMonthCount : 1);
+          const concessionAmount = isTuitionLike ? (baseAmount * concessionPercent / 100) : 0;
+          lines.push({
+            label: item.category || 'Fee Item',
+            meta: isTuitionLike && selectedMonths.length
+              ? `${selectedMonths.join(', ')}${concessionAmount ? ` • ${concessionPercent}% concession applied` : ''}`
+              : (concessionAmount ? `${concessionPercent}% concession applied` : 'Fee structure item'),
+            amount: Math.max(0, baseAmount - concessionAmount),
+            baseAmount,
+            discountAmount: concessionAmount
+          });
+        });
+      } else if (classFee > 0) {
+        const baseAmount = classFee * tuitionMonthCount;
+        const concessionAmount = baseAmount * concessionPercent / 100;
+        lines.push({
+          label: 'Monthly Tuition Fee',
+          meta: selectedMonths.length
+            ? `${classOption?.dataset?.name || 'Class'} monthly fee • ${selectedMonths.join(', ')}${concessionAmount ? ` • ${concessionPercent}% concession applied` : ''}`
+            : (concessionAmount ? `${concessionPercent}% concession applied` : `${classOption?.dataset?.name || 'Class'} monthly fee`),
+          amount: Math.max(0, baseAmount - concessionAmount),
+          baseAmount,
+          discountAmount: concessionAmount
+        });
+      }
+
+      if (routeOption?.value && routeFee > 0 && selectedMonths.length) {
+        lines.push({
+          label: 'Transport Fee',
+          meta: `${routeOption.dataset.name || 'Route'} • ${selectedMonths.join(', ')}`,
+          amount: routeFee * selectedMonths.length,
+          baseAmount: routeFee * selectedMonths.length,
+          discountAmount: 0
+        });
+      }
+
+      getEstimateManualItems().forEach(item => {
+        lines.push({
+          label: item.label,
+          meta: 'Manual fee item',
+          amount: item.amount,
+          baseAmount: item.amount,
+          discountAmount: 0
+        });
+      });
+
+      const gross = lines.reduce((sum, line) => sum + (line.amount || 0), 0);
+      const net = Math.max(0, gross - manualDiscount);
+      const balance = Math.max(0, net - paidAmount);
+      return { lines, gross, net, balance, manualDiscount, paidAmount, selectedMonths };
+    }
+
+    function renderFeeEstimate() {
+      const classOption = document.getElementById('est_class')?.selectedOptions?.[0];
+      if (!classOption?.value) {
+        document.getElementById('estStudentSummary').textContent = 'Manual student details bharo aur class select karke estimate preview dekho.';
+        document.getElementById('estEstimateLines').innerHTML = '<div class="rounded-xl bg-slate-50 px-3 py-3 text-slate-400">No estimate yet</div>';
+        document.getElementById('estGross').textContent = formatCurrency(0);
+        document.getElementById('estDiscountValue').textContent = formatCurrency(0);
+        document.getElementById('estNet').textContent = formatCurrency(0);
+        document.getElementById('estPaidValue').textContent = formatCurrency(0);
+        document.getElementById('estBalance').textContent = formatCurrency(0);
+        document.getElementById('estStatus').textContent = 'Draft';
+        return;
+      }
+
+      const estimate = buildFeeEstimate();
+      const selectedMonths = estimate.selectedMonths || [];
+      const routeOption = document.getElementById('est_route')?.selectedOptions?.[0];
+      const sectionName = document.getElementById('est_section')?.selectedOptions?.[0]?.textContent || '-';
+      document.getElementById('estStudentSummary').innerHTML = `
+        <div class="space-y-2">
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Student</span><span class="font-semibold text-slate-900 text-right">${document.getElementById('est_student_name').value || '-'}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Admission No</span><span class="font-semibold text-slate-900 text-right">${document.getElementById('est_admission_no').value || '-'}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Father / Phone</span><span class="font-semibold text-slate-900 text-right">${document.getElementById('est_father_name').value || '-'}${document.getElementById('est_phone').value ? ` • ${document.getElementById('est_phone').value}` : ''}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Class / Section</span><span class="font-semibold text-slate-900 text-right">${classOption?.dataset?.name || '-'}${sectionName && sectionName !== 'Select section' ? ` / ${sectionName}` : ''}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Concession</span><span class="font-semibold text-emerald-700 text-right">${getSelectedEstimateConcession().name || 'No concession'}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Transport</span><span class="font-semibold text-slate-900 text-right">${routeOption?.value ? `${routeOption.dataset.name}${selectedMonths.length ? ` • ${selectedMonths.length} month(s)` : ''}` : 'No transport'}</span></div>
+        </div>`;
+
+      document.getElementById('estEstimateLines').innerHTML = estimate.lines.length
+        ? estimate.lines.map(line => `
+          <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="font-medium text-slate-900">${line.label}</div>
+                <div class="text-xs text-slate-500 mt-1">${line.meta}</div>
+                ${line.discountAmount ? `<div class="text-xs text-emerald-600 mt-1">Saved ${formatCurrency(line.discountAmount)}</div>` : ''}
+              </div>
+              <div class="text-right">
+                ${line.baseAmount !== line.amount ? `<div class="text-xs text-slate-400 line-through">${formatCurrency(line.baseAmount)}</div>` : ''}
+                <div class="font-semibold text-slate-900">${formatCurrency(line.amount)}</div>
+              </div>
+            </div>
+          </div>`).join('')
+        : '<div class="rounded-xl bg-slate-50 px-3 py-3 text-slate-400">Choose fee structure, class fee, transport route or manual items to build estimate.</div>';
+
+      document.getElementById('estGross').textContent = formatCurrency(estimate.gross || 0);
+      document.getElementById('estDiscountValue').textContent = formatCurrency(estimate.manualDiscount || 0);
+      document.getElementById('estNet').textContent = formatCurrency(estimate.net || 0);
+      document.getElementById('estPaidValue').textContent = formatCurrency(estimate.paidAmount || 0);
+      document.getElementById('estBalance').textContent = formatCurrency(estimate.balance || 0);
+      document.getElementById('estStatus').textContent = estimate.lines.length ? 'Estimate Ready' : 'Draft';
+    }
+
+    function addEstItem() {
+      const c = document.createElement('div');
+      c.className = 'flex gap-2 items-center';
+      c.innerHTML = '<input type="text" placeholder="Description" class="est-desc finput flex-1"/><input type="number" placeholder="Amount" class="est-amt finput w-32"/><button onclick="removeEstItem(this)" class="text-red-400 hover:text-red-600 text-lg px-2">×</button>';
+      document.getElementById('estItems').appendChild(c);
+      c.querySelectorAll('input').forEach(input => input.addEventListener('input', renderFeeEstimate));
+      renderFeeEstimate();
+    }
+
+    function removeEstItem(btn) {
+      btn.parentElement.remove();
+      renderFeeEstimate();
+    }
+
+    function resetFeeEstimateForm() {
+      document.getElementById('est_student_name').value = '';
+      document.getElementById('est_admission_no').value = '';
+      document.getElementById('est_father_name').value = '';
+      document.getElementById('est_phone').value = '';
+      document.getElementById('est_class').value = '';
+      document.getElementById('est_section').innerHTML = '<option value="">Select section</option>';
+      document.getElementById('est_concession').value = '';
+      document.getElementById('est_structure').innerHTML = '<option value="">Select fee structure</option>';
+      document.getElementById('est_route').value = '';
+      document.getElementById('est_paid').value = '0';
+      document.getElementById('est_discount').value = '0';
+      document.getElementById('est_notes').value = '';
+      document.querySelectorAll('.est_month').forEach(cb => cb.checked = false);
+      document.getElementById('estItems').innerHTML = `
+        <div class="flex gap-2 items-center">
+          <input type="text" placeholder="Description" class="est-desc finput flex-1" />
+          <input type="number" placeholder="Amount" class="est-amt finput w-32" />
+          <button onclick="removeEstItem(this)" class="text-red-400 hover:text-red-600 text-lg px-2">×</button>
+        </div>`;
+      document.querySelectorAll('.est-desc, .est-amt').forEach(el => el.addEventListener('input', renderFeeEstimate));
+      loadEstimateStructures();
+      renderFeeEstimate();
+    }
 
     async function downloadInvoicePdf(invoiceId, invoiceNo = 'invoice') {
       const token = Auth.getToken();
@@ -873,8 +1231,8 @@ function statCard(title, value, icon, color) {
         const r = await FeesAPI.getInvoices(params); const invs = r?.data || [];
         const hdrs = ['Invoice No', 'Student', 'Father', 'Class', 'Net Amount', 'Balance', 'Status', ''];
         const rows = invs.map(inv => `
-          <td class="px-4 py-3 font-mono text-xs text-gray-600">${inv.invoice_no}</td>
-          <td class="px-4 py-3 font-medium text-gray-900 text-sm">${inv.student_name || '-'}</td>
+          <td class="px-4 py-3 font-mono text-xs text-gray-600 ">${inv.invoice_no}</td>
+          <td class="px-4 py-3 font-medium text-gray-900 text-sm max-w-xl overflow-hidden text-ellipsis" title="${inv.student_name || '-'}">${inv.student_name || '-'}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${inv.father_name || '-'}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${inv.classroom_name || '-'}${inv.section_name ? ` / ${inv.section_name}` : ''}</td>
           <td class="px-4 py-3 text-sm font-medium">${formatCurrency(inv.net_amount)}</td>
@@ -1156,7 +1514,7 @@ function statCard(title, value, icon, color) {
       try {
         const academicYearId = await resolveFeeAcademicYearId();
         const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: academicYearId || '' }); const data = r?.data || [];
-        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Tuition Fee Monthly', 'Tuition Fee Yearly Upto 30 April 2025', ''];
+        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Books Fee', 'Note Book Fee', 'Tuition Fee Monthly', 'Tuition Fee Yearly Upto 30 April 2025', ''];
         const rows = data.map(s => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${s.name}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${s.classroom || '-'}</td>
@@ -1164,6 +1522,8 @@ function statCard(title, value, icon, color) {
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.ADM || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.EXAM || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.ACT || 0)}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.BOOK || 0)}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.NOTE || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.TUI || 0)}</td>
           <td class="px-4 py-3 font-bold text-gray-900">${formatCurrency(s.fee_breakdown?.TUIY || s.total_amount || 0)}</td>
           <td class="px-4 py-3 whitespace-nowrap"><button onclick="openFeeStructureModal('${s.id}')" class="text-xs text-blue-600 hover:underline mr-3">Edit</button><button onclick="deleteFeeStructure('${s.id}')" class="text-xs text-red-600 hover:underline">Delete</button></td>
@@ -1244,11 +1604,22 @@ function statCard(title, value, icon, color) {
     document.querySelectorAll('.inv_month').forEach(cb => cb.addEventListener('change', renderInvoiceEstimate));
     document.querySelectorAll('.inv-desc, .inv-amt').forEach(el => el.addEventListener('input', renderInvoiceEstimate));
     document.getElementById('inv_concession').innerHTML = invoiceConcessionOptions.map(option => `<option value="${option.label === 'Select' ? '' : option.label}" data-percent="${option.percent}">${option.label}</option>`).join('');
+    document.getElementById('est_concession').innerHTML = invoiceConcessionOptions.map(option => `<option value="${option.label === 'Select' ? '' : option.label}" data-percent="${option.percent}">${option.label}</option>`).join('');
+    ['est_student_name','est_admission_no','est_father_name','est_phone','est_paid','est_discount','est_notes'].forEach(id => {
+      document.getElementById(id).addEventListener('input', renderFeeEstimate);
+    });
+    document.getElementById('est_concession').addEventListener('change', renderFeeEstimate);
+    document.getElementById('est_structure').addEventListener('change', renderFeeEstimate);
+    document.getElementById('est_route').addEventListener('change', renderFeeEstimate);
+    document.querySelectorAll('.est_month').forEach(cb => cb.addEventListener('change', renderFeeEstimate));
+    document.querySelectorAll('.est-desc, .est-amt').forEach(el => el.addEventListener('input', renderFeeEstimate));
     resetInvoiceEstimate();
+    resetFeeEstimateForm();
     (async () => {
       await loadFeeBranches();
       await refreshFeeViews();
       if (initialFeeTab === 'dues') switchFeeTab(3);
+      if (initialFeeTab === 'estimate') switchFeeTab(4);
     })();
   </script>
 </body>

@@ -57,7 +57,17 @@ async def login(data: LoginRequest):
             "assigned_school_id": str(user.assigned_school.id) if user.assigned_school else None,
             "assigned_branch_code": user.assigned_branch_code,
             "assigned_branch_name": user.assigned_branch_name,
-            "allowed_branch_codes": user.allowed_branch_codes or []
+            "allowed_branch_codes": user.allowed_branch_codes or [],
+            "permissions": [
+                {
+                    "module": permission.module,
+                    "can_view": permission.can_view,
+                    "can_create": permission.can_create,
+                    "can_edit": permission.can_edit,
+                    "can_delete": permission.can_delete
+                }
+                for permission in (user.role.permissions if user.role else [])
+            ]
         }
     }, "Login successful")
 
@@ -116,7 +126,17 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "assigned_school_id": str(current_user.assigned_school.id) if current_user.assigned_school else None,
         "assigned_branch_code": current_user.assigned_branch_code,
         "assigned_branch_name": current_user.assigned_branch_name,
-        "allowed_branch_codes": current_user.allowed_branch_codes or []
+        "allowed_branch_codes": current_user.allowed_branch_codes or [],
+        "permissions": [
+            {
+                "module": permission.module,
+                "can_view": permission.can_view,
+                "can_create": permission.can_create,
+                "can_edit": permission.can_edit,
+                "can_delete": permission.can_delete
+            }
+            for permission in (current_user.role.permissions if current_user.role else [])
+        ]
     })
 
 

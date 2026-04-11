@@ -73,6 +73,7 @@ async def list_books(
         "id": str(b.id), "title": b.title, "author": b.author,
         "class_name": b.class_name,
         "isbn": b.isbn, "publisher": b.publisher,
+        "price": b.price,
         "total_copies": b.total_copies, "available_copies": b.available_copies,
         "rack_number": b.rack_number, "is_digital": b.is_digital,
         "category": b.category.name if b.category else None,

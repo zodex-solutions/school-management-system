@@ -40,6 +40,7 @@ async def add_asset(data: dict, current_user: User = Depends(get_current_user)):
         asset_name=data['asset_name'],
         asset_code=data.get('asset_code') or generate_id("AST"),
         asset_type=data.get('asset_type', 'Other'),
+        class_name=data.get('class_name'),
         brand=data.get('brand'),
         model_no=data.get('model_no'),
         serial_no=data.get('serial_no'),
@@ -63,6 +64,7 @@ async def add_asset(data: dict, current_user: User = Depends(get_current_user)):
 async def list_assets(
     school_id: str, asset_type: Optional[str] = None,
     status: Optional[str] = None, search: Optional[str] = None,
+    class_name: Optional[str] = None,
     page: int = Query(1, ge=1), per_page: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user)
 ):
@@ -70,19 +72,23 @@ async def list_assets(
     query = Asset.objects(school=school, is_active=True)
     if asset_type: query = query.filter(asset_type=asset_type)
     if status: query = query.filter(status=status)
+    if class_name: query = query.filter(class_name=class_name)
     if search:
         query = query.filter(__raw__={"$or": [
             {"asset_name": {"$regex": search, "$options": "i"}},
-            {"asset_code": {"$regex": search, "$options": "i"}}
+            {"asset_code": {"$regex": search, "$options": "i"}},
+            {"class_name": {"$regex": search, "$options": "i"}}
         ]})
     total = query.count()
     assets = query.skip((page-1)*per_page).limit(per_page)
     result = [{
         "id": str(a.id), "asset_name": a.asset_name, "asset_code": a.asset_code,
-        "asset_type": a.asset_type, "brand": a.brand, "model_no": a.model_no,
+        "asset_type": a.asset_type, "class_name": a.class_name,
+        "brand": a.brand, "model_no": a.model_no, "serial_no": a.serial_no,
         "purchase_price": a.purchase_price, "current_value": a.current_value,
         "condition": a.condition, "status": a.status, "location": a.location,
         "assigned_to": a.assigned_to,
+        "purchase_date": a.purchase_date.isoformat() if a.purchase_date else None,
         "warranty_expiry": a.warranty_expiry.isoformat() if a.warranty_expiry else None
     } for a in assets]
     return success_response(result, meta={"total": total, "page": page})
@@ -93,8 +99,21 @@ async def update_asset(asset_id: str, data: dict, current_user: User = Depends(g
     try:
         a = Asset.objects.get(id=asset_id)
         data.pop('id', None); data.pop('school_id', None)
+        if 'purchase_date' in data:
+            data['purchase_date'] = datetime.fromisoformat(data['purchase_date']) if data.get('purchase_date') else None
+        if 'warranty_expiry' in data:
+            data['warranty_expiry'] = datetime.fromisoformat(data['warranty_expiry']) if data.get('warranty_expiry') else None
         a.update(**data)
         return success_response(message="Asset updated")
+    except Asset.DoesNotExist:
+        raise HTTPException(404, "Asset not found")
+
+
+@inventory_router.delete("/asset/{asset_id}")
+async def delete_asset(asset_id: str, current_user: User = Depends(get_current_user)):
+    try:
+        Asset.objects.get(id=asset_id).update(is_active=False)
+        return success_response(message="Asset deleted")
     except Asset.DoesNotExist:
         raise HTTPException(404, "Asset not found")
 
