@@ -253,9 +253,11 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full py-3.5 bg-[#0076b6] text-white font-bold rounded-md hover:bg-[#005a8b] transition-all shadow-lg active:scale-[0.98]">
+        <button id="loginBtn" type="submit" class="w-full py-3.5 bg-[#0076b6] text-white font-bold rounded-md hover:bg-[#005a8b] transition-all shadow-lg active:scale-[0.98]">
           LOGIN
         </button>
+
+        <div id="loginMessage" class="hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
 
         <div class="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-[#0f4c81] space-y-1">
           <p><strong>Admin / Teacher / Staff Login:</strong> Please log in from this page.</p>
@@ -272,7 +274,60 @@
     const input = document.getElementById('password');
     input.type = input.type === 'password' ? 'text' : 'password';
   });
-  async function handleLogin(event) { event.preventDefault(); }
+
+  function showLoginMessage(message, type = 'error') {
+    const box = document.getElementById('loginMessage');
+    box.textContent = message;
+    box.className = `rounded-lg px-3 py-2 text-sm font-medium ${type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`;
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('loginBtn');
+
+    if (!username || !password) {
+      showLoginMessage('User ID aur password dono required hain.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'LOGGING IN...';
+
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result?.success) {
+        let message = result?.detail || result?.message || 'Invalid username or password';
+        if (Array.isArray(message)) {
+          message = message.map(item => item?.msg || JSON.stringify(item)).join(', ');
+        }
+        showLoginMessage(message);
+        return;
+      }
+
+      const data = result.data || {};
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user || {}));
+      if (data.user?.assigned_school_id) {
+        localStorage.setItem('school_id', data.user.assigned_school_id);
+      }
+
+      showLoginMessage('Login successful. Dashboard open ho raha hai...', 'success');
+      window.location.href = '/dashboard';
+    } catch (error) {
+      showLoginMessage('Server se connect nahi ho raha. Backend chalu hai ya nahi check karo.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'LOGIN';
+    }
+  }
 </script>
 
 </body>

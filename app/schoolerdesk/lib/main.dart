@@ -119,8 +119,8 @@ class _SplashScreenState extends State<SplashScreen>
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
-  static const String staffUrl = 'https://scholardesk.zodex.in/login.html';
-  static const String parentUrl = 'https://scholardesk.zodex.in/parent-login';
+  static const String staffUrl = 'https://erp.rsmemorialpublicschool.com/login.html';
+  static const String parentUrl = 'https://erp.rsmemorialpublicschool.com/parent-login';
 
   @override
   Widget build(BuildContext context) {
