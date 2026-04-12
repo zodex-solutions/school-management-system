@@ -153,8 +153,12 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
 <script>
 const API_BASE = window.location.origin + '/api/v1';
 const params = new URLSearchParams(location.search);
-const schoolId = params.get('school') || params.get('school_id');
+const schoolId = params.get('school') || params.get('school_id') || localStorage.getItem('school_id') || '';
 let parentData = null, currentChildId = null;
+
+function getApiErrorMessage(data, fallback) {
+  return data?.message || data?.detail || fallback;
+}
 
 function showAuthTab(tab) {
   const isLogin = tab === 'login';
@@ -180,7 +184,7 @@ async function loginParent() {
       parentData = data.data;
       showDashboard();
     } else {
-      errEl.textContent = data.message || 'Invalid credentials';
+      errEl.textContent = getApiErrorMessage(data, 'Invalid credentials');
       errEl.classList.remove('hidden');
     }
   } catch(e) {
@@ -214,7 +218,7 @@ async function registerParent() {
       alert(`Registration successful! ${data.data.children_linked} child(ren) linked. Please login.`);
       showAuthTab('login');
     } else {
-      errEl.textContent = data.message || 'Registration failed';
+      errEl.textContent = getApiErrorMessage(data, 'Registration failed');
       errEl.classList.remove('hidden');
     }
   } catch(e) {

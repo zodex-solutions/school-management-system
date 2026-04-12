@@ -134,6 +134,19 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <div><label class="lbl">Experience (Years)</label><input id="sf_exp" type="number" class="finput" placeholder="0" step="0.5"/></div>
           <div class="sm:col-span-2"><label class="lbl">Address</label><textarea id="sf_addr" rows="2" class="finput resize-none" placeholder="Current address"></textarea></div>
         </div>
+        <div class="mt-5 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input id="sf_create_login" type="checkbox" class="w-4 h-4 accent-blue-600" onchange="toggleStaffLoginFields()" />
+            <span>
+              <span id="sf_login_title" class="block font-semibold text-gray-900">Create / Link Login Account</span>
+              <span id="sf_login_hint" class="block text-xs text-gray-500 mt-0.5">Teacher/staff isi username aur password se login page par login karega.</span>
+            </span>
+          </label>
+          <div id="sf_login_fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 hidden">
+            <div><label class="lbl">Login Username</label><input id="sf_login_user" class="finput" placeholder="Email, employee ID or username"/></div>
+            <div><label class="lbl">Login Password</label><input id="sf_login_pass" type="password" class="finput" placeholder="New password"/></div>
+          </div>
+        </div>
       </div>
       <div class="flex gap-3 px-6 py-4 border-t justify-end sticky bottom-0 bg-white">
         <button onclick="document.getElementById('addStaffModal').style.display='none'" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
@@ -230,6 +243,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     const currentUser = getUser() || {};
     const isTeacherSide = ['teacher', 'faculty', 'staff'].some(role => String(currentUser.role_name || '').toLowerCase().includes(role));
     let editingStaffId = '';
+    let editingStaffHasLogin = false;
     let currentStaffProfile = null;
 
     function switchTab(idx) {
@@ -284,7 +298,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       if (activeStatus) params.active_status = activeStatus;
       try {
         const r = await StaffAPI.list(params); const staff = r?.data || [];
-        const hdrs = ['Emp ID', 'Name', 'Designation', 'Type', 'Dept', 'Phone', 'Salary', 'Status', 'Access', ''];
+        const hdrs = ['Emp ID', 'Name', 'Designation', 'Type', 'Dept', 'Phone', 'Salary', 'Status', 'Login', 'Access', ''];
         const rows = staff.map(s => `
           <td class="px-4 py-3 font-mono text-xs text-gray-500">${s.employee_id}</td>
           <td class="px-4 py-3"><div class="flex items-center gap-2">
@@ -297,6 +311,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <td class="px-4 py-3 text-sm text-gray-600">${s.phone}</td>
           <td class="px-4 py-3 text-sm font-medium text-gray-900">${formatCurrency(s.gross_salary)}</td>
           <td class="px-4 py-3">${tdBadge(s.employment_status, s.employment_status === 'Active' ? 'green' : s.employment_status === 'On-Leave' ? 'yellow' : 'gray')}</td>
+          <td class="px-4 py-3"><div>${tdBadge(s.has_login ? (s.login_active ? 'Login Active' : 'Login Off') : 'No Login', s.has_login ? (s.login_active ? 'green' : 'red') : 'gray')}</div><div class="text-[11px] text-gray-400 mt-1">${s.login_username || ''}</div></td>
           <td class="px-4 py-3">${tdBadge(s.is_active ? 'Active' : 'Inactive', s.is_active ? 'green' : 'red')}</td>
           <td class="px-4 py-3"><div class="flex items-center gap-3"><button onclick="viewStaff('${s.id}')" class="text-xs text-blue-600 hover:underline">View</button><button onclick="editStaff('${s.id}')" class="text-xs text-emerald-600 hover:underline">Edit</button><button onclick="toggleStaffActive('${s.id}', ${s.is_active ? 'false' : 'true'})" class="text-xs ${s.is_active ? 'text-red-600' : 'text-emerald-600'} hover:underline">${s.is_active ? 'Deactivate' : 'Activate'}</button></div></td>
         `);
@@ -319,11 +334,23 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
 
     function resetStaffModal() {
       editingStaffId = '';
+      editingStaffHasLogin = false;
       document.getElementById('staffModalTitle').textContent = 'Add Staff Member';
       document.getElementById('staffModalHint').textContent = 'Create a new teaching or non-teaching staff profile.';
       document.getElementById('staffSubmitBtn').textContent = 'Add Staff';
       document.querySelectorAll('#addStaffModal input,#addStaffModal select,#addStaffModal textarea').forEach(el => el.value = '');
+      document.getElementById('sf_create_login').checked = false;
+      document.getElementById('sf_login_user').value = '';
+      document.getElementById('sf_login_pass').value = '';
+      document.getElementById('sf_login_pass').placeholder = 'New password';
+      document.getElementById('sf_login_title').textContent = 'Create / Link Login Account';
+      document.getElementById('sf_login_hint').textContent = 'Teacher/staff isi username aur password se login page par login karega.';
       document.getElementById('sf_emptype').value = 'Permanent';
+      toggleStaffLoginFields();
+    }
+
+    function toggleStaffLoginFields() {
+      document.getElementById('sf_login_fields').classList.toggle('hidden', !document.getElementById('sf_create_login').checked);
     }
 
     function openStaffModal() {
@@ -350,6 +377,9 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         other_allowances: parseFloat(document.getElementById('sf_oth').value) || 0,
         experience_years: parseFloat(document.getElementById('sf_exp').value) || 0,
         current_address: document.getElementById('sf_addr').value || null,
+        create_login_account: document.getElementById('sf_create_login').checked,
+        login_username: document.getElementById('sf_login_user').value.trim() || null,
+        login_password: document.getElementById('sf_login_pass').value || null,
         school_id: schoolId
       };
     }
@@ -361,6 +391,10 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       const des = document.getElementById('sf_des').value.trim(), type = document.getElementById('sf_type').value;
       const join = document.getElementById('sf_join').value;
       if (!fn || !gnd || !ph || !des || !type || !join) { showToast('Fill all required fields (*)', 'error'); return; }
+      if (document.getElementById('sf_create_login').checked && !editingStaffHasLogin && !document.getElementById('sf_login_pass').value) {
+        showToast('Login password required for new staff login', 'error');
+        return;
+      }
       try {
         const payload = buildStaffPayload();
         const r = editingStaffId ? await StaffAPI.update(editingStaffId, payload) : await StaffAPI.create(payload);
@@ -399,6 +433,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
                 <div><span class="text-slate-400">Gender:</span> <span class="font-medium text-slate-900">${s.gender || '-'}</span></div>
                 <div><span class="text-slate-400">DOB:</span> <span class="font-medium text-slate-900">${formatDate(s.date_of_birth)}</span></div>
                 <div><span class="text-slate-400">Department:</span> <span class="font-medium text-slate-900">${s.department || '-'}</span></div>
+                <div><span class="text-slate-400">Login:</span> <span class="font-medium text-slate-900">${s.has_login ? `${s.login_username || '-'} (${s.login_active ? 'Active' : 'Inactive'})` : 'Not created'}</span></div>
                 <div><span class="text-slate-400">Experience:</span> <span class="font-medium text-slate-900">${s.experience_years || 0} years</span></div>
                 <div><span class="text-slate-400">Joining:</span> <span class="font-medium text-slate-900">${formatDate(s.joining_date)}</span></div>
                 <div><span class="text-slate-400">Address:</span> <span class="font-medium text-slate-900">${s.current_address || '-'}</span></div>
@@ -424,8 +459,9 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         const r = await StaffAPI.get(id);
         const s = r.data || {};
         editingStaffId = id;
+        editingStaffHasLogin = !!s.has_login;
         document.getElementById('staffModalTitle').textContent = 'Edit Staff Member';
-        document.getElementById('staffModalHint').textContent = 'Update staff profile, employment and salary details.';
+        document.getElementById('staffModalHint').textContent = 'Update staff profile, employment, salary and teacher login details.';
         document.getElementById('staffSubmitBtn').textContent = 'Update Staff';
         document.getElementById('sf_fn').value = s.first_name || '';
         document.getElementById('sf_ln').value = s.last_name || '';
@@ -444,6 +480,13 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         document.getElementById('sf_oth').value = s.other_allowances || 0;
         document.getElementById('sf_exp').value = s.experience_years || 0;
         document.getElementById('sf_addr').value = s.current_address || '';
+        document.getElementById('sf_create_login').checked = !!s.has_login;
+        document.getElementById('sf_login_user').value = s.login_username || s.email || s.employee_id || '';
+        document.getElementById('sf_login_pass').value = '';
+        document.getElementById('sf_login_pass').placeholder = s.has_login ? 'Leave blank to keep current password' : 'New password';
+        document.getElementById('sf_login_title').textContent = s.has_login ? 'Update Teacher Login Account' : 'Create Teacher Login Account';
+        document.getElementById('sf_login_hint').textContent = s.has_login ? 'Login account already linked. Leave password blank to keep the current password.' : 'Tick this option to create a teacher login for this staff member.';
+        toggleStaffLoginFields();
         document.getElementById('addStaffModal').style.display = 'flex';
       } catch (e) {
         showToast('Error: ' + e.message, 'error');

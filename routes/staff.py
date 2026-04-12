@@ -3,8 +3,9 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 from models.staff import Staff, TeacherAssignment, LeaveType, LeaveApplication, SalarySlip
-from models.institution import School, AcademicYear, ClassRoom, Section, Subject, User
+from models.institution import School, AcademicYear, ClassRoom, Section, Subject, User, Role, Permission
 from utils.auth import get_current_user, resolve_school_access
+from utils.auth import get_password_hash
 from utils.helpers import success_response, generate_employee_id, save_upload_file
 
 router = APIRouter(prefix="/staff", tags=["Staff & HR"])
@@ -20,6 +21,91 @@ def _resolve_current_staff(current_user: User, school: Optional[School] = None) 
     if not staff:
         raise HTTPException(404, "Staff profile not linked with this login")
     return staff
+
+
+def _get_or_create_staff_role(staff_type: str) -> Role:
+    role_name = "Teacher" if staff_type == "Teaching" else "Staff"
+    role = Role.objects(name=role_name).first()
+    if role:
+        return role
+    modules = ["dashboard", "students", "attendance", "academics", "exams", "communication"]
+    role = Role(
+        name=role_name,
+        description=f"Default {role_name.lower()} portal access",
+        is_system=True,
+        permissions=[
+            Permission(module=module, can_view=True, can_create=module in ["attendance", "academics"], can_edit=module in ["attendance", "academics"], can_delete=False)
+            for module in modules
+        ]
+    )
+    role.save()
+    return role
+
+
+def _create_or_update_staff_login(staff: Staff, school: School, data: dict) -> Optional[User]:
+    create_login = bool(data.get("create_login_account"))
+    login_password = (data.get("login_password") or "").strip()
+    login_username = (data.get("login_username") or "").strip()
+    if not create_login and not login_password:
+        return staff.user_account
+
+    username = login_username or staff.email or staff.employee_id
+    email = staff.email or f"{staff.employee_id.lower()}@school.local"
+    if not username:
+        raise HTTPException(400, "Username or email is required to create staff login")
+    if not staff.user_account and not login_password:
+        raise HTTPException(400, "Password is required to create staff login")
+
+    user = staff.user_account
+    if not user:
+        user = User.objects(username=username).first()
+        if user and Staff.objects(user_account=user, id__ne=staff.id).first():
+            raise HTTPException(400, "This username is already linked with another staff")
+        email_user = User.objects(email=email).first()
+        if email_user and user and str(email_user.id) != str(user.id):
+            raise HTTPException(400, "Email already belongs to another login account")
+        user = user or email_user
+        if user and Staff.objects(user_account=user, id__ne=staff.id).first():
+            raise HTTPException(400, "This email login is already linked with another staff")
+
+    update_data = {
+        "username": username,
+        "email": email,
+        "full_name": staff.full_name,
+        "phone": staff.phone,
+        "role": _get_or_create_staff_role(staff.staff_type),
+        "assigned_school": school,
+        "is_active": staff.is_active,
+        "updated_at": datetime.utcnow()
+    }
+    if login_password:
+        update_data["hashed_password"] = get_password_hash(login_password)
+
+    if user:
+        existing_username = User.objects(username=username, id__ne=user.id).first()
+        if existing_username:
+            raise HTTPException(400, "Username already taken")
+        existing_email = User.objects(email=email, id__ne=user.id).first()
+        if existing_email:
+            raise HTTPException(400, "Email already registered")
+        user.update(**update_data)
+        user.reload()
+    else:
+        user = User(
+            username=username,
+            email=email,
+            hashed_password=get_password_hash(login_password),
+            full_name=staff.full_name,
+            phone=staff.phone,
+            role=_get_or_create_staff_role(staff.staff_type),
+            assigned_school=school,
+            is_active=staff.is_active
+        )
+        user.save()
+
+    staff.update(user_account=user, updated_at=datetime.utcnow())
+    staff.reload()
+    return user
 
 
 class StaffCreate(BaseModel):
@@ -50,6 +136,9 @@ class StaffCreate(BaseModel):
     subject_ids: List[str] = []
     bank_details: Optional[dict] = None
     remarks: Optional[str] = None
+    create_login_account: bool = False
+    login_username: Optional[str] = None
+    login_password: Optional[str] = None
 
 
 @router.post("")
@@ -109,10 +198,13 @@ async def create_staff(data: StaffCreate, current_user: User = Depends(get_curre
         staff.bank_details = BankDetails(**data.bank_details)
     
     staff.save()
+    user = _create_or_update_staff_login(staff, school, data.dict())
     return success_response({
         "id": str(staff.id),
         "employee_id": staff.employee_id,
-        "full_name": staff.full_name
+        "full_name": staff.full_name,
+        "login_created": bool(user),
+        "login_username": user.username if user else None
     }, "Staff member added successfully")
 
 
@@ -170,6 +262,9 @@ async def list_staff(
         "employment_type": s.employment_type,
         "employment_status": s.employment_status,
         "is_active": s.is_active,
+        "has_login": bool(s.user_account),
+        "login_username": s.user_account.username if s.user_account else None,
+        "login_active": s.user_account.is_active if s.user_account else None,
         "joining_date": s.joining_date.isoformat() if s.joining_date else None,
         "gross_salary": s.gross_salary,
         "photo": s.photo
@@ -179,6 +274,39 @@ async def list_staff(
         "total": total, "page": page, "per_page": per_page,
         "total_pages": (total + per_page - 1) // per_page
     })
+
+
+@router.get("/assignments")
+async def list_assignments(
+    school_id: str,
+    academic_year_id: Optional[str] = None,
+    teacher_id: Optional[str] = None,
+    classroom_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    school = School.objects.get(id=resolve_school_access(current_user, school_id))
+    query = TeacherAssignment.objects(school=school, is_active=True)
+    
+    if academic_year_id:
+        ay = AcademicYear.objects.get(id=academic_year_id)
+        query = query.filter(academic_year=ay)
+    if teacher_id:
+        teacher = Staff.objects.get(id=teacher_id)
+        query = query.filter(teacher=teacher)
+    if classroom_id:
+        classroom = ClassRoom.objects.get(id=classroom_id)
+        query = query.filter(classroom=classroom)
+    
+    result = [{
+        "id": str(a.id),
+        "teacher_name": a.teacher.full_name if a.teacher else None,
+        "classroom": a.classroom.name if a.classroom else None,
+        "section": a.section.name if a.section else None,
+        "subject": a.subject.name if a.subject else None,
+        "is_class_teacher": a.is_class_teacher,
+        "assignment_file": a.assignment_file
+    } for a in query]
+    return success_response(result)
 
 
 @router.get("/{staff_id}")
@@ -207,6 +335,9 @@ async def get_staff(staff_id: str, current_user: User = Depends(get_current_user
             "department": s.department,
             "employment_type": s.employment_type,
             "employment_status": s.employment_status,
+            "has_login": bool(s.user_account),
+            "login_username": s.user_account.username if s.user_account else None,
+            "login_active": s.user_account.is_active if s.user_account else None,
             "joining_date": s.joining_date.isoformat() if s.joining_date else None,
             "experience_years": s.experience_years,
             "basic_salary": s.basic_salary,
@@ -238,7 +369,12 @@ async def update_staff(staff_id: str, data: dict, current_user: User = Depends(g
         staff = Staff.objects.get(id=staff_id)
         resolve_school_access(current_user, str(staff.school.id) if staff.school else None)
         data.pop('id', None)
-        data.pop('school_id', None)
+        create_login_data = {
+            "create_login_account": data.pop("create_login_account", False),
+            "login_username": data.pop("login_username", None),
+            "login_password": data.pop("login_password", None)
+        }
+        school_id = data.pop('school_id', None)
         data.pop('employee_id', None)
         data.pop('full_name', None)
         data['updated_at'] = datetime.utcnow()
@@ -252,6 +388,8 @@ async def update_staff(staff_id: str, data: dict, current_user: User = Depends(g
                 data.get('other_allowances', staff.other_allowances)
             )
         staff.update(**data)
+        staff.reload()
+        _create_or_update_staff_login(staff, staff.school, create_login_data)
         return success_response(message="Staff updated successfully")
     except Staff.DoesNotExist:
         raise HTTPException(404, "Staff not found")
@@ -323,39 +461,6 @@ async def create_assignment(data: AssignmentCreate, current_user: User = Depends
     )
     assignment.save()
     return success_response({"id": str(assignment.id)}, "Teacher assignment created")
-
-
-@router.get("/assignments")
-async def list_assignments(
-    school_id: str,
-    academic_year_id: Optional[str] = None,
-    teacher_id: Optional[str] = None,
-    classroom_id: Optional[str] = None,
-    current_user: User = Depends(get_current_user)
-):
-    school = School.objects.get(id=school_id)
-    query = TeacherAssignment.objects(school=school, is_active=True)
-    
-    if academic_year_id:
-        ay = AcademicYear.objects.get(id=academic_year_id)
-        query = query.filter(academic_year=ay)
-    if teacher_id:
-        teacher = Staff.objects.get(id=teacher_id)
-        query = query.filter(teacher=teacher)
-    if classroom_id:
-        classroom = ClassRoom.objects.get(id=classroom_id)
-        query = query.filter(classroom=classroom)
-    
-    result = [{
-        "id": str(a.id),
-        "teacher_name": a.teacher.full_name if a.teacher else None,
-        "classroom": a.classroom.name if a.classroom else None,
-        "section": a.section.name if a.section else None,
-        "subject": a.subject.name if a.subject else None,
-        "is_class_teacher": a.is_class_teacher,
-        "assignment_file": a.assignment_file
-    } for a in query]
-    return success_response(result)
 
 
 @router.post("/assignments/{assignment_id}/upload")

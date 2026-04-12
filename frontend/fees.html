@@ -158,15 +158,18 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
             <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
               <div>
                 <h4 class="font-bold text-gray-900">Fee Estimate Calculator</h4>
-                <p class="text-sm text-slate-500 mt-1">Manual student details ke saath fee estimate banao. Ye sirf preview hai, save ya invoice create nahi hoga.</p>
+                <p class="text-sm text-slate-500 mt-1">Create a fee estimate using manually entered student details. This is only a preview and will not be saved or converted into an invoice.</p>
               </div>
-              <button onclick="resetFeeEstimateForm()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Reset Estimate</button>
+              <div class="flex gap-2 flex-wrap">
+                <button onclick="printFeeEstimate()" class="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Print Estimate</button>
+                <button onclick="resetFeeEstimateForm()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Reset Estimate</button>
+              </div>
             </div>
             <div class="grid grid-cols-1 xl:grid-cols-[1.1fr_.9fr] gap-6">
               <div class="space-y-4">
                 <div class="rounded-2xl border border-slate-200 bg-blue-50 p-4 text-sm text-blue-900">
                   <div class="font-semibold">Estimate only</div>
-                  <div class="text-xs mt-1 text-blue-700">Manual details fill karke class fee, fee structure, transport route aur additional items ke according total aur baki amount dekho.</div>
+                  <div class="text-xs mt-1 text-blue-700">Enter the details manually to view the total and balance based on the class fee, fee structure, transport route, and additional items.</div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><label class="lbl">Student Name</label><input id="est_student_name" class="finput" placeholder="Student name" /></div>
@@ -175,6 +178,9 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><label class="lbl">Father Name</label><input id="est_father_name" class="finput" placeholder="Father name" /></div>
                   <div><label class="lbl">Phone Number</label><input id="est_phone" class="finput" placeholder="Phone number" /></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label class="lbl">Gender</label><select id="est_gender" class="finput"><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></select></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><label class="lbl">Class *</label><select id="est_class" class="finput" onchange="loadEstimateSections(); loadEstimateStructures(); renderFeeEstimate()"><option value="">Select class</option></select></div>
@@ -224,7 +230,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
               <div class="space-y-4">
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Estimate Summary</p>
-                  <div id="estStudentSummary" class="mt-3 text-sm text-slate-500">Manual student details bharo aur class select karke estimate preview dekho.</div>
+                  <div id="estStudentSummary" class="mt-3 text-sm text-slate-500">Enter the student details and select a class to preview the estimate.</div>
                 </div>
                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
                   <div class="flex items-center justify-between mb-3">
@@ -1043,7 +1049,7 @@ function statCard(title, value, icon, color) {
     function renderFeeEstimate() {
       const classOption = document.getElementById('est_class')?.selectedOptions?.[0];
       if (!classOption?.value) {
-        document.getElementById('estStudentSummary').textContent = 'Manual student details bharo aur class select karke estimate preview dekho.';
+        document.getElementById('estStudentSummary').textContent = 'Enter the student details and select a class to preview the estimate.';
         document.getElementById('estEstimateLines').innerHTML = '<div class="rounded-xl bg-slate-50 px-3 py-3 text-slate-400">No estimate yet</div>';
         document.getElementById('estGross').textContent = formatCurrency(0);
         document.getElementById('estDiscountValue').textContent = formatCurrency(0);
@@ -1062,6 +1068,7 @@ function statCard(title, value, icon, color) {
         <div class="space-y-2">
           <div class="flex justify-between gap-3"><span class="text-slate-500">Student</span><span class="font-semibold text-slate-900 text-right">${document.getElementById('est_student_name').value || '-'}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Admission No</span><span class="font-semibold text-slate-900 text-right">${document.getElementById('est_admission_no').value || '-'}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Gender</span><span class="font-semibold text-slate-900 text-right">${document.getElementById('est_gender').value || '-'}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Father / Phone</span><span class="font-semibold text-slate-900 text-right">${document.getElementById('est_father_name').value || '-'}${document.getElementById('est_phone').value ? ` • ${document.getElementById('est_phone').value}` : ''}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Class / Section</span><span class="font-semibold text-slate-900 text-right">${classOption?.dataset?.name || '-'}${sectionName && sectionName !== 'Select section' ? ` / ${sectionName}` : ''}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Concession</span><span class="font-semibold text-emerald-700 text-right">${getSelectedEstimateConcession().name || 'No concession'}</span></div>
@@ -1093,6 +1100,130 @@ function statCard(title, value, icon, color) {
       document.getElementById('estStatus').textContent = estimate.lines.length ? 'Estimate Ready' : 'Draft';
     }
 
+    function escapePrintHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function printFeeEstimate() {
+      const classOption = document.getElementById('est_class')?.selectedOptions?.[0];
+      if (!classOption?.value) { showToast('Select a class before printing the estimate', 'error'); return; }
+
+      const estimate = buildFeeEstimate();
+      if (!estimate.lines.length) { showToast('Add fee details before printing the estimate', 'error'); return; }
+
+      renderFeeEstimate();
+      const selectedMonths = estimate.selectedMonths || [];
+      const sectionName = document.getElementById('est_section')?.selectedOptions?.[0]?.textContent || '';
+      const routeOption = document.getElementById('est_route')?.selectedOptions?.[0];
+      const branchName = document.getElementById('feeBranchFilter')?.selectedOptions?.[0]?.textContent || 'All Branches';
+      const notes = document.getElementById('est_notes').value || '';
+      const concessionName = getSelectedEstimateConcession().name || 'No concession';
+      const transportText = routeOption?.value
+        ? `${routeOption.dataset.name || 'Transport route'}${selectedMonths.length ? ` - ${selectedMonths.join(', ')}` : ''}`
+        : 'No transport';
+      const classText = `${classOption?.dataset?.name || classOption?.textContent || '-'}${sectionName && sectionName !== 'Select section' ? ` / ${sectionName}` : ''}`;
+      const printWindow = window.open('', '_blank', 'width=900,height=900');
+      if (!printWindow) { showToast('Popup blocked. Allow popups to print estimate.', 'error'); return; }
+
+      const rows = estimate.lines.map((line, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>
+            <strong>${escapePrintHtml(line.label)}</strong>
+            <div class="muted">${escapePrintHtml(line.meta || '')}</div>
+            ${line.discountAmount ? `<div class="saved">Saved ${escapePrintHtml(formatCurrency(line.discountAmount))}</div>` : ''}
+          </td>
+          <td class="right">${line.baseAmount !== line.amount ? escapePrintHtml(formatCurrency(line.baseAmount)) : '-'}</td>
+          <td class="right">${escapePrintHtml(formatCurrency(line.amount))}</td>
+        </tr>
+      `).join('');
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Fee Estimate</title>
+            <style>
+              *{box-sizing:border-box}
+              body{font-family:Arial,sans-serif;color:#0f172a;margin:0;padding:28px;background:#fff}
+              .header{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #0f172a;padding-bottom:14px;margin-bottom:18px}
+              h1{font-size:26px;margin:0 0 6px}
+              .subtitle,.muted{color:#64748b;font-size:12px}
+              .badge{border:1px solid #cbd5e1;padding:7px 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;align-self:flex-start}
+              .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin:18px 0}
+              .field{border-bottom:1px solid #e2e8f0;padding:7px 0}
+              .label{display:block;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+              .value{font-size:14px;font-weight:700}
+              table{width:100%;border-collapse:collapse;margin-top:18px}
+              th,td{border:1px solid #cbd5e1;padding:10px;text-align:left;font-size:12px;vertical-align:top}
+              th{background:#f8fafc;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
+              .right{text-align:right}
+              .saved{color:#047857;font-size:11px;margin-top:4px}
+              .totals{margin-left:auto;margin-top:16px;width:320px;border:1px solid #cbd5e1}
+              .total-row{display:flex;justify-content:space-between;padding:9px 12px;border-bottom:1px solid #e2e8f0;font-size:13px}
+              .total-row:last-child{border-bottom:0;background:#fef2f2;font-size:15px;font-weight:800;color:#b91c1c}
+              .notes{margin-top:20px;border:1px solid #cbd5e1;padding:12px;min-height:56px}
+              .footer{margin-top:26px;display:flex;justify-content:space-between;gap:24px;color:#64748b;font-size:11px}
+              .sign{margin-top:40px;border-top:1px solid #0f172a;width:180px;text-align:center;padding-top:6px;color:#0f172a}
+              @media print{body{padding:18px}.no-print{display:none}}
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <h1>Fee Estimate</h1>
+                <div class="subtitle">This is only an estimate and is not an invoice or payment receipt.</div>
+              </div>
+              <div class="badge">Estimate Ready</div>
+            </div>
+
+            <div class="grid">
+              <div class="field"><span class="label">Student</span><span class="value">${escapePrintHtml(document.getElementById('est_student_name').value || '-')}</span></div>
+              <div class="field"><span class="label">Admission No</span><span class="value">${escapePrintHtml(document.getElementById('est_admission_no').value || '-')}</span></div>
+              <div class="field"><span class="label">Gender</span><span class="value">${escapePrintHtml(document.getElementById('est_gender').value || '-')}</span></div>
+              <div class="field"><span class="label">Father Name</span><span class="value">${escapePrintHtml(document.getElementById('est_father_name').value || '-')}</span></div>
+              <div class="field"><span class="label">Phone Number</span><span class="value">${escapePrintHtml(document.getElementById('est_phone').value || '-')}</span></div>
+              <div class="field"><span class="label">Class / Section</span><span class="value">${escapePrintHtml(classText)}</span></div>
+              <div class="field"><span class="label">Concession</span><span class="value">${escapePrintHtml(concessionName)}</span></div>
+              <div class="field"><span class="label">Transport</span><span class="value">${escapePrintHtml(transportText)}</span></div>
+              <div class="field"><span class="label">Branch</span><span class="value">${escapePrintHtml(branchName)}</span></div>
+              <div class="field"><span class="label">Printed On</span><span class="value">${escapePrintHtml(new Date().toLocaleString())}</span></div>
+            </div>
+
+            <table>
+              <thead>
+                <tr><th style="width:52px">#</th><th>Fee Item</th><th class="right">Base Amount</th><th class="right">Amount</th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+
+            <div class="totals">
+              <div class="total-row"><span>Gross</span><strong>${escapePrintHtml(formatCurrency(estimate.gross || 0))}</strong></div>
+              <div class="total-row"><span>Manual Discount</span><strong>${escapePrintHtml(formatCurrency(estimate.manualDiscount || 0))}</strong></div>
+              <div class="total-row"><span>Net Fee</span><strong>${escapePrintHtml(formatCurrency(estimate.net || 0))}</strong></div>
+              <div class="total-row"><span>Paid</span><strong>${escapePrintHtml(formatCurrency(estimate.paidAmount || 0))}</strong></div>
+              <div class="total-row"><span>Balance</span><strong>${escapePrintHtml(formatCurrency(estimate.balance || 0))}</strong></div>
+            </div>
+
+            ${notes ? `<div class="notes"><span class="label">Notes</span>${escapePrintHtml(notes)}</div>` : ''}
+
+            <div class="footer">
+              <div>Generated from Fees Management</div>
+              <div class="sign">Authorized Signature</div>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 300);
+    }
+
     function addEstItem() {
       const c = document.createElement('div');
       c.className = 'flex gap-2 items-center';
@@ -1112,6 +1243,7 @@ function statCard(title, value, icon, color) {
       document.getElementById('est_admission_no').value = '';
       document.getElementById('est_father_name').value = '';
       document.getElementById('est_phone').value = '';
+      document.getElementById('est_gender').value = '';
       document.getElementById('est_class').value = '';
       document.getElementById('est_section').innerHTML = '<option value="">Select section</option>';
       document.getElementById('est_concession').value = '';
@@ -1385,7 +1517,7 @@ function statCard(title, value, icon, color) {
           } else {
             document.getElementById('strCatItems').innerHTML = '<label class="lbl">Fee Categories & Amounts</label>' + feeCats.map(c => `<div class="flex items-center gap-3"><div class="flex-1 text-sm font-medium text-gray-700">${c.name}</div><input type="number" id="cat_${c.id}" class="finput w-32 struct-cat-input" data-code="${c.code}" placeholder="Amount ₹" oninput="updateFeeStructureYearlyTotal()"/></div>`).join('') + `
               <div class="flex items-center gap-3 border-t border-slate-100 pt-3 mt-2">
-                <div class="flex-1 text-sm font-semibold text-gray-900">Tuition Fee Yly Upto 30 April 2025</div>
+                <div class="flex-1 text-sm font-semibold text-gray-900">Tuition Fee Yearly Upto 30th April 2027</div>
                 <input type="text" id="str_yearly_total" class="finput w-40 bg-slate-100 font-semibold text-slate-700" value="0" readonly />
               </div>`;
             updateFeeStructureYearlyTotal();
@@ -1514,7 +1646,7 @@ function statCard(title, value, icon, color) {
       try {
         const academicYearId = await resolveFeeAcademicYearId();
         const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: academicYearId || '' }); const data = r?.data || [];
-        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Books Fee', 'Note Book Fee', 'Tuition Fee Monthly', 'Tuition Fee Yearly Upto 30 April 2025', ''];
+        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Books Fee', 'Note Book Fee', 'Tuition Fee Monthly', 'Tuition Fee Yearly Upto 30th April 2027', ''];
         const rows = data.map(s => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${s.name}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${s.classroom || '-'}</td>
@@ -1608,6 +1740,7 @@ function statCard(title, value, icon, color) {
     ['est_student_name','est_admission_no','est_father_name','est_phone','est_paid','est_discount','est_notes'].forEach(id => {
       document.getElementById(id).addEventListener('input', renderFeeEstimate);
     });
+    document.getElementById('est_gender').addEventListener('change', renderFeeEstimate);
     document.getElementById('est_concession').addEventListener('change', renderFeeEstimate);
     document.getElementById('est_structure').addEventListener('change', renderFeeEstimate);
     document.getElementById('est_route').addEventListener('change', renderFeeEstimate);

@@ -29,7 +29,7 @@ ALLOWED_FEE_STRUCTURE_CATEGORIES = [
     {"name": "Books Fee", "code": "BOOK"},
     {"name": "Note Book Fee", "code": "NOTE"},
 ]
-YEARLY_TUITION_LABEL = "Tuition Fee Yly Upto 30 April 2025"
+YEARLY_TUITION_LABEL = "Tuition Fee Yearly Upto 30th April 2027"
 
 ALLOWED_CATEGORY_BY_CODE = {item["code"]: item for item in ALLOWED_FEE_STRUCTURE_CATEGORIES}
 ALLOWED_CATEGORY_BY_NAME = {item["name"].lower(): item for item in ALLOWED_FEE_STRUCTURE_CATEGORIES}

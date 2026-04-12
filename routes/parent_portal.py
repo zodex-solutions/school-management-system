@@ -42,15 +42,60 @@ def get_parent_from_token(token: str) -> ParentPortalUser:
         raise HTTPException(401, "Invalid or expired token")
 
 
+def _resolve_parent_school(data: dict, *, for_login: bool = False) -> School:
+    school_id = data.get("school_id") or data.get("school")
+    if school_id:
+        try:
+            return School.objects.get(id=school_id)
+        except School.DoesNotExist:
+            raise HTTPException(404, "School not found")
+
+    if for_login and data.get("email"):
+        parents = ParentPortalUser.objects(email=data["email"].lower().strip(), is_active=True)
+        schools = {str(parent.school.id): parent.school for parent in parents if parent.school}
+        if len(schools) == 1:
+            return next(iter(schools.values()))
+        if len(schools) > 1:
+            raise HTTPException(400, "Multiple schools found for this email. Open the parent login link from your school.")
+
+    admission_numbers = [str(adm).strip() for adm in data.get("admission_numbers", []) if str(adm).strip()]
+    if admission_numbers:
+        schools = {}
+        for adm in admission_numbers:
+            for student in Student.objects(admission_no=adm):
+                if student.school:
+                    schools[str(student.school.id)] = student.school
+        if len(schools) == 1:
+            return next(iter(schools.values()))
+        if len(schools) > 1:
+            raise HTTPException(400, "Admission numbers match multiple schools. Open the parent login link from your school.")
+
+    active_schools = list(School.objects(is_active=True).limit(2))
+    if len(active_schools) == 1:
+        return active_schools[0]
+    raise HTTPException(400, "School is required. Open the parent login link from your school.")
+
+
 # ── Public: Register ──────────────────────────────────────────────────────────
 @router.post("/register")
 async def register_parent(data: dict):
-    try:
-        school = School.objects.get(id=data['school_id'])
-    except School.DoesNotExist:
-        raise HTTPException(404, "School not found")
+    school = _resolve_parent_school(data)
+    required_fields = ["name", "phone", "email", "password"]
+    if any(not str(data.get(field, "")).strip() for field in required_fields):
+        raise HTTPException(400, "Name, phone, email and password are required")
     if ParentPortalUser.objects(school=school, email=data['email'].lower().strip()).first():
         raise HTTPException(400, "Email already registered")
+
+    linked_children = []
+    for adm in data.get('admission_numbers', []):
+        admission_no = str(adm).strip()
+        if not admission_no:
+            continue
+        student = Student.objects(school=school, admission_no=admission_no).first()
+        if student:
+            linked_children.append(student)
+    if not linked_children:
+        raise HTTPException(400, "No student found for the admission number in this school")
 
     parent = ParentPortalUser(
         school=school,
@@ -60,10 +105,7 @@ async def register_parent(data: dict):
         password_hash=hash_password(data['password']),
         relation=data.get('relation', 'Father')
     )
-    for adm in data.get('admission_numbers', []):
-        student = Student.objects(school=school, admission_no=adm.strip()).first()
-        if student:
-            parent.children.append(student)
+    parent.children = linked_children
     parent.save()
 
     token = create_access_token({"sub": str(parent.id), "type": "parent"})
@@ -76,10 +118,7 @@ async def register_parent(data: dict):
 # ── Public: Login ─────────────────────────────────────────────────────────────
 @router.post("/login")
 async def parent_login(data: dict):
-    try:
-        school = School.objects.get(id=data['school_id'])
-    except School.DoesNotExist:
-        raise HTTPException(404, "School not found")
+    school = _resolve_parent_school(data, for_login=True)
     parent = ParentPortalUser.objects(school=school, email=data['email'].lower().strip(), is_active=True).first()
     if not parent or not verify_password(data['password'], parent.password_hash):
         raise HTTPException(401, "Invalid email or password")
