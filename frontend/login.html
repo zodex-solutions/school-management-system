@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Scholar Desk</title>
+  <title>ERP Login</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -166,13 +166,13 @@
     /* MOBILE VIEW: Separating the containers */
     @media (max-width: 1023px) {
       body {
-        display: block; /* Scrolling allow karne ke liye */
+        display: block; /* Allow scrolling */
         /* padding: 20px 10px; */
       }
       .container-custom {
         flex-direction: column;
         min-height: auto;
-        gap: 20px; /* Dono container ke beech gap */
+        gap: 20px; /* Gap between both containers */
       }
       .left-panel {
         padding-bottom: 250px; 
@@ -223,7 +223,7 @@
           <div class="contact-row"><span class="icon">☎</span><span>+91 92140 14070</span></div>
         </div>
       </div>
-      <div class="copyright">Copyright &copy; 2026-27 Scholar Desk ERP</div>
+      <div class="copyright">Copyright &copy; 2026-27 School ERP</div>
     </div>
   </div>
 
@@ -288,7 +288,7 @@
     const btn = document.getElementById('loginBtn');
 
     if (!username || !password) {
-      showLoginMessage('User ID aur password dono required hain.');
+      showLoginMessage('User ID and password are required.');
       return;
     }
 
@@ -322,7 +322,7 @@
       showLoginMessage('Login successful. Dashboard open ho raha hai...', 'success');
       window.location.href = '/dashboard';
     } catch (error) {
-      showLoginMessage('Server se connect nahi ho raha. Backend chalu hai ya nahi check karo.');
+      showLoginMessage('Unable to connect to the server. Please check whether the backend is running.');
     } finally {
       btn.disabled = false;
       btn.textContent = 'LOGIN';

@@ -61,7 +61,7 @@ const API = {
       }
       return json;
     } catch (e) {
-      if (e.message === 'Failed to fetch') throw new Error('Server se connect nahi ho raha. Backend chalu karo: uvicorn main:app --reload');
+      if (e.message === 'Failed to fetch') throw new Error('Unable to connect to the server. Start the backend with: uvicorn main:app --reload');
       throw e;
     }
   },

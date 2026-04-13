@@ -1346,7 +1346,7 @@ async function loadStats() {
       const resultBox = document.getElementById('studentImportResult');
       const button = document.getElementById('studentImportBtn');
       const file = fileInput?.files?.[0];
-      if (!file) { showToast('CSV file select karo', 'error'); return; }
+      if (!file) { showToast('Please select a CSV file', 'error'); return; }
       const selectedFilterBranch = document.getElementById('filterBranch')?.value || '';
       const branchCode = selectedFilterBranch || getAssignedBranchCode() || '';
       const branch = branchCache.find(b => b.code === branchCode);

@@ -272,10 +272,12 @@ class InvoiceCreate(BaseModel):
     student_id: str
     academic_year_id: Optional[str] = None
     fee_structure_id: Optional[str] = None
+    selected_fee_heads: Optional[List[str]] = None
     items: List[dict] = []
     due_date: Optional[datetime] = None
     discount_amount: float = 0
     remarks: Optional[str] = None
+    tuition_months: List[str] = []
     include_transport: bool = False
     transport_months: List[str] = []
     concession_name: Optional[str] = None
@@ -294,17 +296,21 @@ def _generate_invoice_no() -> str:
     return f"INV-{str(year)[-2:]}{count:02d}"
 
 
-def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str], concession_percent: float = 0):
+def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str], tuition_months: Optional[List[str]] = None, selected_fee_heads: Optional[List[str]] = None, concession_percent: float = 0):
     built_items = list(items or [])
     concession_percent = concession_percent or 0
-    selected_months = transport_months or []
-    tuition_month_count = len(selected_months) if selected_months else 1
+    selected_tuition_months = tuition_months or []
+    selected_transport_months = transport_months or []
+    selected_fee_heads_set = set(selected_fee_heads) if selected_fee_heads is not None else None
+    tuition_month_count = len(selected_tuition_months) if selected_tuition_months else 1
 
     if fee_structure_id:
         structure = FeeStructure.objects.get(id=fee_structure_id)
         for item in structure.items:
             is_tuition_like = bool(item.category_name and "tuition" in item.category_name.lower())
-            months_label = f" ({', '.join(selected_months)})" if is_tuition_like and selected_months else ""
+            if not is_tuition_like and selected_fee_heads_set is not None and item.category_name not in selected_fee_heads_set:
+                continue
+            months_label = f" ({', '.join(selected_tuition_months)})" if is_tuition_like and selected_tuition_months else ""
             base_amount = float(item.amount or 0)
             if is_tuition_like:
                 base_amount = base_amount * tuition_month_count
@@ -320,10 +326,10 @@ def _build_invoice_items(student: Student, fee_structure_id: Optional[str], item
                 "concession_percent": concession_percent if discount_amount else 0,
                 "discount_amount": discount_amount,
                 "amount": amount,
-                "months": selected_months if is_tuition_like and selected_months else []
+                "months": selected_tuition_months if is_tuition_like and selected_tuition_months else []
             })
     elif student.classroom and getattr(student.classroom, "class_fee", 0):
-        months_label = f" ({', '.join(selected_months)})" if selected_months else ""
+        months_label = f" ({', '.join(selected_tuition_months)})" if selected_tuition_months else ""
         base_amount = float(student.classroom.class_fee or 0) * tuition_month_count
         discount_amount = round(base_amount * concession_percent / 100, 2) if concession_percent > 0 else 0
         built_items.append({
@@ -333,24 +339,24 @@ def _build_invoice_items(student: Student, fee_structure_id: Optional[str], item
             "concession_percent": concession_percent if discount_amount else 0,
             "discount_amount": discount_amount,
             "amount": max(0, base_amount - discount_amount),
-            "months": selected_months if selected_months else []
+            "months": selected_tuition_months if selected_tuition_months else []
         })
 
-    selected_months = transport_months or (student.transport_months or [])
-    if include_transport and student.transport_route and selected_months:
+    selected_transport_months = selected_transport_months or (student.transport_months or [])
+    if include_transport and student.transport_route and selected_transport_months:
         route = TransportRoute.objects(id=student.transport_route).first()
         monthly_fee = route.fee_per_month if route else (student.transport_fee_per_month or 0)
         if monthly_fee > 0:
             built_items.append({
                 "category": "Transport Fee",
-                "description": f"Transport Fee ({', '.join(selected_months)})",
-                "amount": monthly_fee * len(selected_months),
+                "description": f"Transport Fee ({', '.join(selected_transport_months)})",
+                "amount": monthly_fee * len(selected_transport_months),
                 "monthly_fee": monthly_fee,
-                "months": selected_months,
+                "months": selected_transport_months,
                 "route_name": route.route_name if route else student.transport_route_name
             })
 
-    return built_items, selected_months
+    return built_items, selected_tuition_months, selected_transport_months
 
 
 def _get_invoice_recipient_email(invoice: FeeInvoice, recipient_type: str, fallback_email: Optional[str] = None) -> str:
@@ -552,12 +558,14 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
     ay = _resolve_academic_year(school, data.academic_year_id or (str(student.academic_year.id) if student.academic_year else None))
     
     invoice_no = _generate_invoice_no()
-    items, selected_months = _build_invoice_items(
+    items, selected_tuition_months, selected_transport_months = _build_invoice_items(
         student,
         data.fee_structure_id,
         data.items,
         data.include_transport,
         data.transport_months,
+        data.tuition_months,
+        data.selected_fee_heads,
         data.concession_percent
     )
     if not items:
@@ -570,7 +578,8 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
         invoice_no=invoice_no,
         due_date=data.due_date,
         items=items,
-        transport_months=selected_months,
+        tuition_months=selected_tuition_months,
+        transport_months=selected_transport_months,
         transport_route=student.transport_route_name,
         concession_name=data.concession_name,
         concession_percent=data.concession_percent or 0,
@@ -609,12 +618,14 @@ async def update_invoice(invoice_id: str, data: InvoiceCreate, current_user: Use
         raise HTTPException(403, "Access denied for this branch")
 
     ay = _resolve_academic_year(invoice.school, data.academic_year_id or (str(student.academic_year.id) if student.academic_year else None))
-    items, selected_months = _build_invoice_items(
+    items, selected_tuition_months, selected_transport_months = _build_invoice_items(
         student,
         data.fee_structure_id,
         data.items,
         data.include_transport,
         data.transport_months,
+        data.tuition_months,
+        data.selected_fee_heads,
         data.concession_percent
     )
     if not items:
@@ -631,7 +642,8 @@ async def update_invoice(invoice_id: str, data: InvoiceCreate, current_user: Use
         academic_year=ay,
         due_date=data.due_date,
         items=items,
-        transport_months=selected_months,
+        tuition_months=selected_tuition_months,
+        transport_months=selected_transport_months,
         transport_route=student.transport_route_name,
         concession_name=data.concession_name,
         concession_percent=data.concession_percent or 0,
@@ -716,6 +728,7 @@ async def list_invoices(
         "section_name": inv.student.section.name if inv.student and inv.student.section else None,
         "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
         "due_date": inv.due_date.isoformat() if inv.due_date else None,
+        "items": inv.items,
         "gross_amount": inv.gross_amount,
         "discount_amount": inv.discount_amount,
         "concession_name": inv.concession_name,
@@ -751,6 +764,7 @@ async def get_invoice(invoice_id: str, current_user: User = Depends(get_current_
             "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
             "due_date": inv.due_date.isoformat() if inv.due_date else None,
             "items": inv.items,
+            "tuition_months": inv.tuition_months or [],
             "transport_months": inv.transport_months or [],
             "concession_name": inv.concession_name,
             "concession_percent": inv.concession_percent,

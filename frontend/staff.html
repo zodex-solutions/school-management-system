@@ -139,7 +139,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
             <input id="sf_create_login" type="checkbox" class="w-4 h-4 accent-blue-600" onchange="toggleStaffLoginFields()" />
             <span>
               <span id="sf_login_title" class="block font-semibold text-gray-900">Create / Link Login Account</span>
-              <span id="sf_login_hint" class="block text-xs text-gray-500 mt-0.5">Teacher/staff isi username aur password se login page par login karega.</span>
+              <span id="sf_login_hint" class="block text-xs text-gray-500 mt-0.5">The teacher or staff member will use this username and password on the login page.</span>
             </span>
           </label>
           <div id="sf_login_fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 hidden">
@@ -344,7 +344,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       document.getElementById('sf_login_pass').value = '';
       document.getElementById('sf_login_pass').placeholder = 'New password';
       document.getElementById('sf_login_title').textContent = 'Create / Link Login Account';
-      document.getElementById('sf_login_hint').textContent = 'Teacher/staff isi username aur password se login page par login karega.';
+      document.getElementById('sf_login_hint').textContent = 'The teacher or staff member will use this username and password on the login page.';
       document.getElementById('sf_emptype').value = 'Permanent';
       toggleStaffLoginFields();
     }

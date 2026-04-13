@@ -135,7 +135,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
             <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-4">
               <div>
                 <h4 class="font-bold text-gray-900">Fee Dues Report</h4>
-                <p class="text-sm text-slate-500 mt-1">Class teacher ke follow-up ke liye class aur parent contact ke saath report.</p>
+                <p class="text-sm text-slate-500 mt-1">Class-wise report with parent contact details for class teacher follow-up.</p>
               </div>
               <div class="flex flex-col sm:flex-row gap-3">
                 <div class="min-w-[220px]">
@@ -270,23 +270,51 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
         <div><label class="lbl">Student *</label><select id="inv_student" class="finput" onchange="loadInvoiceStudentMeta()"><option value="">Select student</option></select></div>
         <div><label class="lbl">Concession</label><select id="inv_concession" class="finput" onchange="renderInvoiceEstimate()"></select></div>
         <div><label class="lbl">Fee Structure</label><select id="inv_structure" class="finput"><option value="">Select fee structure</option></select></div>
+        <div id="invAnnualHeadsWrap" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <label class="lbl mb-1">Annual Fee Heads</label>
+              <p class="text-xs text-slate-500">Select registration, annual exam, books, and notebook fees only once per academic year.</p>
+            </div>
+            <button type="button" onclick="selectAvailableAnnualHeads()" class="text-xs font-semibold text-blue-600 hover:underline">Select available</button>
+          </div>
+          <div id="invAnnualHeads" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700"></div>
+        </div>
+        <div>
+          <label class="lbl">Tuition Months</label>
+          <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-sm text-gray-700">
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Apr" />Apr</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="May" />May</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Jun" />Jun</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Jul" />Jul</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Aug" />Aug</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Sep" />Sep</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Oct" />Oct</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Nov" />Nov</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Dec" />Dec</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Jan" />Jan</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Feb" />Feb</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_tuition_month w-4 h-4 accent-blue-600" value="Mar" />Mar</label>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">The tuition amount will be multiplied by the selected months.</p>
+        </div>
         <label class="flex items-center gap-2"><input id="inv_transport_toggle" type="checkbox" class="w-4 h-4 accent-blue-600" /><span class="text-sm text-gray-700">Include transport fee from student route</span></label>
         <div id="inv_transport_meta" class="hidden bg-blue-50 rounded-xl p-4 text-sm text-blue-900"></div>
         <div>
           <label class="lbl">Transport Months</label>
           <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-sm text-gray-700">
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Apr" />Apr</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="May" />May</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Jun" />Jun</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Jul" />Jul</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Aug" />Aug</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Sep" />Sep</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Oct" />Oct</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Nov" />Nov</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Dec" />Dec</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Jan" />Jan</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Feb" />Feb</label>
-            <label class="flex items-center gap-2"><input type="checkbox" class="inv_month w-4 h-4 accent-blue-600" value="Mar" />Mar</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Apr" />Apr</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="May" />May</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Jun" />Jun</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Jul" />Jul</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Aug" />Aug</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Sep" />Sep</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Oct" />Oct</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Nov" />Nov</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Dec" />Dec</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Jan" />Jan</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Feb" />Feb</label>
+            <label class="flex items-center gap-2"><input type="checkbox" class="inv_transport_month w-4 h-4 accent-blue-600" value="Mar" />Mar</label>
           </div>
         </div>
         <div><label class="lbl">Due Date</label><input id="inv_due" type="date" class="finput"/></div>
@@ -307,7 +335,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
           <p class="text-sm font-semibold text-slate-800">After Create</p>
           <label class="flex items-center gap-2 text-sm text-slate-700"><input id="inv_send_parent" type="checkbox" class="w-4 h-4 accent-blue-600" checked />Send to parent email</label>
           <label class="flex items-center gap-2 text-sm text-slate-700"><input id="inv_send_student" type="checkbox" class="w-4 h-4 accent-blue-600" />Send to student email</label>
-          <p class="text-xs text-slate-500">Invoice PDF auto download ho jayega.</p>
+          <p class="text-xs text-slate-500">The invoice PDF will download automatically.</p>
         </div>
         </div>
         <div class="space-y-4">
@@ -376,6 +404,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     let feeStructures = [];
     let invoiceStudentMeta = null;
     let invoiceClassCache = [];
+    let invoiceBilledAnnualHeads = new Set();
     let paymentClassCache = [];
     let duesClassCache = [];
     let estimateClassCache = [];
@@ -609,7 +638,7 @@ function statCard(title, value, icon, color) {
     async function loadInvoiceStudentMeta() {
       const studId = document.getElementById('inv_student').value;
       invoiceStudentMeta = null;
-      document.querySelectorAll('.inv_month').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.inv_tuition_month, .inv_transport_month').forEach(cb => cb.checked = false);
       document.getElementById('inv_transport_toggle').checked = false;
       document.getElementById('inv_transport_meta').classList.add('hidden');
       if (!studId) { renderInvoiceEstimate(); return; }
@@ -619,12 +648,14 @@ function statCard(title, value, icon, color) {
         if (!s) return;
         invoiceStudentMeta = s;
         document.getElementById('inv_concession').value = '';
+        await loadBilledAnnualHeadsForInvoiceStudent();
         (s.transport_months || []).forEach(month => {
-          const box = document.querySelector(`.inv_month[value="${month}"]`);
+          const box = document.querySelector(`.inv_transport_month[value="${month}"]`);
           if (box) box.checked = true;
         });
         const matching = feeStructures.find(fs => fs.classroom === s.classroom_name);
         document.getElementById('inv_structure').value = matching?.id || '';
+        renderAnnualFeeHeadOptions();
         if (s.transport_route_name) {
           document.getElementById('inv_transport_toggle').checked = true;
           document.getElementById('inv_transport_meta').classList.remove('hidden');
@@ -657,11 +688,14 @@ function statCard(title, value, icon, color) {
       document.getElementById('inv_structure').value = '';
       document.getElementById('inv_transport_toggle').checked = false;
       document.getElementById('inv_transport_meta').classList.add('hidden');
-      document.querySelectorAll('.inv_month').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.inv_tuition_month, .inv_transport_month').forEach(cb => cb.checked = false);
       document.getElementById('inv_due').value = '';
       document.getElementById('inv_disc').value = '0';
       document.getElementById('inv_rem').value = '';
       document.getElementById('inv_concession').value = '';
+      invoiceBilledAnnualHeads = new Set();
+      document.getElementById('invAnnualHeadsWrap').classList.add('hidden');
+      document.getElementById('invAnnualHeads').innerHTML = '';
       document.getElementById('inv_send_parent').checked = true;
       document.getElementById('inv_send_student').checked = false;
       document.getElementById('invItems').innerHTML = `
@@ -702,14 +736,22 @@ function statCard(title, value, icon, color) {
         document.getElementById('inv_disc').value = inv.discount_amount || 0;
         document.getElementById('inv_rem').value = inv.remarks || '';
         document.getElementById('inv_transport_toggle').checked = Array.isArray(inv.items) && inv.items.some(item => String(item.category || '').toLowerCase().includes('transport'));
-        document.querySelectorAll('.inv_month').forEach(cb => cb.checked = Array.isArray(inv.transport_months) && inv.transport_months.includes(cb.value));
+        const savedTuitionMonths = Array.isArray(inv.tuition_months) && inv.tuition_months.length
+          ? inv.tuition_months
+          : (Array.isArray(inv.items) ? (inv.items.find(item => !String(item.category || '').toLowerCase().includes('transport') && Array.isArray(item.months) && item.months.length)?.months || []) : []);
+        document.querySelectorAll('.inv_tuition_month').forEach(cb => cb.checked = savedTuitionMonths.includes(cb.value));
+        document.querySelectorAll('.inv_transport_month').forEach(cb => cb.checked = Array.isArray(inv.transport_months) && inv.transport_months.includes(cb.value));
+        const invoiceStructureItems = (inv.items || []).filter(item => !isTransportHead(item.category));
         const matchingStructure = feeStructures.find(structure =>
-          Array.isArray(inv.items) &&
           Array.isArray(structure.items) &&
-          structure.items.length === inv.items.filter(item => !String(item.category || '').toLowerCase().includes('transport')).length &&
-          structure.items.every(item => inv.items.some(invItem => invItem.category === item.category))
+          structure.items.some(item => invoiceStructureItems.some(invItem => invItem.category === item.category))
         );
         document.getElementById('inv_structure').value = matchingStructure?.id || '';
+        renderAnnualFeeHeadOptions();
+        const selectedAnnualNames = invoiceStructureItems
+          .filter(item => !isTuitionHead(item.category) && matchingStructure?.items?.some(structItem => structItem.category === item.category))
+          .map(item => item.category);
+        document.querySelectorAll('.inv_annual_head').forEach(cb => cb.checked = selectedAnnualNames.includes(cb.value));
         const manualItems = (inv.items || []).filter(item => {
           const cat = String(item.category || '').toLowerCase();
           const structureMatch = matchingStructure?.items?.some(structItem => structItem.category === item.category);
@@ -763,6 +805,72 @@ function statCard(title, value, icon, color) {
       return feeStructures.find(structure => structure.id === structureId) || null;
     }
 
+    function isTuitionHead(category) {
+      return String(category || '').toLowerCase().includes('tuition');
+    }
+
+    function isTransportHead(category) {
+      return String(category || '').toLowerCase().includes('transport');
+    }
+
+    function getSelectedAnnualFeeHeads() {
+      return Array.from(document.querySelectorAll('.inv_annual_head:checked')).map(el => el.value);
+    }
+
+    function renderAnnualFeeHeadOptions() {
+      const wrap = document.getElementById('invAnnualHeadsWrap');
+      const container = document.getElementById('invAnnualHeads');
+      const structure = getSelectedFeeStructure();
+      const annualItems = (structure?.items || []).filter(item => !isTuitionHead(item.category));
+      if (!annualItems.length) {
+        wrap.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+      }
+      wrap.classList.remove('hidden');
+      container.innerHTML = annualItems.map(item => {
+        const name = item.category || 'Fee Item';
+        const alreadyBilled = invoiceBilledAnnualHeads.has(name);
+        return `<label class="flex items-start gap-2 rounded-lg border ${alreadyBilled ? 'border-slate-200 bg-white/60 text-slate-400' : 'border-slate-200 bg-white text-slate-700'} px-3 py-2">
+          <input type="checkbox" class="inv_annual_head mt-0.5 w-4 h-4 accent-blue-600" value="${name}" ${alreadyBilled ? 'disabled' : 'checked'} />
+          <span class="flex-1">
+            <span class="font-medium">${name}</span>
+            <span class="block text-xs ${alreadyBilled ? 'text-slate-400' : 'text-slate-500'}">${formatCurrency(item.amount || 0)}${alreadyBilled ? ' • Already billed this year' : ' • Annual'}</span>
+          </span>
+        </label>`;
+      }).join('');
+      document.querySelectorAll('.inv_annual_head').forEach(cb => cb.addEventListener('change', renderInvoiceEstimate));
+    }
+
+    function selectAvailableAnnualHeads() {
+      document.querySelectorAll('.inv_annual_head:not(:disabled)').forEach(cb => cb.checked = true);
+      renderInvoiceEstimate();
+    }
+
+    async function loadBilledAnnualHeadsForInvoiceStudent() {
+      invoiceBilledAnnualHeads = new Set();
+      const studId = document.getElementById('inv_student').value;
+      if (!schoolId || !studId) return;
+      try {
+        const academicYearId = await resolveFeeAcademicYearId();
+        const res = await FeesAPI.getInvoices({
+          school_id: schoolId,
+          student_id: studId,
+          academic_year_id: academicYearId || '',
+          per_page: 100
+        });
+        (res?.data || []).forEach(inv => {
+          if (editingInvoiceId && inv.id === editingInvoiceId) return;
+          (inv.items || []).forEach(item => {
+            const category = item.category || item.description || '';
+            if (category && !isTuitionHead(category) && !isTransportHead(category)) {
+              invoiceBilledAnnualHeads.add(category);
+            }
+          });
+        });
+      } catch (e) {}
+    }
+
     function getSelectedInvoiceConcession() {
       const option = document.getElementById('inv_concession')?.selectedOptions?.[0];
       return {
@@ -777,20 +885,23 @@ function statCard(title, value, icon, color) {
       const structure = getSelectedFeeStructure();
       const concession = getSelectedInvoiceConcession();
       const concessionPercent = concession.percent;
-      const selectedMonths = Array.from(document.querySelectorAll('.inv_month:checked')).map(el => el.value);
-      const tuitionMonthCount = selectedMonths.length || 1;
+      const tuitionMonths = Array.from(document.querySelectorAll('.inv_tuition_month:checked')).map(el => el.value);
+      const transportMonths = Array.from(document.querySelectorAll('.inv_transport_month:checked')).map(el => el.value);
+      const tuitionMonthCount = tuitionMonths.length || 1;
       const includeTransport = document.getElementById('inv_transport_toggle').checked;
       const manualDiscount = parseFloat(document.getElementById('inv_disc').value) || 0;
 
       if (structure && Array.isArray(structure.items) && structure.items.length) {
+        const selectedAnnualHeads = new Set(getSelectedAnnualFeeHeads());
         structure.items.forEach(item => {
-          const isTuitionLike = String(item.category || '').toLowerCase().includes('tuition');
+          const isTuitionLike = isTuitionHead(item.category);
+          if (!isTuitionLike && !selectedAnnualHeads.has(item.category)) return;
           const baseAmount = (parseFloat(item.amount) || 0) * (isTuitionLike ? tuitionMonthCount : 1);
           const concessionAmount = isTuitionLike ? (baseAmount * concessionPercent / 100) : 0;
           lines.push({
             label: item.category || 'Fee Item',
-            meta: isTuitionLike && selectedMonths.length
-              ? `${selectedMonths.join(', ')}${concessionAmount ? ` • ${concessionPercent}% concession applied` : ''}`
+            meta: isTuitionLike && tuitionMonths.length
+              ? `${tuitionMonths.join(', ')}${concessionAmount ? ` • ${concessionPercent}% concession applied` : ''}`
               : (concessionAmount ? `${concessionPercent}% concession applied` : 'Fee structure item'),
             amount: Math.max(0, baseAmount - concessionAmount),
             baseAmount,
@@ -802,8 +913,8 @@ function statCard(title, value, icon, color) {
         const concessionAmount = baseAmount * concessionPercent / 100;
         lines.push({
           label: 'Monthly Tuition Fee',
-          meta: selectedMonths.length
-            ? `${invoiceStudentMeta.classroom_name || 'Class'} monthly fee • ${selectedMonths.join(', ')}${concessionAmount ? ` • ${concessionPercent}% concession applied` : ''}`
+          meta: tuitionMonths.length
+            ? `${invoiceStudentMeta.classroom_name || 'Class'} monthly fee • ${tuitionMonths.join(', ')}${concessionAmount ? ` • ${concessionPercent}% concession applied` : ''}`
             : (concessionAmount ? `${concessionPercent}% concession applied` : `${invoiceStudentMeta.classroom_name || 'Class'} monthly fee`),
           amount: Math.max(0, baseAmount - concessionAmount),
           baseAmount,
@@ -811,14 +922,14 @@ function statCard(title, value, icon, color) {
         });
       }
 
-      if (includeTransport && selectedMonths.length) {
+      if (includeTransport && transportMonths.length) {
         const monthlyFee = parseFloat(invoiceStudentMeta.transport_fee_per_month) || 0;
         if (monthlyFee > 0) {
           lines.push({
             label: 'Transport Fee',
-            meta: `${invoiceStudentMeta.transport_route_name || 'Route'} • ${selectedMonths.join(', ')}`,
-            amount: monthlyFee * selectedMonths.length,
-            baseAmount: monthlyFee * selectedMonths.length,
+            meta: `${invoiceStudentMeta.transport_route_name || 'Route'} • ${transportMonths.join(', ')}`,
+            amount: monthlyFee * transportMonths.length,
+            baseAmount: monthlyFee * transportMonths.length,
             discountAmount: 0
           });
         }
@@ -836,7 +947,7 @@ function statCard(title, value, icon, color) {
 
       const gross = lines.reduce((sum, line) => sum + (line.amount || 0), 0);
       const net = Math.max(0, gross - manualDiscount);
-      return { lines, gross, net, manualDiscount, selectedMonths };
+      return { lines, gross, net, manualDiscount, tuitionMonths, transportMonths };
     }
 
     function renderInvoiceEstimate() {
@@ -845,14 +956,16 @@ function statCard(title, value, icon, color) {
         return;
       }
       const estimate = buildInvoiceEstimate();
-      const selectedMonths = estimate?.selectedMonths || [];
+      const tuitionMonths = estimate?.tuitionMonths || [];
+      const transportMonths = estimate?.transportMonths || [];
       document.getElementById('invStudentSummary').innerHTML = `
         <div class="space-y-2">
           <div class="flex justify-between gap-3"><span class="text-slate-500">Student</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.full_name || '-'}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Admission No</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.admission_no || '-'}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Class / Branch</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.classroom_name || '-'}${invoiceStudentMeta.branch_name ? ` • ${invoiceStudentMeta.branch_name}` : ''}</span></div>
           <div class="flex justify-between gap-3"><span class="text-slate-500">Concession</span><span class="font-semibold text-emerald-700 text-right">${getSelectedInvoiceConcession().name || 'No concession'}</span></div>
-          <div class="flex justify-between gap-3"><span class="text-slate-500">Transport</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.transport_route_name || 'Not assigned'}${selectedMonths.length ? ` • ${selectedMonths.length} month(s)` : ''}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Tuition Months</span><span class="font-semibold text-slate-900 text-right">${tuitionMonths.length ? `${tuitionMonths.length} month(s)` : '1 month'}</span></div>
+          <div class="flex justify-between gap-3"><span class="text-slate-500">Transport</span><span class="font-semibold text-slate-900 text-right">${invoiceStudentMeta.transport_route_name || 'Not assigned'}${transportMonths.length ? ` • ${transportMonths.length} month(s)` : ''}</span></div>
         </div>`;
       const lines = estimate?.lines || [];
       document.getElementById('invEstimateLines').innerHTML = lines.length
@@ -1297,8 +1410,10 @@ function statCard(title, value, icon, color) {
       if (!studId) { showToast('Select student', 'error'); return; }
       const items = getInvoiceManualItems();
       const feeStructureId = document.getElementById('inv_structure').value || null;
+      const selectedFeeHeads = getSelectedAnnualFeeHeads();
       const includeTransport = document.getElementById('inv_transport_toggle').checked;
-      const transportMonths = Array.from(document.querySelectorAll('.inv_month:checked')).map(el => el.value);
+      const tuitionMonths = Array.from(document.querySelectorAll('.inv_tuition_month:checked')).map(el => el.value);
+      const transportMonths = Array.from(document.querySelectorAll('.inv_transport_month:checked')).map(el => el.value);
       const concession = getSelectedInvoiceConcession();
       if (!items.length && !feeStructureId && !includeTransport) { showToast('Choose fee structure, add fee item, or include transport fee', 'error'); return; }
       try {
@@ -1307,6 +1422,8 @@ function statCard(title, value, icon, color) {
           student_id: studId,
           academic_year_id: resolvedAyId,
           fee_structure_id: feeStructureId,
+          selected_fee_heads: selectedFeeHeads,
+          tuition_months: tuitionMonths,
           include_transport: includeTransport,
           transport_months: transportMonths,
           concession_name: concession.name || null,
@@ -1730,10 +1847,13 @@ function statCard(title, value, icon, color) {
     document.getElementById('invStatus').addEventListener('change', loadInvoices);
     document.getElementById('invClassFilter').addEventListener('change', loadInvoices);
     document.getElementById('invFatherFilter').addEventListener('input', debounce(() => loadInvoices()));
-    document.getElementById('inv_structure').addEventListener('change', renderInvoiceEstimate);
+    document.getElementById('inv_structure').addEventListener('change', () => {
+      renderAnnualFeeHeadOptions();
+      renderInvoiceEstimate();
+    });
     document.getElementById('inv_transport_toggle').addEventListener('change', renderInvoiceEstimate);
     document.getElementById('inv_disc').addEventListener('input', renderInvoiceEstimate);
-    document.querySelectorAll('.inv_month').forEach(cb => cb.addEventListener('change', renderInvoiceEstimate));
+    document.querySelectorAll('.inv_tuition_month, .inv_transport_month').forEach(cb => cb.addEventListener('change', renderInvoiceEstimate));
     document.querySelectorAll('.inv-desc, .inv-amt').forEach(el => el.addEventListener('input', renderInvoiceEstimate));
     document.getElementById('inv_concession').innerHTML = invoiceConcessionOptions.map(option => `<option value="${option.label === 'Select' ? '' : option.label}" data-percent="${option.percent}">${option.label}</option>`).join('');
     document.getElementById('est_concession').innerHTML = invoiceConcessionOptions.map(option => `<option value="${option.label === 'Select' ? '' : option.label}" data-percent="${option.percent}">${option.label}</option>`).join('');

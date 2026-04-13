@@ -68,6 +68,7 @@ class FeeInvoice(Document):
     due_date = DateTimeField()
     
     items = ListField(DictField())              # [{category, description, amount}]
+    tuition_months = ListField(StringField())
     transport_months = ListField(StringField())
     transport_route = StringField()
     concession_name = StringField()
