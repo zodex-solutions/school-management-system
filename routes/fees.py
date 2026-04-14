@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 import os
 import smtplib
@@ -28,6 +28,7 @@ ALLOWED_FEE_STRUCTURE_CATEGORIES = [
     {"name": "Tuition Fee Mly", "code": "TUI"},
     {"name": "Books Fee", "code": "BOOK"},
     {"name": "Note Book Fee", "code": "NOTE"},
+    {"name": "Dairy Fee", "code": "DAIRY"},
 ]
 YEARLY_TUITION_LABEL = "Tuition Fee Yearly Upto 30th April 2027"
 
@@ -39,6 +40,7 @@ ALLOWED_CATEGORY_ALIASES = {
     "books fee": "BOOK",
     "note book fee": "NOTE",
     "notebook fee": "NOTE",
+    "dairy fee": "DAIRY",
 }
 
 
@@ -50,7 +52,7 @@ def _normalize_fee_category(name: str, code: str):
     if not allowed:
         raise HTTPException(
             status_code=400,
-            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Tuition Fee Mly, Books Fee, Note Book Fee",
+            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Tuition Fee Mly, Books Fee, Note Book Fee, Dairy Fee",
         )
     return allowed["name"], allowed["code"]
 
@@ -75,7 +77,7 @@ def _build_fee_breakdown(items: List) -> dict:
             code = matched["code"] if matched else ""
         if code in breakdown:
             breakdown[code] = float(getattr(entry, "amount", 0) or 0)
-    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + breakdown["BOOK"] + breakdown["NOTE"] + (breakdown["TUI"] * 12)
+    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + breakdown["BOOK"] + breakdown["NOTE"] + breakdown["DAIRY"] + (breakdown["TUI"] * 12)
     return breakdown
 
 
@@ -140,7 +142,7 @@ class FeeStructureCreate(BaseModel):
 def _build_fee_structure_items(items: List[dict]):
     from models.fees import FeeStructureItem
 
-    fee_items = []
+    fee_items_by_code = {}
     for item in items:
         cat = FeeCategory.objects.get(id=item['category_id'])
         if not _is_allowed_fee_category(cat):
@@ -148,8 +150,19 @@ def _build_fee_structure_items(items: List[dict]):
                 status_code=400,
                 detail=f"{cat.name} is not allowed in fee structure. Use only the approved fee fields."
             )
-        fee_items.append(FeeStructureItem(category=cat, category_name=cat.name, amount=item['amount']))
-    return fee_items
+        code = (cat.code or cat.name or str(cat.id)).strip().upper()
+        fee_items_by_code[code] = FeeStructureItem(category=cat, category_name=cat.name, amount=item['amount'])
+    return list(fee_items_by_code.values())
+
+
+def _fee_structure_signature(items: List) -> tuple:
+    return tuple(sorted(
+        (
+            (getattr(getattr(item, "category", None), "code", "") or getattr(item, "category_name", "") or "").strip().upper(),
+            round(float(getattr(item, "amount", 0) or 0), 2)
+        )
+        for item in items or []
+    ))
 
 
 def _resolve_academic_year(school: School, academic_year_id: Optional[str] = None) -> AcademicYear:
@@ -182,6 +195,22 @@ async def create_fee_structure(data: FeeStructureCreate, current_user: User = De
     ay = _resolve_academic_year(school, data.academic_year_id)
     classroom = ClassRoom.objects.get(id=data.classroom_id)
     
+    fee_items = _build_fee_structure_items(data.items)
+    incoming_signature = _fee_structure_signature(fee_items)
+    existing_structure = FeeStructure.objects(
+        school=school,
+        academic_year=ay,
+        classroom=classroom,
+        name=data.name,
+        is_active=True
+    ).first()
+    if existing_structure and _fee_structure_signature(existing_structure.items) == incoming_signature:
+        return success_response({
+            "id": str(existing_structure.id),
+            "total_amount": existing_structure.total_amount,
+            "fee_breakdown": _build_fee_breakdown(existing_structure.items)
+        }, "Fee structure already exists")
+
     fs = FeeStructure(
         school=school, academic_year=ay, classroom=classroom,
         name=data.name, installments=data.installments,
@@ -189,7 +218,7 @@ async def create_fee_structure(data: FeeStructureCreate, current_user: User = De
         grace_days=data.grace_days
     )
 
-    fs.items = _build_fee_structure_items(data.items)
+    fs.items = fee_items
     fs.total_amount = _build_fee_breakdown(fs.items)["TUIY"]
     fs.save()
     return success_response({"id": str(fs.id), "total_amount": fs.total_amount, "fee_breakdown": _build_fee_breakdown(fs.items)}, "Fee structure created")
@@ -216,6 +245,7 @@ async def list_fee_structures(
         "id": str(f.id),
         "name": f.name,
         "classroom": f.classroom.name if f.classroom else None,
+        "classroom_id": str(f.classroom.id) if f.classroom else None,
         "total_amount": f.total_amount,
         "installments": f.installments,
         "late_fee_per_day": f.late_fee_per_day,
@@ -297,7 +327,22 @@ def _generate_invoice_no() -> str:
 
 
 def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str], tuition_months: Optional[List[str]] = None, selected_fee_heads: Optional[List[str]] = None, concession_percent: float = 0):
-    built_items = list(items or [])
+    built_items = []
+    manual_items_by_category = {}
+    for item in items or []:
+        category = (item.get("category") or item.get("description") or "").strip()
+        if not category:
+            continue
+        amount = float(item.get("amount") or 0)
+        if amount <= 0:
+            continue
+        manual_items_by_category[category.lower()] = {
+            **item,
+            "category": category,
+            "description": (item.get("description") or category).strip(),
+            "amount": amount
+        }
+    built_items.extend(manual_items_by_category.values())
     concession_percent = concession_percent or 0
     selected_tuition_months = tuition_months or []
     selected_transport_months = transport_months or []
@@ -357,6 +402,67 @@ def _build_invoice_items(student: Student, fee_structure_id: Optional[str], item
             })
 
     return built_items, selected_tuition_months, selected_transport_months
+
+
+def _normalize_invoice_items_for_compare(items: List[dict]) -> tuple:
+    normalized = []
+    for item in items or []:
+        normalized.append((
+            (item.get("category") or "").strip().lower(),
+            (item.get("description") or "").strip().lower(),
+            round(float(item.get("amount") or 0), 2),
+            tuple(item.get("months") or []),
+        ))
+    return tuple(sorted(normalized))
+
+
+def _find_recent_duplicate_invoice(school: School, student: Student, ay: AcademicYear, items: List[dict], due_date, discount_amount: float, net: float):
+    cutoff = datetime.utcnow() - timedelta(seconds=30)
+    incoming_items = _normalize_invoice_items_for_compare(items)
+    incoming_due_date = due_date.date().isoformat() if due_date else ""
+    for invoice in FeeInvoice.objects(
+        school=school,
+        student=student,
+        academic_year=ay,
+        status__ne="Cancelled",
+        created_at__gte=cutoff
+    ).order_by("-created_at"):
+        invoice_due_date = invoice.due_date.date().isoformat() if invoice.due_date else ""
+        if invoice_due_date != incoming_due_date:
+            continue
+        if round(float(invoice.discount_amount or 0), 2) != round(float(discount_amount or 0), 2):
+            continue
+        if round(float(invoice.net_amount or 0), 2) != round(float(net or 0), 2):
+            continue
+        if _normalize_invoice_items_for_compare(invoice.items) == incoming_items:
+            return invoice
+    return None
+
+
+def _student_invoice_payload(student: Optional[Student]) -> dict:
+    if not student:
+        return {}
+    classroom = student.classroom
+    section = student.section
+    return {
+        "id": str(student.id),
+        "full_name": student.full_name,
+        "admission_no": student.admission_no,
+        "father_name": student.parent_info.father_name if student.parent_info else None,
+        "classroom_id": str(classroom.id) if classroom else None,
+        "classroom_name": classroom.name if classroom else None,
+        "class_fee": classroom.class_fee if classroom else 0,
+        "section_id": str(section.id) if section else None,
+        "section_name": section.name if section else None,
+        "branch_code": student.branch_code,
+        "branch_name": student.branch_name,
+        "academic_year_id": str(student.academic_year.id) if student.academic_year else None,
+        "transport_route": student.transport_route,
+        "transport_route_id": student.transport_route,
+        "transport_route_name": student.transport_route_name,
+        "transport_fee_per_month": student.transport_fee_per_month,
+        "transport_months": student.transport_months or [],
+    }
 
 
 def _get_invoice_recipient_email(invoice: FeeInvoice, recipient_type: str, fallback_email: Optional[str] = None) -> str:
@@ -572,6 +678,17 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
         raise HTTPException(400, "Add at least one fee item or select a fee structure")
     gross = sum(item['amount'] for item in items)
     net = gross - data.discount_amount
+    duplicate_invoice = _find_recent_duplicate_invoice(school, student, ay, items, data.due_date, data.discount_amount, net)
+    if duplicate_invoice:
+        return success_response({
+            "id": str(duplicate_invoice.id),
+            "invoice_no": duplicate_invoice.invoice_no,
+            "net_amount": duplicate_invoice.net_amount,
+            "gross_amount": duplicate_invoice.gross_amount,
+            "items": duplicate_invoice.items,
+            "concession_name": duplicate_invoice.concession_name,
+            "concession_percent": duplicate_invoice.concession_percent
+        }, "Invoice already exists")
     
     invoice = FeeInvoice(
         school=school, student=student, academic_year=ay,
@@ -678,6 +795,7 @@ async def list_invoices(
     classroom_id: Optional[str] = None,
     status: Optional[str] = None,
     father_name: Optional[str] = None,
+    include_items: bool = Query(True),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user)
@@ -716,28 +834,36 @@ async def list_invoices(
         query = query.filter(student__in=students)
     
     total = query.count()
-    invoices = query.order_by('-created_at').skip((page - 1) * per_page).limit(per_page)
+    invoices = query.order_by('-created_at').skip((page - 1) * per_page).limit(per_page).select_related(max_depth=2)
     
-    result = [{
-        "id": str(inv.id),
-        "invoice_no": inv.invoice_no,
-        "student_name": inv.student.full_name if inv.student else None,
-        "student_id": str(inv.student.id) if inv.student else None,
-        "father_name": inv.student.parent_info.father_name if inv.student and inv.student.parent_info else None,
-        "classroom_name": inv.student.classroom.name if inv.student and inv.student.classroom else None,
-        "section_name": inv.student.section.name if inv.student and inv.student.section else None,
-        "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
-        "due_date": inv.due_date.isoformat() if inv.due_date else None,
-        "items": inv.items,
-        "gross_amount": inv.gross_amount,
-        "discount_amount": inv.discount_amount,
-        "concession_name": inv.concession_name,
-        "concession_percent": inv.concession_percent,
-        "net_amount": inv.net_amount,
-        "paid_amount": inv.paid_amount,
-        "balance_amount": inv.balance_amount,
-        "status": inv.status
-    } for inv in invoices]
+    result = []
+    for inv in invoices:
+        row = {
+            "id": str(inv.id),
+            "invoice_no": inv.invoice_no,
+            "academic_year_id": str(inv.academic_year.id) if inv.academic_year else None,
+            "student_name": inv.student.full_name if inv.student else None,
+            "student_id": str(inv.student.id) if inv.student else None,
+            "student": _student_invoice_payload(inv.student),
+            "father_name": inv.student.parent_info.father_name if inv.student and inv.student.parent_info else None,
+            "classroom_id": str(inv.student.classroom.id) if inv.student and inv.student.classroom else None,
+            "classroom_name": inv.student.classroom.name if inv.student and inv.student.classroom else None,
+            "section_id": str(inv.student.section.id) if inv.student and inv.student.section else None,
+            "section_name": inv.student.section.name if inv.student and inv.student.section else None,
+            "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
+            "due_date": inv.due_date.isoformat() if inv.due_date else None,
+            "gross_amount": inv.gross_amount,
+            "discount_amount": inv.discount_amount,
+            "concession_name": inv.concession_name,
+            "concession_percent": inv.concession_percent,
+            "net_amount": inv.net_amount,
+            "paid_amount": inv.paid_amount,
+            "balance_amount": inv.balance_amount,
+            "status": inv.status
+        }
+        if include_items:
+            row["items"] = inv.items
+        result.append(row)
     
     return success_response(result, meta={
         "total": total, "page": page, "per_page": per_page,
@@ -759,8 +885,10 @@ async def get_invoice(invoice_id: str, current_user: User = Depends(get_current_
         data = {
             "id": str(inv.id),
             "invoice_no": inv.invoice_no,
+            "academic_year_id": str(inv.academic_year.id) if inv.academic_year else None,
             "student_name": inv.student.full_name if inv.student else None,
             "student_id": str(inv.student.id) if inv.student else None,
+            "student": _student_invoice_payload(inv.student),
             "invoice_date": inv.invoice_date.isoformat() if inv.invoice_date else None,
             "due_date": inv.due_date.isoformat() if inv.due_date else None,
             "items": inv.items,

@@ -453,7 +453,7 @@ async def list_students(
         )
     
     total = query.count()
-    students = query.order_by('first_name').skip((page - 1) * per_page).limit(per_page)
+    students = query.order_by('first_name').skip((page - 1) * per_page).limit(per_page).select_related(max_depth=2)
     
     result = []
     for s in students:
@@ -466,7 +466,11 @@ async def list_students(
             "last_name": s.last_name,
             "gender": s.gender,
             "date_of_birth": s.date_of_birth.isoformat() if s.date_of_birth else None,
+            "classroom_id": str(s.classroom.id) if s.classroom else None,
+            "classroom_name": s.classroom.name if s.classroom else None,
             "classroom": s.classroom.name if s.classroom else None,
+            "section_id": str(s.section.id) if s.section else None,
+            "section_name": s.section.name if s.section else None,
             "section": s.section.name if s.section else None,
             "branch_name": s.branch_name,
             "admission_status": s.admission_status,

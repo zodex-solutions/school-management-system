@@ -25,6 +25,13 @@ const Auth = {
 
 // ─── HTTP Client ──────────────────────────────────────────────────────────────
 const API = {
+  _cache: new Map(),
+  _pending: new Map(),
+  _cacheTtlMs: 12000,
+  clearCache() {
+    this._cache.clear();
+    this._pending.clear();
+  },
   async request(method, endpoint, data = null, params = null) {
     let urlStr;
     if (endpoint.startsWith('http') || endpoint.includes('?')) {
@@ -42,27 +49,43 @@ const API = {
     const token = Auth.getToken();
     if (token) options.headers['Authorization'] = `Bearer ${token}`;
     if (data !== null && data !== undefined) options.body = JSON.stringify(data);
+    const isGet = method === 'GET';
+    const cacheKey = isGet ? urlStr : '';
+    if (isGet) {
+      const cached = API._cache.get(cacheKey);
+      if (cached && Date.now() - cached.at < API._cacheTtlMs) return cached.value;
+      const pending = API._pending.get(cacheKey);
+      if (pending) return pending;
+    } else {
+      API.clearCache();
+    }
     try {
-      const res = await fetch(urlStr, options);
-      if (res.status === 401) {
-        Auth.clearAuth();
-        if (!location.pathname.endsWith('login.html')) location.href = '/login';
-        return null;
-      }
-      const json = await res.json();
-      if (!res.ok) {
-        let detail = json.detail || json.message || `HTTP ${res.status}`;
-        if (Array.isArray(detail)) {
-          detail = detail.map(item => item?.msg || JSON.stringify(item)).join(', ');
-        } else if (typeof detail === 'object' && detail !== null) {
-          detail = JSON.stringify(detail);
+      const requestPromise = fetch(urlStr, options).then(async (res) => {
+        if (res.status === 401) {
+          Auth.clearAuth();
+          if (!location.pathname.endsWith('login.html')) location.href = '/login';
+          return null;
         }
-        throw new Error(detail);
-      }
-      return json;
+        const json = await res.json();
+        if (!res.ok) {
+          let detail = json.detail || json.message || `HTTP ${res.status}`;
+          if (Array.isArray(detail)) {
+            detail = detail.map(item => item?.msg || JSON.stringify(item)).join(', ');
+          } else if (typeof detail === 'object' && detail !== null) {
+            detail = JSON.stringify(detail);
+          }
+          throw new Error(detail);
+        }
+        if (isGet) API._cache.set(cacheKey, { at: Date.now(), value: json });
+        return json;
+      });
+      if (isGet) API._pending.set(cacheKey, requestPromise);
+      return await requestPromise;
     } catch (e) {
       if (e.message === 'Failed to fetch') throw new Error('Unable to connect to the server. Start the backend with: uvicorn main:app --reload');
       throw e;
+    } finally {
+      if (isGet) API._pending.delete(cacheKey);
     }
   },
   get:    (ep, p) => API.request('GET',    ep, null, p),
@@ -78,6 +101,7 @@ const API = {
       body: formData
     });
     if (!res.ok) { const j = await res.json(); throw new Error(j.detail || j.message || 'Upload failed'); }
+    API.clearCache();
     return res.json();
   }
 };

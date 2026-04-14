@@ -161,8 +161,11 @@ class Student(Document):
             'academic_year',
             'classroom',
             'section',
+            'branch_code',
             'admission_status',
-            ('first_name', 'last_name')
+            ('first_name', 'last_name'),
+            ('school', 'academic_year', 'classroom', 'section', 'admission_status'),
+            ('school', 'academic_year', 'branch_code', 'admission_status')
         ]
     }
 

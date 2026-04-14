@@ -235,6 +235,111 @@ class _WebPortalScreenState extends State<WebPortalScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
 
+  static const String _dairyFeeHeadScript = r'''
+(() => {
+  const headLabel = 'Dairy Fee';
+  const marker = 'data-schoolerdesk-dairy-fee';
+
+  function clean(text) {
+    return (text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function hasDairyFee(root) {
+    return Array.from(root.querySelectorAll('*')).some((element) => {
+      return clean(element.textContent) === headLabel ||
+        element.getAttribute(marker) === 'true';
+    });
+  }
+
+  function rowForLabel(label) {
+    const labelElement = Array.from(document.querySelectorAll('body *')).find(
+      (element) => clean(element.textContent) === label,
+    );
+
+    if (!labelElement) {
+      return null;
+    }
+
+    let row = labelElement;
+    for (let depth = 0; depth < 8 && row; depth += 1) {
+      if (row.querySelector && row.querySelector('input, textarea')) {
+        return row;
+      }
+      row = row.parentElement;
+    }
+
+    return null;
+  }
+
+  function updateLabel(row) {
+    const textNodes = Array.from(row.querySelectorAll('*')).filter((element) => {
+      const tagName = element.tagName;
+      return clean(element.textContent) &&
+        element.children.length === 0 &&
+        tagName !== 'INPUT' &&
+        tagName !== 'TEXTAREA' &&
+        tagName !== 'SELECT' &&
+        tagName !== 'OPTION';
+    });
+    const target = textNodes.find((element) => /fee/i.test(clean(element.textContent))) ||
+      textNodes[0];
+
+    if (target) {
+      target.textContent = headLabel;
+    }
+  }
+
+  function updateAmountFields(row) {
+    row.querySelectorAll('input, textarea').forEach((field) => {
+      field.value = '';
+      field.placeholder = field.placeholder || 'Amount ₹';
+
+      if (field.name) {
+        field.name = field.name.replace(/note[_\-\s]?book|book|tuition|annual/ig, 'dairy');
+      } else {
+        field.name = 'dairy_fee';
+      }
+
+      if (field.id) {
+        field.id = field.id.replace(/note[_\-\s]?book|book|tuition|annual/ig, 'dairy');
+      } else {
+        field.id = 'dairy_fee';
+      }
+
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      field.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
+
+  function addDairyFeeHead() {
+    const anchor = rowForLabel('Note Book Fee') ||
+      rowForLabel('Books Fee') ||
+      rowForLabel('Tuition Fee Monthly');
+
+    if (!anchor || !anchor.parentElement || hasDairyFee(anchor.parentElement)) {
+      return;
+    }
+
+    const row = anchor.cloneNode(true);
+    row.setAttribute(marker, 'true');
+    updateLabel(row);
+    updateAmountFields(row);
+    anchor.insertAdjacentElement('afterend', row);
+  }
+
+  if (!window.__schoolerdeskDairyFeeObserver) {
+    window.__schoolerdeskDairyFeeObserver = true;
+    const observer = new MutationObserver(addDairyFeeHead);
+    observer.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  addDairyFeeHead();
+})();
+''';
+
   @override
   void initState() {
     super.initState();
@@ -255,10 +360,15 @@ class _WebPortalScreenState extends State<WebPortalScreen> {
                 _isLoading = false;
               });
             }
+            unawaited(_installDairyFeeHeadPatch());
           },
         ),
       )
       ..loadRequest(Uri.parse(widget.url));
+  }
+
+  Future<void> _installDairyFeeHeadPatch() async {
+    await _controller.runJavaScript(_dairyFeeHeadScript);
   }
 
   @override

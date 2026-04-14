@@ -42,7 +42,12 @@ class FeeStructure(Document):
     
     meta = {
         'collection': 'fee_structures',
-        'indexes': ['school', 'academic_year', 'classroom']
+        'indexes': [
+            'school',
+            'academic_year',
+            'classroom',
+            ('school', 'academic_year', 'classroom', 'is_active')
+        ]
     }
 
 
@@ -93,7 +98,16 @@ class FeeInvoice(Document):
     
     meta = {
         'collection': 'fee_invoices',
-        'indexes': ['invoice_no', 'student', 'school', 'status', 'academic_year']
+        'indexes': [
+            'invoice_no',
+            'student',
+            'school',
+            'status',
+            'academic_year',
+            ('school', 'academic_year', '-created_at'),
+            ('school', 'student', 'academic_year'),
+            ('school', 'status', 'academic_year')
+        ]
     }
 
 

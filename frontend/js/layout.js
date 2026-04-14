@@ -16,7 +16,7 @@ var NAV_GROUPS = [
     items: [
       { icon: 'users',      label: 'Students',      href: '/students',      module: 'students',      color: '#10b981' },
       { icon: 'user-tie',   label: 'Staff & HR',    href: '/staff',         module: 'staff',         color: '#f59e0b' },
-      { icon: 'graduation', label: 'Admissions',    href: '/admissions',    module: 'admissions',    color: '#f97316' },
+      { icon: 'graduation', label: 'Admissions',    href: 'https://rsmemorialpublicschool.com/admission-enquiry/',    module: 'admissions',    color: '#f97316' },
     ]
   },
   {
@@ -138,7 +138,14 @@ function renderSidebar(activeModule) {
       var rowBorder= isActive ? '#e0e7ff' : 'transparent';
 
       return `
-      <a href="${item.href}"
+      <a href="${
+          item.href.startsWith('http') 
+            ? item.href 
+            : (item.href + window.location.search)
+        }"
+        target="${
+          item.href.startsWith('http') ? '_blank' : '_self'
+        }"
         style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
         text-decoration:none;margin-bottom:4px;transition:all 0.2s;
         background:${rowBg};border:1px solid ${rowBorder}"
