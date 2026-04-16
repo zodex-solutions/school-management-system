@@ -1180,12 +1180,12 @@ async def upload_student_photo(
     except Student.DoesNotExist:
         raise HTTPException(404, "Student not found")
 
-
+from fastapi import Form
 @router.post("/{student_id}/upload-document")
 async def upload_student_document(
     student_id: str,
-    doc_type: str,
-    doc_number: Optional[str] = None,
+    doc_type: str = Form(...),   # ✅ FIX
+    doc_number: Optional[str] = Form(None),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):

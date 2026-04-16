@@ -783,6 +783,7 @@ async def delete_invoice(invoice_id: str, current_user: User = Depends(get_curre
     if (invoice.paid_amount or 0) > 0:
         raise HTTPException(400, "Paid invoice cannot be deleted")
     invoice.update(status="Cancelled", balance_amount=0)
+    invoice.delete()
     return success_response(message="Invoice deleted")
 
 
