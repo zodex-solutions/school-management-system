@@ -820,7 +820,7 @@ async function loadStats() {
       if (ayId) params.academic_year_id = ayId;
       const srch = document.getElementById('searchInput').value.trim();
       const stat = document.getElementById('filterStatus').value;
-      const branch = document.getElementById('filterBranch').value;
+      const branch = document.getElementById('filterBranch').value || selectedBranchCode;
       const cls = document.getElementById('filterClass').value;
       if (srch) params.search = srch;
       if (stat) params.admission_status = stat;
@@ -1396,7 +1396,9 @@ async function loadStats() {
     (async function initStudentPage() {
       currentSchoolId = await initializeSchoolContext() || currentSchoolId;
       updateStudentImportMeta();
-      loadStats(); loadClasses(); loadSchoolMeta(); loadAcademicYearMeta(); loadRoutes(); loadStudents();
+      await loadSchoolMeta();
+      await loadStats();
+      loadClasses(); loadAcademicYearMeta(); loadRoutes(); loadStudents();
     })();
 
     function statCard(title, value, icon, color) {

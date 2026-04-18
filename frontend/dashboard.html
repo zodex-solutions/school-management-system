@@ -176,6 +176,9 @@
           <div>
             <p style="font-size:.75rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Branch View</p>
             <p id="branchContextLabel" style="font-size:.9375rem;font-weight:700;color:#0f172a;margin-top:.2rem">All branches in logged-in school</p>
+            
+            <!-- My Code -->
+           <div id="branchButtons" class="flex flex-wrap gap-3 mt-2"></div>
           </div>
           <div style="min-width:240px">
             <select id="branchFilter" class="finput">
@@ -450,6 +453,7 @@
       try {
         const schoolRes = await SchoolAPI.get(schoolId);
         schoolBranches = schoolRes?.data?.branches || [];
+        renderBranchButtons();
         const filter = document.getElementById('branchFilter');
         const previous = selectedBranchCode;
         filter.innerHTML = '<option value="">All Branches</option>' +
@@ -571,7 +575,43 @@
     document.getElementById("icon-staff").innerHTML = getIcon("staff", 22);
   document.getElementById("icon-recent-students").innerHTML = getIcon("student", 18);
   document.getElementById("icon-empty-students").innerHTML = getIcon("student", 40);
-document.getElementById("icon-fee").innerHTML = getIcon("rupee", 22);  </script>
+document.getElementById("icon-fee").innerHTML = getIcon("rupee", 22);  
+
+function renderBranchButtons() {
+  const container = document.getElementById('branchButtons');
+
+  let html = `
+    <button onclick="goToStudents('')" 
+      class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-indigo-100 text-sm font-semibold">
+      All
+    </button>
+  `;
+
+  schoolBranches.forEach(b => {
+    html += `
+      <button onclick="goToStudents('${b.code}')" 
+        class="px-4 py-2 rounded-xl bg-white border border-gray-200 
+               hover:bg-indigo-50 hover:border-indigo-300 
+               text-sm font-semibold transition shadow-sm">
+        ${b.name}
+      </button>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function goToStudents(branchCode) {
+  const url = new URL('/students', window.location.origin);
+
+  if (branchCode) {
+    url.searchParams.set('branch_code', branchCode);
+  }
+
+  window.location.href = url.pathname + url.search;
+}
+
+</script>
 
 </body>
 

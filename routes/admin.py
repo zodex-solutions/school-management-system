@@ -356,14 +356,18 @@ async def create_classroom(
 
 
 @router.get("/students", response_class=HTMLResponse, include_in_schema=False, name="admin_students")
-async def admin_students(request: Request, current_user: User = Depends(require_admin_user)):
+async def admin_students(request: Request, branch_code: str = None, current_user: User = Depends(require_admin_user)):
+    
+    query = Student.objects.order_by("-created_at")
+    if branch_code:
+       query = query.filter(branch__code=branch_code)
     return templates.TemplateResponse(
         "admin/students.html",
         admin_context(
             request,
             "Students",
             current_user=current_user,
-            students=Student.objects.order_by("-created_at"),
+            students=query,
             schools=School.objects.order_by("name"),
             years=AcademicYear.objects.order_by("-created_at"),
             classrooms=ClassRoom.objects.order_by("name"),
