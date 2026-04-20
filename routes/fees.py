@@ -5,8 +5,10 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 from io import BytesIO
 import os
+import re
 import smtplib
 from email.message import EmailMessage
+from mongoengine.errors import NotUniqueError
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
@@ -320,10 +322,15 @@ class InvoiceEmailRequest(BaseModel):
 
 
 def _generate_invoice_no() -> str:
-    year = datetime.now().year
-    start_of_year = datetime(year, 1, 1)
-    count = FeeInvoice.objects(invoice_date__gte=start_of_year).count() + 1
-    return f"INV-{str(year)[-2:]}{count:02d}"
+    year_suffix = str(datetime.now().year)[-2:]
+    prefix = f"INV-{year_suffix}"
+    pattern = f"^{re.escape(prefix)}\\d+$"
+    max_seq = 0
+    for invoice in FeeInvoice.objects(invoice_no__regex=pattern).only("invoice_no"):
+        suffix = (invoice.invoice_no or "")[len(prefix):]
+        if suffix.isdigit():
+            max_seq = max(max_seq, int(suffix))
+    return f"{prefix}{max_seq + 1:02d}"
 
 
 def _build_invoice_items(student: Student, fee_structure_id: Optional[str], items: List[dict], include_transport: bool, transport_months: List[str], tuition_months: Optional[List[str]] = None, selected_fee_heads: Optional[List[str]] = None, concession_percent: float = 0):
@@ -663,7 +670,6 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
         raise HTTPException(403, "Access denied for this branch")
     ay = _resolve_academic_year(school, data.academic_year_id or (str(student.academic_year.id) if student.academic_year else None))
     
-    invoice_no = _generate_invoice_no()
     items, selected_tuition_months, selected_transport_months = _build_invoice_items(
         student,
         data.fee_structure_id,
@@ -690,27 +696,36 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
             "concession_percent": duplicate_invoice.concession_percent
         }, "Invoice already exists")
     
-    invoice = FeeInvoice(
-        school=school, student=student, academic_year=ay,
-        invoice_no=invoice_no,
-        due_date=data.due_date,
-        items=items,
-        tuition_months=selected_tuition_months,
-        transport_months=selected_transport_months,
-        transport_route=student.transport_route_name,
-        concession_name=data.concession_name,
-        concession_percent=data.concession_percent or 0,
-        gross_amount=gross,
-        discount_amount=data.discount_amount,
-        net_amount=net,
-        balance_amount=net,
-        remarks=data.remarks,
-        generated_by=current_user.full_name
-    )
-    invoice.save()
+    invoice = None
+    for _ in range(5):
+        invoice_no = _generate_invoice_no()
+        invoice = FeeInvoice(
+            school=school, student=student, academic_year=ay,
+            invoice_no=invoice_no,
+            due_date=data.due_date,
+            items=items,
+            tuition_months=selected_tuition_months,
+            transport_months=selected_transport_months,
+            transport_route=student.transport_route_name,
+            concession_name=data.concession_name,
+            concession_percent=data.concession_percent or 0,
+            gross_amount=gross,
+            discount_amount=data.discount_amount,
+            net_amount=net,
+            balance_amount=net,
+            remarks=data.remarks,
+            generated_by=current_user.full_name
+        )
+        try:
+            invoice.save()
+            break
+        except NotUniqueError:
+            invoice = None
+    if not invoice:
+        raise HTTPException(409, "Could not generate a unique invoice number. Please try again.")
     return success_response({
         "id": str(invoice.id),
-        "invoice_no": invoice_no,
+        "invoice_no": invoice.invoice_no,
         "net_amount": net,
         "gross_amount": gross,
         "items": items,
