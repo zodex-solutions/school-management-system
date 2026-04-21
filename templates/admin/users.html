@@ -17,10 +17,16 @@
                 <select name="school_id">
                     <option value="">No school yet</option>
                     {% for school in schools %}
-                    <option value="{{ school.id }}">{{ school.name }}</option>
+                    <option value="{{ school.id }}">{{ school.name }}{% if school.branches %} ({{ school.branches|length }} branches){% endif %}</option>
                     {% endfor %}
                 </select>
             </label>
+            <div class="inline-note">
+                <strong>Branch-wise access</strong>
+                <span>Select the school first, then enter branch codes exactly as configured on the school record. Same user central panel se alag branches ke liye control diya ja sakta hai.</span>
+            </div>
+            <label>Primary branch code<input type="text" name="assigned_branch_code" placeholder="MAIN or NORTH"></label>
+            <label>Allowed branch codes<input type="text" name="allowed_branch_codes" placeholder="MAIN,NORTH"></label>
             <label>Role
                 <select name="role_id">
                     <option value="">No role selected</option>
@@ -46,6 +52,7 @@
                     <th>Username</th>
                     <th>Role</th>
                     <th>School</th>
+                    <th>Branch Scope</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,9 +62,18 @@
                     <td>{{ user.username }}</td>
                     <td>{{ user.role.name if user.role else ("Superadmin" if user.is_superadmin else "-") }}</td>
                     <td>{{ user.assigned_school.name if user.assigned_school else "-" }}</td>
+                    <td>
+                        {% if user.assigned_branch_code %}
+                        {{ user.assigned_branch_code }}{% if user.assigned_branch_name %} · {{ user.assigned_branch_name }}{% endif %}
+                        {% elif user.allowed_branch_codes %}
+                        {{ user.allowed_branch_codes|join(", ") }}
+                        {% else %}
+                        All branches
+                        {% endif %}
+                    </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="4">No users available.</td></tr>
+                <tr><td colspan="5">No users available.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

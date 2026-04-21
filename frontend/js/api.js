@@ -600,6 +600,13 @@ const ParentAPI = {
   adminGetParents:  (sid)  => API.get(`/parent/admin/parents?school_id=${sid}`),
 };
 
+const UserAdminAPI = {
+  list:   (sid)    => API.get('/auth/users', sid ? { school_id: sid } : {}),
+  create: (d)      => API.post('/auth/users', d),
+  update: (id, d)  => API.put(`/auth/users/${id}`, d),
+  roles:  ()       => API.get('/auth/roles'),
+};
+
 
 // ─── Convenience Aliases ─────────────────────────────────────────────────────
 // Used by institution.html, fees.html, exams.html etc.

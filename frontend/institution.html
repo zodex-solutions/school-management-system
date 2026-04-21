@@ -187,6 +187,8 @@
               class="itab px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700">Subjects</button>
             <button onclick="showTab(4)"
               class="itab px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700">Grading</button>
+            <button onclick="showTab(5)"
+              class="itab px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700">User Access</button>
           </div>
 
           <!-- School Profile Tab -->
@@ -370,6 +372,75 @@
             </div>
             <div id="gradingList"></div>
           </div>
+
+          <!-- User Access Tab -->
+          <div id="tab5" class="p-6 hidden">
+            <div class="grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)] gap-6">
+              <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                <div class="flex items-start justify-between gap-3 mb-4">
+                  <div>
+                    <h4 id="userAccessFormTitle" class="font-bold text-gray-900">Create User Access</h4>
+                    <p class="text-sm text-gray-500 mt-1">Alag alag users ko school branch wise login access dijiye.</p>
+                  </div>
+                  <button onclick="resetManagedUserForm()" class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm">Reset</button>
+                </div>
+
+                <div class="space-y-4">
+                  <div><label class="lbl">Full Name *</label><input id="ua_full_name" class="finput" placeholder="User full name" /></div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label class="lbl">Username *</label><input id="ua_username" class="finput" placeholder="login username" /></div>
+                    <div><label class="lbl">Phone</label><input id="ua_phone" class="finput" placeholder="phone number" /></div>
+                  </div>
+                  <div><label class="lbl">Email *</label><input id="ua_email" type="email" class="finput" placeholder="email address" /></div>
+                  <div><label class="lbl">Password <span class="text-gray-400 text-xs">(edit mode me optional)</span></label><input id="ua_password" type="password" class="finput" placeholder="minimum 6 characters" /></div>
+                  <div><label class="lbl">Role</label><select id="ua_role" class="finput"><option value="">No role selected</option></select></div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-700">
+                      <input id="ua_is_active" type="checkbox" class="w-4 h-4 accent-blue-600" checked />
+                      <span>User active</span>
+                    </label>
+                    <label class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-700">
+                      <input id="ua_is_superadmin" type="checkbox" class="w-4 h-4 accent-blue-600" />
+                      <span>Superadmin</span>
+                    </label>
+                  </div>
+                  <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                      <div>
+                        <div class="font-semibold text-gray-900">Branch Assignment</div>
+                        <div id="ua_branch_hint" class="text-xs text-gray-500 mt-1">School branches load from School Profile tab.</div>
+                      </div>
+                    </div>
+                    <div class="space-y-3">
+                      <div><label class="lbl">Primary Branch</label><select id="ua_primary_branch" class="finput"><option value="">All branches access</option></select></div>
+                      <div>
+                        <label class="lbl">Allowed Branches</label>
+                        <div id="ua_allowed_branch_list" class="space-y-2"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex gap-3">
+                    <button id="ua_submit_btn" onclick="saveManagedUser()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Create User</button>
+                    <button onclick="resetManagedUserForm()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Clear</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-gray-200 bg-white p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <div>
+                    <h4 class="font-bold text-gray-900">Managed Users</h4>
+                    <p class="text-sm text-gray-500 mt-1">Current school ke users aur unki branch mapping yahan dikhegi.</p>
+                  </div>
+                  <div class="flex gap-2">
+                    <input id="ua_search" type="text" class="finput" placeholder="Search by name, email, username" oninput="renderManagedUsersTable()" />
+                    <button onclick="loadUserAccess()" class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Refresh</button>
+                  </div>
+                </div>
+                <div id="ua_user_list"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -505,6 +576,10 @@
     let editingClassId = '';
     let editingSubjectId = '';
     let editingGradingId = '';
+    let editingManagedUserId = '';
+    let managedUsers = [];
+    let managedUserRoles = [];
+    let schoolBranchOptions = [];
 
     const defGrades = [{ grade: 'A+', min: 91, max: 100, gp: 10 }, { grade: 'A', min: 81, max: 90, gp: 9 }, { grade: 'B+', min: 71, max: 80, gp: 8 }, { grade: 'B', min: 61, max: 70, gp: 7 }, { grade: 'C+', min: 51, max: 60, gp: 6 }, { grade: 'C', min: 41, max: 50, gp: 5 }, { grade: 'D', min: 33, max: 40, gp: 4 }, { grade: 'F', min: 0, max: 32, gp: 0 }];
     document.getElementById('gradeTable').innerHTML = defGrades.map(g => `<tr><td class="px-4 py-2 font-semibold text-blue-600">${g.grade}</td><td class="px-4 py-2">${g.min}</td><td class="px-4 py-2">${g.max}</td><td class="px-4 py-2">${g.gp}</td></tr>`).join('');
@@ -512,7 +587,7 @@
     function showTab(idx) {
       document.querySelectorAll('.itab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
       document.querySelectorAll('[id^="tab"]').forEach((t, i) => { if (t.id.startsWith('tab')) t.classList.toggle('hidden', parseInt(t.id.replace('tab', '')) !== idx); });
-      if (idx === 1) loadAYs(); if (idx === 2) loadClasses(); if (idx === 3) loadSubjects(); if (idx === 4) loadGradingSystems();
+      if (idx === 1) loadAYs(); if (idx === 2) loadClasses(); if (idx === 3) loadSubjects(); if (idx === 4) loadGradingSystems(); if (idx === 5) loadUserAccess();
     }
 
     function showSchoolForm() { document.getElementById('schoolDisplay').style.display = 'none'; document.getElementById('schoolForm').style.display = 'flex'; }
@@ -643,10 +718,161 @@
       return branches;
     }
 
+    function renderManagedUserRoles() {
+      const roleEl = document.getElementById('ua_role');
+      if (!roleEl) return;
+      roleEl.innerHTML = `<option value="">No role selected</option>${managedUserRoles.map(role => `<option value="${role.id}">${role.name}</option>`).join('')}`;
+    }
+
+    function renderManagedUserBranchOptions(selectedPrimaryBranch = '', selectedAllowedBranches = []) {
+      const branchSelect = document.getElementById('ua_primary_branch');
+      const branchList = document.getElementById('ua_allowed_branch_list');
+      const branchHint = document.getElementById('ua_branch_hint');
+      if (!branchSelect || !branchList) return;
+
+      const allowedSet = new Set(selectedAllowedBranches || []);
+      branchSelect.innerHTML = `<option value="">All branches access</option>${schoolBranchOptions.map(branch => `<option value="${branch.code}">${branch.name} (${branch.code})</option>`).join('')}`;
+      branchSelect.value = selectedPrimaryBranch || '';
+
+      if (!schoolBranchOptions.length) {
+        branchHint.textContent = 'No branches configured yet. Save branches in School Profile tab first.';
+        branchList.innerHTML = `<div class="text-sm text-gray-400">No branches available.</div>`;
+        return;
+      }
+
+      branchHint.textContent = 'Primary branch login ke default branch context ko lock karega.';
+      branchList.innerHTML = schoolBranchOptions.map(branch => `
+        <label class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+          <input type="checkbox" class="w-4 h-4 accent-blue-600 ua-branch-checkbox" value="${branch.code}" ${allowedSet.has(branch.code) ? 'checked' : ''} />
+          <span>${branch.name} <span class="text-gray-400">(${branch.code})</span></span>
+        </label>
+      `).join('');
+    }
+
+    function getManagedUserAllowedBranches() {
+      return Array.from(document.querySelectorAll('.ua-branch-checkbox:checked')).map(el => el.value);
+    }
+
+    function resetManagedUserForm() {
+      editingManagedUserId = '';
+      document.getElementById('userAccessFormTitle').textContent = 'Create User Access';
+      document.getElementById('ua_submit_btn').textContent = 'Create User';
+      ['ua_full_name', 'ua_username', 'ua_phone', 'ua_email', 'ua_password'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('ua_is_active').checked = true;
+      document.getElementById('ua_is_superadmin').checked = false;
+      document.getElementById('ua_role').value = '';
+      renderManagedUserBranchOptions('', []);
+    }
+
+    function editManagedUser(encoded) {
+      const user = JSON.parse(decodeURIComponent(encoded));
+      editingManagedUserId = user.id;
+      document.getElementById('userAccessFormTitle').textContent = 'Update User Access';
+      document.getElementById('ua_submit_btn').textContent = 'Update User';
+      document.getElementById('ua_full_name').value = user.full_name || '';
+      document.getElementById('ua_username').value = user.username || '';
+      document.getElementById('ua_phone').value = user.phone || '';
+      document.getElementById('ua_email').value = user.email || '';
+      document.getElementById('ua_password').value = '';
+      document.getElementById('ua_is_active').checked = !!user.is_active;
+      document.getElementById('ua_is_superadmin').checked = !!user.is_superadmin;
+      document.getElementById('ua_role').value = user.role_id || '';
+      renderManagedUserBranchOptions(user.assigned_branch_code || '', user.allowed_branch_codes || []);
+      showTab(5);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderManagedUsersTable() {
+      const holder = document.getElementById('ua_user_list');
+      if (!holder) return;
+      const query = String(document.getElementById('ua_search')?.value || '').trim().toLowerCase();
+      const filteredUsers = managedUsers.filter(user => {
+        const haystack = [user.full_name, user.username, user.email, user.role_name, user.assigned_branch_code, user.assigned_branch_name].join(' ').toLowerCase();
+        return !query || haystack.includes(query);
+      });
+      holder.innerHTML = buildTable(
+        ['Name', 'Role', 'Branch Scope', 'Status', 'Last Login', ''],
+        filteredUsers.map(user => `
+          <td class="px-4 py-3">
+            <div class="font-semibold text-gray-900">${user.full_name || '-'}</div>
+            <div class="text-xs text-gray-500 mt-1">${user.username} · ${user.email || '-'}</div>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-600">${user.role_name || (user.is_superadmin ? 'Superadmin' : '-')}</td>
+          <td class="px-4 py-3">
+            <div class="text-sm text-gray-700">${user.assigned_branch_code ? `${user.assigned_branch_name || user.assigned_branch_code} (${user.assigned_branch_code})` : 'All branches'}</div>
+            <div class="text-xs text-gray-400 mt-1">${(user.allowed_branch_codes || []).length ? user.allowed_branch_codes.join(', ') : 'No restrictions'}</div>
+          </td>
+          <td class="px-4 py-3">${user.is_active ? tdBadge('Active', 'green') : tdBadge('Inactive', 'red')}</td>
+          <td class="px-4 py-3 text-sm text-gray-500">${user.last_login ? formatDate(user.last_login) : 'Never'}</td>
+          <td class="px-4 py-3"><button onclick="editManagedUser('${encodeURIComponent(JSON.stringify(user))}')" class="text-xs text-blue-600 hover:underline">Edit Access</button></td>
+        `),
+        'No users available for this school'
+      );
+    }
+
+    async function loadUserAccess() {
+      if (!schoolId) {
+        document.getElementById('ua_user_list').innerHTML = '<p class="text-gray-400 text-sm">Save school first</p>';
+        return;
+      }
+      try {
+        const [usersRes, rolesRes] = await Promise.all([
+          UserAdminAPI.list(schoolId),
+          UserAdminAPI.roles(),
+        ]);
+        managedUsers = usersRes?.data || [];
+        managedUserRoles = rolesRes?.data || [];
+        renderManagedUserRoles();
+        renderManagedUsersTable();
+        renderManagedUserBranchOptions(document.getElementById('ua_primary_branch').value || '', getManagedUserAllowedBranches());
+      } catch (e) {
+        document.getElementById('ua_user_list').innerHTML = `<div class="text-sm text-red-500">${e.message}</div>`;
+      }
+    }
+
+    async function saveManagedUser() {
+      if (!schoolId) { showToast('Save school first', 'error'); return; }
+      const fullName = document.getElementById('ua_full_name').value.trim();
+      const username = document.getElementById('ua_username').value.trim();
+      const email = document.getElementById('ua_email').value.trim();
+      const password = document.getElementById('ua_password').value;
+      if (!fullName || !username || !email) { showToast('Full name, username and email required', 'error'); return; }
+      if (!editingManagedUserId && (!password || password.length < 6)) { showToast('New user ke liye password minimum 6 characters ka hona chahiye', 'error'); return; }
+
+      const payload = {
+        full_name: fullName,
+        username,
+        email,
+        password: password || null,
+        phone: document.getElementById('ua_phone').value.trim() || null,
+        school_id: schoolId,
+        role_id: document.getElementById('ua_role').value || null,
+        assigned_branch_code: document.getElementById('ua_primary_branch').value || null,
+        allowed_branch_codes: getManagedUserAllowedBranches(),
+        is_superadmin: document.getElementById('ua_is_superadmin').checked,
+        is_active: document.getElementById('ua_is_active').checked,
+      };
+
+      try {
+        if (editingManagedUserId) {
+          await UserAdminAPI.update(editingManagedUserId, payload);
+          showToast('User access updated successfully');
+        } else {
+          await UserAdminAPI.create(payload);
+          showToast('User created successfully');
+        }
+        resetManagedUserForm();
+        loadUserAccess();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
     async function loadSchool() {
       if (!schoolId) return;
       try {
         const r = await SchoolAPI.get(schoolId); const s = r.data;
+        schoolBranchOptions = s.branches || [];
         document.getElementById('s_name').value = s.name || '';
         document.getElementById('s_code').value = s.code || '';
         document.getElementById('s_board').value = s.affiliation_board || '';
@@ -689,6 +915,7 @@
             </div>
           </div>`).join('') : '<div class="text-sm text-gray-400">No branches configured</div>'}</div>
       </div>`;
+        renderManagedUserBranchOptions(document.getElementById('ua_primary_branch')?.value || '', getManagedUserAllowedBranches());
       } catch (e) { }
     }
 

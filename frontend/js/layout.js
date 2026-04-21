@@ -51,6 +51,12 @@ var NAV_GROUPS = [
     items: [
       { icon: 'chart', label: 'Reports', href: '/reports', module: 'reports', color: '#0ea5e9' },
     ]
+  },
+  {
+    label: 'Administration',
+    items: [
+      { icon: 'settings', label: 'School Admin', href: '/admin/dashboard', module: 'admin-panel', color: '#6366f1' },
+    ]
   }
 ];
 
@@ -82,6 +88,7 @@ var LAYOUT_ICONS = {
   'health':      '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
   'chat':        '<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>',
   'chart':       '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+  'settings':    '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82L4.21 7.12a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c0 .67.39 1.28 1 1.51.16.06.33.09.51.09H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>',
   'menu':        '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
   'logout':      '<path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>',
 };
@@ -112,6 +119,13 @@ function getAccessibleModules(user) {
   return null;
 }
 
+function canAccessAdminPanel(user) {
+  user = user || getUser() || {};
+  if (user.is_superadmin) return true;
+  var roleName = String(user.role_name || user.role || '').trim().toLowerCase();
+  return roleName.indexOf('admin') !== -1 || roleName.indexOf('principal') !== -1 || roleName.indexOf('super') !== -1;
+}
+
 function hasModuleAccess(module) {
   var accessibleModules = getAccessibleModules(getUser() || {});
   if (!accessibleModules) return true;
@@ -126,7 +140,8 @@ function renderSidebar(activeModule) {
 
   var navHTML = NAV_GROUPS.map(group => {
     var items = group.items.map(item => {
-      if (accessibleModules && accessibleModules.indexOf(String(item.module || '').toLowerCase()) === -1) return '';
+      if (item.module === 'admin-panel' && !canAccessAdminPanel(user)) return '';
+      if (accessibleModules && item.module !== 'admin-panel' && accessibleModules.indexOf(String(item.module || '').toLowerCase()) === -1) return '';
       var isActive = activeModule === item.module;
 
       var iconBg   = isActive ? item.color : '#f3f4f6';

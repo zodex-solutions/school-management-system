@@ -1,4 +1,5 @@
 import os
+from urllib.parse import quote_plus
 from datetime import datetime
 from typing import Optional
 
@@ -7,7 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from models.fees import FeeInvoice
-from models.institution import AcademicYear, ClassRoom, Role, School, Section, User
+from models.institution import AcademicYear, Branch, ClassRoom, Role, School, Section, User
 from models.staff import Staff
 from models.student import Student
 from utils.auth import get_password_hash, verify_password
@@ -38,8 +39,104 @@ def parse_int(value: str, default: Optional[int] = None) -> Optional[int]:
 
 
 def build_redirect(path: str, message: str, kind: str = "success") -> RedirectResponse:
-    response = RedirectResponse(url=path, status_code=status.HTTP_303_SEE_OTHER)
-    return response
+    separator = "&" if "?" in path else "?"
+    target = f"{path}{separator}message={quote_plus(message)}&type={quote_plus(kind)}"
+    return RedirectResponse(url=target, status_code=status.HTTP_303_SEE_OTHER)
+
+
+def parse_csv_values(value: str) -> list[str]:
+    return [item.strip() for item in (value or "").split(",") if item.strip()]
+
+
+def build_school_branches(
+    branch_codes: str,
+    branch_names: str,
+    branch_phones: str,
+    branch_emails: str,
+) -> list[Branch]:
+    codes = parse_csv_values(branch_codes)
+    names = parse_csv_values(branch_names)
+    phones = parse_csv_values(branch_phones)
+    emails = parse_csv_values(branch_emails)
+
+    if not any([codes, names, phones, emails]):
+        return []
+    if not codes or not names:
+        raise ValueError("Branch codes and branch names are both required when adding branches.")
+    if len(codes) != len(names):
+        raise ValueError("Branch codes and branch names must have the same number of entries.")
+    if len(set(code.upper() for code in codes)) != len(codes):
+        raise ValueError("Branch codes must be unique within a school.")
+
+    max_len = len(codes)
+    if phones and len(phones) != max_len:
+        raise ValueError("Branch phones must match the number of branch codes.")
+    if emails and len(emails) != max_len:
+        raise ValueError("Branch emails must match the number of branch codes.")
+
+    branches: list[Branch] = []
+    for index, code in enumerate(codes):
+        branches.append(
+            Branch(
+                code=code.upper(),
+                name=names[index],
+                phone=phones[index] if index < len(phones) else "",
+                email=emails[index] if index < len(emails) else "",
+                is_active=True,
+            )
+        )
+    return branches
+
+
+def school_branch_lookup(school: Optional[School]) -> dict[str, str]:
+    if not school:
+        return {}
+    return {
+        (branch.code or "").upper(): branch.name or branch.code or ""
+        for branch in (school.branches or [])
+        if branch.code
+    }
+
+
+def normalize_user_branch_scope(
+    school: Optional[School],
+    assigned_branch_code: str,
+    allowed_branch_codes: str,
+) -> tuple[Optional[str], Optional[str], list[str]]:
+    assigned_code = (assigned_branch_code or "").strip().upper()
+    allowed_codes = [code.upper() for code in parse_csv_values(allowed_branch_codes)]
+
+    if not school:
+        if assigned_code or allowed_codes:
+            raise ValueError("Select a school before assigning branch access.")
+        return None, None, []
+
+    branch_map = school_branch_lookup(school)
+    if not branch_map:
+        if assigned_code or allowed_codes:
+            raise ValueError("This school has no branches configured yet.")
+        return None, None, []
+
+    invalid_codes = [code for code in ([assigned_code] if assigned_code else []) + allowed_codes if code not in branch_map]
+    if invalid_codes:
+        raise ValueError(f"Unknown branch code(s): {', '.join(invalid_codes)}")
+
+    if assigned_code and assigned_code not in allowed_codes:
+        allowed_codes.insert(0, assigned_code)
+
+    deduped_allowed_codes = list(dict.fromkeys(allowed_codes))
+    assigned_name = branch_map.get(assigned_code) if assigned_code else None
+    return assigned_code or None, assigned_name, deduped_allowed_codes
+
+
+def serialize_school_branches(school: Optional[School]) -> dict[str, str]:
+    branches = list((school.branches or []) if school else [])
+    return {
+        "codes": ",".join((branch.code or "") for branch in branches),
+        "names": ",".join((branch.name or "") for branch in branches),
+        "phones": ",".join((branch.phone or "") for branch in branches),
+        "emails": ",".join((branch.email or "") for branch in branches),
+    }
 
 
 def get_admin_user(request: Request) -> Optional[User]:
@@ -158,13 +255,15 @@ async def admin_dashboard(request: Request, current_user: User = Depends(require
 
 @router.get("/schools", response_class=HTMLResponse, include_in_schema=False, name="admin_schools")
 async def admin_schools(request: Request, current_user: User = Depends(require_admin_user)):
+    schools = list(School.objects.order_by("-created_at"))
     return templates.TemplateResponse(
         "admin/schools.html",
         admin_context(
             request,
             "School Management",
             current_user=current_user,
-            schools=School.objects.order_by("-created_at"),
+            schools=schools,
+            school_branch_inputs={str(school.id): serialize_school_branches(school) for school in schools},
         ),
     )
 
@@ -182,12 +281,18 @@ async def create_school(
     email: str = Form(""),
     city: str = Form(""),
     state_name: str = Form(""),
+    branch_codes: str = Form(""),
+    branch_names: str = Form(""),
+    branch_phones: str = Form(""),
+    branch_emails: str = Form(""),
 ):
     if School.objects(code=code.strip()).first():
-        return RedirectResponse(
-            url="/admin/schools?message=School%20code%20already%20exists&type=error",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return build_redirect("/admin/schools", "School code already exists", "error")
+
+    try:
+        branches = build_school_branches(branch_codes, branch_names, branch_phones, branch_emails)
+    except ValueError as exc:
+        return build_redirect("/admin/schools", str(exc), "error")
 
     School(
         name=name.strip(),
@@ -198,11 +303,32 @@ async def create_school(
         phone=phone.strip(),
         email=email.strip(),
         address={"city": city.strip(), "state": state_name.strip()},
+        branches=branches,
+        is_multi_branch=bool(branches),
     ).save()
-    return RedirectResponse(
-        url="/admin/schools?message=School%20created%20successfully&type=success",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return build_redirect("/admin/schools", "School created successfully", "success")
+
+
+@router.post("/schools/{school_id}/branches", include_in_schema=False)
+async def update_school_branches(
+    school_id: str,
+    current_user: User = Depends(require_admin_user),
+    branch_codes: str = Form(""),
+    branch_names: str = Form(""),
+    branch_phones: str = Form(""),
+    branch_emails: str = Form(""),
+):
+    school = School.objects(id=school_id).first()
+    if not school:
+        return build_redirect("/admin/schools", "School not found", "error")
+
+    try:
+        branches = build_school_branches(branch_codes, branch_names, branch_phones, branch_emails)
+    except ValueError as exc:
+        return build_redirect("/admin/schools", str(exc), "error")
+
+    school.update(branches=branches, is_multi_branch=bool(branches), updated_at=datetime.utcnow())
+    return build_redirect("/admin/schools", "School branches updated successfully", "success")
 
 
 @router.get("/users", response_class=HTMLResponse, include_in_schema=False, name="admin_users")
@@ -231,18 +357,24 @@ async def create_admin_user(
     phone: str = Form(""),
     school_id: str = Form(""),
     role_id: str = Form(""),
+    assigned_branch_code: str = Form(""),
+    allowed_branch_codes: str = Form(""),
     is_superadmin: Optional[str] = Form(None),
 ):
     if User.objects(username=username.strip()).first():
-        return RedirectResponse(
-            url="/admin/users?message=Username%20already%20exists&type=error",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return build_redirect("/admin/users", "Username already exists", "error")
     if User.objects(email=email.strip()).first():
-        return RedirectResponse(
-            url="/admin/users?message=Email%20already%20exists&type=error",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect("/admin/users", "Email already exists", "error")
+
+    school = School.objects(id=school_id).first() if school_id else None
+    try:
+        normalized_branch_code, normalized_branch_name, normalized_allowed_codes = normalize_user_branch_scope(
+            school,
+            assigned_branch_code,
+            allowed_branch_codes,
         )
+    except ValueError as exc:
+        return build_redirect("/admin/users", str(exc), "error")
 
     user = User(
         email=email.strip(),
@@ -251,18 +383,18 @@ async def create_admin_user(
         hashed_password=get_password_hash(password),
         phone=phone.strip(),
         is_superadmin=bool(is_superadmin),
+        assigned_branch_code=normalized_branch_code,
+        assigned_branch_name=normalized_branch_name,
+        allowed_branch_codes=normalized_allowed_codes,
     )
 
-    if school_id:
-        user.assigned_school = School.objects(id=school_id).first()
+    if school:
+        user.assigned_school = school
     if role_id:
         user.role = Role.objects(id=role_id).first()
     user.save()
 
-    return RedirectResponse(
-        url="/admin/users?message=User%20created%20successfully&type=success",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return build_redirect("/admin/users", "User created successfully", "success")
 
 
 @router.get("/academics", response_class=HTMLResponse, include_in_schema=False, name="admin_academics")
