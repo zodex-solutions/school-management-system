@@ -8,7 +8,7 @@ import io
 import re
 import os
 import tempfile
-from models.student import Student, TransferCertificate
+from models.student import Student, TransferCertificate, ParentInfo
 from models.institution import School, AcademicYear, ClassRoom, Section, User
 from models.transport import TransportRoute, StudentTransport, Vehicle
 from models.attendance import StudentAttendance
@@ -82,6 +82,15 @@ class StudentAdmission(BaseModel):
     sibling_student_ids: List[str] = []
 
 
+class StudentPromotionRequest(BaseModel):
+    academic_year_id: str
+    classroom_id: str
+    section_id: str
+    branch_code: Optional[str] = None
+    branch_name: Optional[str] = None
+    remarks: Optional[str] = None
+
+
 def _normalize_address_text(address: Optional[dict], fallback: Optional[str] = None) -> Optional[str]:
     if fallback:
         return fallback
@@ -135,6 +144,148 @@ def _csv_value(row: dict, *keys: str) -> Optional[str]:
         if text:
             return text
     return None
+
+
+def _norm_text(value: Optional[str]) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
+
+def _norm_digits(value: Optional[str]) -> str:
+    return re.sub(r"\D+", "", str(value or ""))
+
+
+def _norm_date(value: Optional[datetime]) -> str:
+    return value.strftime("%Y-%m-%d") if value else ""
+
+
+def _student_name_key(first_name: Optional[str], middle_name: Optional[str], last_name: Optional[str]) -> str:
+    return _norm_text(" ".join(part for part in [first_name, middle_name, last_name] if part))
+
+
+def _student_existing_name_key(student: Student) -> str:
+    return _student_name_key(student.first_name, student.middle_name, student.last_name)
+
+
+def _same_import_date(left: Optional[datetime], right: Optional[datetime]) -> bool:
+    return bool(left and right and left.date() == right.date())
+
+
+def _student_import_identity_key(
+    school_id: str,
+    academic_year_id: str,
+    branch_code: Optional[str],
+    first_name: Optional[str],
+    middle_name: Optional[str],
+    last_name: Optional[str],
+    father_name: Optional[str],
+    mother_name: Optional[str],
+    dob: Optional[datetime],
+    phone: Optional[str],
+    aadhar_no: Optional[str],
+    srn_no: Optional[str],
+) -> str:
+    aadhar_digits = _norm_digits(aadhar_no)
+    if aadhar_digits:
+        return f"aadhar:{school_id}:{aadhar_digits}:{_student_name_key(first_name, middle_name, last_name)}"
+
+    srn_key = _norm_text(srn_no)
+    if srn_key:
+        return f"srn:{school_id}:{srn_key}:{_student_name_key(first_name, middle_name, last_name)}"
+
+    return "|".join([
+        "bio",
+        school_id,
+        academic_year_id,
+        _norm_text(branch_code),
+        _student_name_key(first_name, middle_name, last_name),
+        _norm_text(father_name),
+        _norm_text(mother_name),
+        _norm_date(dob),
+        _norm_digits(phone),
+    ])
+
+
+def _student_matches_import_data(
+    student: Student,
+    first_name: Optional[str],
+    middle_name: Optional[str],
+    last_name: Optional[str],
+    father_name: Optional[str],
+    mother_name: Optional[str],
+    dob: Optional[datetime],
+    phone: Optional[str],
+) -> bool:
+    if _student_existing_name_key(student) != _student_name_key(first_name, middle_name, last_name):
+        return False
+
+    parent = student.parent_info or ParentInfo()
+    father_matches = bool(father_name and _norm_text(parent.father_name) == _norm_text(father_name))
+    mother_matches = bool(mother_name and _norm_text(parent.mother_name) == _norm_text(mother_name))
+
+    phone_digits = _norm_digits(phone)
+    phone_matches = bool(phone_digits and phone_digits in {
+        _norm_digits(student.phone),
+        _norm_digits(parent.father_phone),
+        _norm_digits(parent.guardian_phone),
+    })
+    dob_matches = _same_import_date(student.date_of_birth, dob)
+
+    return (
+        (father_matches and (dob_matches or phone_matches))
+        or (mother_matches and (dob_matches or phone_matches))
+        or (dob_matches and phone_matches)
+    )
+
+
+def _find_matching_import_student(
+    school: School,
+    ay: AcademicYear,
+    branch_code: Optional[str],
+    first_name: str,
+    middle_name: Optional[str],
+    last_name: str,
+    father_name: Optional[str],
+    mother_name: Optional[str],
+    dob: Optional[datetime],
+    phone: Optional[str],
+    aadhar_no: Optional[str],
+    srn_no: Optional[str],
+) -> Optional[Student]:
+    aadhar_digits = _norm_digits(aadhar_no)
+    if aadhar_digits:
+        student = Student.objects(school=school, aadhar_number=aadhar_digits, is_active=True).first()
+        if student and _student_existing_name_key(student) == _student_name_key(first_name, middle_name, last_name):
+            return student
+
+    srn_key = _norm_text(srn_no)
+    if srn_key:
+        student = Student.objects(school=school, srn_no__iexact=srn_key, is_active=True).first()
+        if student and _student_existing_name_key(student) == _student_name_key(first_name, middle_name, last_name):
+            return student
+
+    query = Student.objects(school=school, academic_year=ay, is_active=True)
+    if branch_code:
+        query = query.filter(branch_code=branch_code)
+
+    for student in query:
+        if _student_matches_import_data(student, first_name, middle_name, last_name, father_name, mother_name, dob, phone):
+            return student
+
+    return None
+
+
+def _apply_student_import_update(student: Student, update_data: dict, parent_info: dict) -> None:
+    for key, value in update_data.items():
+        if value is None and key not in {"middle_name", "remarks"}:
+            continue
+        setattr(student, key, value)
+
+    existing_parent = student.parent_info or ParentInfo()
+    for key, value in parent_info.items():
+        if value:
+            setattr(existing_parent, key, value)
+    student.parent_info = existing_parent
+    student.updated_at = datetime.utcnow()
 
 
 def _resolve_class_section(row: dict) -> tuple[Optional[str], Optional[str]]:
@@ -775,8 +926,11 @@ async def get_student_profile_summary(student_id: str, current_user: User = Depe
         "photo": student.photo,
         "branch_code": student.branch_code,
         "branch_name": student.branch_name,
+        "academic_year_id": str(student.academic_year.id) if student.academic_year else None,
+        "classroom_id": str(student.classroom.id) if student.classroom else None,
         "classroom_name": student.classroom.name if student.classroom else None,
         "class_fee": student.classroom.class_fee if student.classroom else 0,
+        "section_id": str(student.section.id) if student.section else None,
         "section_name": student.section.name if student.section else None,
         "academic_year": student.academic_year.name if student.academic_year else None,
         "admission_date": student.admission_date.isoformat() if student.admission_date else None,
@@ -935,6 +1089,71 @@ async def update_student(student_id: str, data: dict, current_user: User = Depen
         raise HTTPException(404, "Student not found")
 
 
+@router.post("/{student_id}/promote")
+async def promote_student(
+    student_id: str,
+    data: StudentPromotionRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        student = Student.objects.get(id=student_id)
+        _ensure_student_scope(student, current_user)
+    except Student.DoesNotExist:
+        raise HTTPException(404, "Student not found")
+
+    branch_code = resolve_branch_scope(current_user, data.branch_code or student.branch_code)
+
+    try:
+        target_academic_year = AcademicYear.objects.get(id=data.academic_year_id)
+        target_classroom = ClassRoom.objects.get(id=data.classroom_id)
+        target_section = Section.objects.get(id=data.section_id)
+    except (AcademicYear.DoesNotExist, ClassRoom.DoesNotExist, Section.DoesNotExist):
+        raise HTTPException(404, "Promotion target not found")
+
+    if str(target_academic_year.school.id) != str(student.school.id):
+        raise HTTPException(400, "Academic year does not belong to student's school")
+    if str(target_classroom.school.id) != str(student.school.id):
+        raise HTTPException(400, "Class does not belong to student's school")
+    if str(target_section.school.id) != str(student.school.id):
+        raise HTTPException(400, "Section does not belong to student's school")
+    if str(target_classroom.academic_year.id) != str(target_academic_year.id):
+        raise HTTPException(400, "Selected class does not belong to the selected academic year")
+    if str(target_section.classroom.id) != str(target_classroom.id):
+        raise HTTPException(400, "Selected section does not belong to the selected class")
+
+    branch_name = data.branch_name or student.branch_name
+    if branch_code and not branch_name:
+        branch_match = next((branch for branch in (student.school.branches or []) if branch.code == branch_code), None)
+        branch_name = branch_match.name if branch_match else branch_code
+
+    student.academic_year = target_academic_year
+    student.classroom = target_classroom
+    student.section = target_section
+    student.branch_code = branch_code
+    student.branch_name = branch_name
+    student.admission_status = "Active"
+    student.updated_at = datetime.utcnow()
+    if data.remarks:
+        existing = (student.remarks or "").strip()
+        promotion_note = f"Promoted to {target_classroom.name} / {target_section.name} for {target_academic_year.name}: {data.remarks.strip()}"
+        student.remarks = f"{existing}\n{promotion_note}".strip() if existing else promotion_note
+    student.save()
+
+    StudentTransport.objects(student=student, is_active=True).update(academic_year=target_academic_year.name)
+
+    return success_response({
+        "id": str(student.id),
+        "academic_year_id": str(target_academic_year.id),
+        "academic_year_name": target_academic_year.name,
+        "classroom_id": str(target_classroom.id),
+        "classroom_name": target_classroom.name,
+        "section_id": str(target_section.id),
+        "section_name": target_section.name,
+        "branch_code": student.branch_code,
+        "branch_name": student.branch_name,
+    }, "Student promoted successfully")
+
+
 @router.post("/import/csv")
 async def import_students_csv(
     school_id: str,
@@ -942,6 +1161,7 @@ async def import_students_csv(
     file: UploadFile = File(...),
     branch_code: Optional[str] = None,
     branch_name: Optional[str] = None,
+    update_existing: bool = Query(False),
     current_user: User = Depends(get_current_user)
 ):
     try:
@@ -965,16 +1185,18 @@ async def import_students_csv(
     classes_created = 0
     sections_created = 0
     errors = []
+    created_rows = []
+    updated_rows = []
+    skipped_rows = []
+    existing_rows = []
+    seen_import_keys = set()
+    imported_students_by_key = {}
 
     for index, row in enumerate(reader, start=2):
-        admission_no = _csv_value(row, "adm no", "admission no", "admission_no", "adm_no")
-        full_name = _csv_value(row, "name", "student name", "student_name") or f"Student {admission_no or index}"
+        source_admission_no = _csv_value(row, "adm no", "admission no", "admission_no", "adm_no")
+        full_name = _csv_value(row, "name", "student name", "student_name") or f"Student {index}"
         class_name, section_name = _resolve_class_section(row)
 
-        if not admission_no:
-            skipped += 1
-            errors.append(f"Row {index}: admission no missing")
-            continue
         class_name = class_name or "Unassigned"
         section_name = section_name or "A"
         classroom, section, class_created, section_created = _ensure_class_and_section(school, ay, class_name, section_name)
@@ -1027,40 +1249,113 @@ async def import_students_csv(
             "section": section,
             "branch_code": branch_code,
             "branch_name": branch_name or school.name,
-            "admission_date": admission_date or datetime.utcnow(),
+            "admission_date": admission_date,
             "admission_type": _csv_value(row, "admission_type") or "New",
             "registration_type": "Manual",
             "updated_at": datetime.utcnow(),
             "remarks": _csv_value(row, "remarks")
         }
 
-        student = Student.objects(school=school, admission_no=admission_no).first()
-        if student:
-            for key, value in update_data.items():
-                setattr(student, key, value)
-            from models.student import ParentInfo
-            student.parent_info = ParentInfo(**parent_info)
-            student.save()
-            updated += 1
+        import_key = _student_import_identity_key(
+            str(school.id),
+            str(ay.id),
+            branch_code,
+            first_name,
+            middle_name,
+            last_name,
+            father_name,
+            mother_name,
+            dob,
+            contact_no,
+            aadhar_no,
+            srn_no,
+        )
+
+        if import_key in seen_import_keys:
+            previous_student = imported_students_by_key.get(import_key)
+            skipped += 1
+            skipped_rows.append({
+                "row": index,
+                "name": full_name,
+                "source_admission_no": source_admission_no,
+                "reason": f"Duplicate row in this upload; already handled as {previous_student.admission_no if previous_student else 'an earlier row'}"
+            })
             continue
 
-        from models.student import ParentInfo
+        seen_import_keys.add(import_key)
+
+        existing_student = _find_matching_import_student(
+            school,
+            ay,
+            branch_code,
+            first_name,
+            middle_name,
+            last_name,
+            father_name,
+            mother_name,
+            dob,
+            contact_no,
+            aadhar_no,
+            srn_no,
+        )
+
+        if existing_student:
+            _apply_student_import_update(existing_student, update_data, parent_info)
+            existing_student.save()
+            updated += 1
+            imported_students_by_key[import_key] = existing_student
+            row_payload = {
+                "row": index,
+                "admission_no": existing_student.admission_no,
+                "source_admission_no": source_admission_no,
+                "name": existing_student.full_name,
+                "classroom": classroom.name,
+                "section": section.name,
+                "branch": branch_name or school.name,
+                "reason": "Matched existing student data and updated the existing record",
+            }
+            updated_rows.append(row_payload)
+            existing_rows.append(row_payload)
+            continue
+
+        admission_no = generate_admission_no(school.code)
+        while Student.objects(admission_no=admission_no).first():
+            admission_no = generate_admission_no(school.code)
+
+        create_data = {**update_data}
+        create_data["admission_date"] = create_data.get("admission_date") or datetime.utcnow()
         student = Student(
             admission_no=admission_no,
             student_id=generate_id("STU"),
             created_at=datetime.utcnow(),
             parent_info=ParentInfo(**parent_info),
-            **update_data
+            **create_data
         )
         student.save()
         created += 1
+        imported_students_by_key[import_key] = student
+        created_rows.append({
+            "row": index,
+            "admission_no": admission_no,
+            "source_admission_no": source_admission_no,
+            "name": student.full_name,
+            "classroom": classroom.name,
+            "section": section.name,
+            "branch": branch_name or school.name,
+        })
 
     return success_response({
         "created": created,
         "updated": updated,
         "skipped": skipped,
+        "existing": len(existing_rows),
         "classes_created": classes_created,
         "sections_created": sections_created,
+        "update_existing": update_existing,
+        "created_rows": created_rows[:200],
+        "updated_rows": updated_rows[:200],
+        "skipped_rows": skipped_rows[:200],
+        "existing_rows": existing_rows[:200],
         "errors": errors[:100]
     }, "Student CSV import completed")
 

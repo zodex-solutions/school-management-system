@@ -331,12 +331,14 @@ const StudentAPI = {
     if (academicYearId) params.append('academic_year_id', academicYearId);
     return `${API_BASE}/students/import/template${params.toString() ? `?${params.toString()}` : ''}`;
   },
-  importCsv:  (schoolId, academicYearId, fd, branchCode = '', branchName = '') => {
+  importCsv:  (schoolId, academicYearId, fd, branchCode = '', branchName = '', updateExisting = false) => {
     const params = new URLSearchParams({ school_id: schoolId, academic_year_id: academicYearId });
     if (branchCode) params.append('branch_code', branchCode);
     if (branchName) params.append('branch_name', branchName);
+    if (updateExisting) params.append('update_existing', 'true');
     return API.upload(`/students/import/csv?${params.toString()}`, fd);
   },
+  promote:    (id,d)  => API.post(`/students/${id}/promote`, d),
   generateTC: (id,d)  => API.post(`/students/${id}/transfer-certificate`, d),
   getTC:      (id)    => API.get(`/students/${id}/transfer-certificate`),
   stats:      (sid, ayid, branchCode)   => API.get('/students/stats/summary', { school_id: sid, academic_year_id: ayid, branch_code: branchCode }),
