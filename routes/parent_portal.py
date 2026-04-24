@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List
 from datetime import datetime
 from passlib.context import CryptContext
+import re
 
 from models.parent_portal import ParentPortalUser, ParentMessage
 from models.institution import School, User
@@ -42,13 +43,46 @@ def get_parent_from_token(token: str) -> ParentPortalUser:
         raise HTTPException(401, "Invalid or expired token")
 
 
+def _normalize_admission_no(value: str) -> str:
+    return re.sub(r"\s+", "", str(value or "").strip()).upper()
+
+
+def _find_student_by_admission_no(admission_no: str, school: Optional[School] = None) -> Optional[Student]:
+    raw = str(admission_no or "").strip()
+    if not raw:
+        return None
+
+    query = Student.objects(is_active=True)
+    if school:
+        query = query.filter(school=school)
+
+    student = query.filter(admission_no=raw).first()
+    if student:
+        return student
+
+    student = query.filter(admission_no__iexact=raw).first()
+    if student:
+        return student
+
+    normalized = _normalize_admission_no(raw)
+    for candidate in query:
+        if _normalize_admission_no(candidate.admission_no) == normalized:
+            return candidate
+    return None
+
+
 def _resolve_parent_school(data: dict, *, for_login: bool = False) -> School:
+    admission_numbers = [str(adm).strip() for adm in data.get("admission_numbers", []) if str(adm).strip()]
     school_id = data.get("school_id") or data.get("school")
+    requested_school = None
     if school_id:
         try:
-            return School.objects.get(id=school_id)
+            requested_school = School.objects.get(id=school_id)
         except School.DoesNotExist:
             raise HTTPException(404, "School not found")
+
+    if requested_school and (not admission_numbers or any(_find_student_by_admission_no(adm, requested_school) for adm in admission_numbers)):
+        return requested_school
 
     if for_login and data.get("email"):
         parents = ParentPortalUser.objects(email=data["email"].lower().strip(), is_active=True)
@@ -58,17 +92,19 @@ def _resolve_parent_school(data: dict, *, for_login: bool = False) -> School:
         if len(schools) > 1:
             raise HTTPException(400, "Multiple schools found for this email. Open the parent login link from your school.")
 
-    admission_numbers = [str(adm).strip() for adm in data.get("admission_numbers", []) if str(adm).strip()]
     if admission_numbers:
         schools = {}
         for adm in admission_numbers:
-            for student in Student.objects(admission_no=adm):
-                if student.school:
-                    schools[str(student.school.id)] = student.school
+            student = _find_student_by_admission_no(adm)
+            if student and student.school:
+                schools[str(student.school.id)] = student.school
         if len(schools) == 1:
             return next(iter(schools.values()))
         if len(schools) > 1:
             raise HTTPException(400, "Admission numbers match multiple schools. Open the parent login link from your school.")
+
+    if requested_school:
+        return requested_school
 
     active_schools = list(School.objects(is_active=True).limit(2))
     if len(active_schools) == 1:
@@ -87,13 +123,15 @@ async def register_parent(data: dict):
         raise HTTPException(400, "Email already registered")
 
     linked_children = []
+    linked_ids = set()
     for adm in data.get('admission_numbers', []):
         admission_no = str(adm).strip()
         if not admission_no:
             continue
-        student = Student.objects(school=school, admission_no=admission_no).first()
-        if student:
+        student = _find_student_by_admission_no(admission_no, school)
+        if student and str(student.id) not in linked_ids:
             linked_children.append(student)
+            linked_ids.add(str(student.id))
     if not linked_children:
         raise HTTPException(400, "No student found for the admission number in this school")
 
