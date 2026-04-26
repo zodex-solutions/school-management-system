@@ -396,6 +396,7 @@ async def list_students(
     section_id: Optional[str] = None,
     branch_code: Optional[str] = None,
     admission_status: Optional[str] = None,
+    student_view: Optional[str] = Query("active"),
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -433,6 +434,11 @@ async def list_students(
 
     if branch_code:
         query = query.filter(branch_code=branch_code)
+
+    if student_view == "transferred":
+        query = query.filter(admission_status="Transferred")
+    elif student_view != "all":
+        query = query.filter(admission_status__ne="Transferred")
     
     if admission_status:
         query = query.filter(admission_status=admission_status)
@@ -502,17 +508,20 @@ async def student_stats(school_id: str, academic_year_id: Optional[str] = None,
         if branch_code:
             query = query.filter(branch_code=branch_code)
 
+        active_query = query.filter(admission_status__ne="Transferred")
+        transferred_query = query.filter(admission_status="Transferred")
+
         stats = {
-            "total": query.count(),
+            "total": active_query.count(),
             "by_gender": {
-                "male": query.filter(gender="Male").count(),
-                "female": query.filter(gender="Female").count(),
-                "other": query.filter(gender="Other").count()
+                "male": active_query.filter(gender="Male").count(),
+                "female": active_query.filter(gender="Female").count(),
+                "other": active_query.filter(gender="Other").count()
             },
             "by_status": {
-                "active": query.filter(admission_status="Active").count(),
-                "transferred": query.filter(admission_status="Transferred").count(),
-                "alumni": query.filter(admission_status="Alumni").count(),
+                "active": active_query.filter(admission_status="Active").count(),
+                "transferred": transferred_query.count(),
+                "alumni": active_query.filter(admission_status="Alumni").count(),
             }
         }
         return success_response(stats)

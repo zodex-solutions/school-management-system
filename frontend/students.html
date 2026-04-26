@@ -175,6 +175,10 @@
         </div>
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div class="tab-bar !px-0 mb-5">
+            <button id="studentTabActive" type="button" onclick="switchStudentTab('active')" class="tab-btn active">Students</button>
+            <button id="studentTabTransferred" type="button" onclick="switchStudentTab('transferred')" class="tab-btn">Transferred Students</button>
+          </div>
           <div class="flex flex-col sm:flex-row gap-3 justify-between mb-5">
             <div class="flex gap-2 flex-wrap">
               <input id="searchInput" type="text" placeholder="Search name, admission no, father name, phone..."
@@ -519,9 +523,37 @@
     let routeCache = [];
     let branchCache = [];
     let selectedBranchCode = studentPageParams.get('branch_code') || '';
+    let currentStudentTab = 'active';
     let editingStudentId = '';
     let selectedSiblingStudents = [];
     let siblingSearchCache = {};
+
+function renderStudentStatusOptions() {
+  const statusFilter = document.getElementById('filterStatus');
+  if (!statusFilter) return;
+  const previousValue = statusFilter.value || '';
+  if (currentStudentTab === 'transferred') {
+    statusFilter.innerHTML = '<option value="Transferred">Transferred</option>';
+    statusFilter.value = 'Transferred';
+    statusFilter.disabled = true;
+    return;
+  }
+  statusFilter.disabled = false;
+  statusFilter.innerHTML = `
+    <option value="">All Status</option>
+    <option value="Active">Active</option>
+    <option value="Alumni">Alumni</option>
+  `;
+  statusFilter.value = ['Active', 'Alumni'].includes(previousValue) ? previousValue : '';
+}
+
+function switchStudentTab(tab) {
+  currentStudentTab = tab === 'transferred' ? 'transferred' : 'active';
+  document.getElementById('studentTabActive').classList.toggle('active', currentStudentTab === 'active');
+  document.getElementById('studentTabTransferred').classList.toggle('active', currentStudentTab === 'transferred');
+  renderStudentStatusOptions();
+  loadStudents(1);
+}
 
 async function loadStats() {
   if (!currentSchoolId) return;
@@ -816,7 +848,7 @@ async function loadStats() {
 
     async function loadStudents(page = 1) {
       if (!currentSchoolId) { document.getElementById('tblContainer').innerHTML = '<div class="text-center py-12 text-gray-400"><div class="text-4xl mb-2">&#9888;</div><p>Configure school first</p></div>'; return; }
-      const params = { school_id: currentSchoolId, page, per_page: 15 };
+      const params = { school_id: currentSchoolId, page, per_page: 15, student_view: currentStudentTab };
       if (ayId) params.academic_year_id = ayId;
       const srch = document.getElementById('searchInput').value.trim();
       const stat = document.getElementById('filterStatus').value;
@@ -827,7 +859,12 @@ async function loadStats() {
       if (branch) params.branch_code = branch;
       if (cls) params.classroom_id = cls;
       try {
-        const res = await StudentAPI.list(params); const students = res?.data || []; const meta = res?.meta || {};
+        const res = await StudentAPI.list(params);
+        const allStudents = res?.data || [];
+        const students = allStudents.filter(s => currentStudentTab === 'transferred'
+          ? s.admission_status === 'Transferred'
+          : s.admission_status !== 'Transferred');
+        const meta = res?.meta || {};
         totalPgs = meta.total_pages || 1; curPage = meta.page || 1;
         const hdrs = ['Adm No', 'Name', 'Class/Sec', 'Gender', 'Father', 'Phone', 'Status', 'Actions'];
         const rows = students.map(s => `
@@ -855,7 +892,13 @@ async function loadStats() {
         </button>
       </div></td>
     `);
-        document.getElementById('tblContainer').innerHTML = buildTable(hdrs, rows, 'No students found. Admit your first student!');
+        document.getElementById('tblContainer').innerHTML = buildTable(
+          hdrs,
+          rows,
+          currentStudentTab === 'transferred'
+            ? 'No transferred students found'
+            : 'No students found. Admit your first student!'
+        );
         document.getElementById('pgn').innerHTML = meta.total ? `<span>Showing ${(curPage - 1) * 15 + 1}–${Math.min(curPage * 15, meta.total)} of ${meta.total}</span><div class="flex gap-2"><button onclick="loadStudents(${curPage - 1})" ${curPage <= 1 ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg border disabled:opacity-40 text-sm">&#8592;</button><span class="px-3 py-1.5 text-sm">${curPage}/${totalPgs}</span><button onclick="loadStudents(${curPage + 1})" ${curPage >= totalPgs ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg border disabled:opacity-40 text-sm">&#8594;</button></div>` : '';
       } catch (e) { document.getElementById('tblContainer').innerHTML = `<div class="text-center py-12 text-red-400"><p>Error: ${e.message}</p></div>`; }
     }
@@ -1123,7 +1166,7 @@ async function loadStats() {
 
     async function genTC(id, name) {
       if (!confirm('Generate TC for ' + name + '?')) return;
-      try { const r = await StudentAPI.generateTC(id, { conduct: 'Good', fee_clearance: false }); showToast('TC ' + r.data.tc_number + ' generated!'); document.getElementById('detModal').style.display = 'none'; loadStudents(curPage); }
+      try { const r = await StudentAPI.generateTC(id, { conduct: 'Good', fee_clearance: false }); showToast('TC ' + r.data.tc_number + ' generated!'); document.getElementById('detModal').style.display = 'none'; loadStudents(1); loadStats(); }
       catch (e) { showToast('TC failed: ' + e.message, 'error'); }
     }
 
@@ -1395,6 +1438,7 @@ async function loadStats() {
     document.getElementById('filterClass').addEventListener('change', () => loadStudents(1));
     (async function initStudentPage() {
       currentSchoolId = await initializeSchoolContext() || currentSchoolId;
+      renderStudentStatusOptions();
       updateStudentImportMeta();
       await loadSchoolMeta();
       await loadStats();

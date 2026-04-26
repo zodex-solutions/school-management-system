@@ -90,11 +90,12 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
                   <label class="lbl">Father Name</label>
                   <input id="invFatherFilter" type="text" placeholder="Search father name" class="px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-52" />
                 </div>
-                <button onclick="loadInvoices()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Apply</button>
+                <button onclick="resetInvoicePagination(); loadInvoices();" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200">Apply</button>
               </div>
               <button onclick="openInvoiceModal()" class="px-5 py-2.5 max-h-10 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg whitespace-nowrap">+ Create Invoice</button>
             </div>
             <div id="invTable"></div>
+            <div id="invPagination" class="mt-4"></div>
           </div>
 
           <!-- Collect Payment -->
@@ -406,6 +407,9 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     let invoiceClassCache = [];
     let invoiceBilledAnnualHeads = new Set();
     let invoiceEditAcademicYearId = '';
+    let invoiceCurrentPage = 1;
+    let invoicePerPage = 20;
+    let invoicePaginationMeta = { total: 0, page: 1, per_page: 20, total_pages: 1 };
     let invoiceSaveInProgress = false;
     let feeStructureSaveInProgress = false;
     let paymentClassCache = [];
@@ -491,6 +495,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
 
     async function refreshFeeViews() {
       await resolveFeeAcademicYearId();
+      resetInvoicePagination();
       await Promise.allSettled([loadFeeStats(), loadInvoiceFilterClasses(), loadInvoices()]);
       if (!document.getElementById('ftab1').classList.contains('hidden')) {
         await loadPaymentClasses();
@@ -520,6 +525,51 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       if (idx === 2) loadStructures();
       if (idx === 3) { loadDuesClasses(); loadDues(); }
       if (idx === 4) loadEstimateModule();
+    }
+
+    function resetInvoicePagination() {
+      invoiceCurrentPage = 1;
+    }
+
+    function changeInvoicePage(nextPage) {
+      const totalPages = Math.max(invoicePaginationMeta?.total_pages || 1, 1);
+      const safePage = Math.min(Math.max(nextPage, 1), totalPages);
+      if (safePage === invoiceCurrentPage) return;
+      invoiceCurrentPage = safePage;
+      loadInvoices();
+    }
+
+    function renderInvoicePagination(meta = {}) {
+      const container = document.getElementById('invPagination');
+      if (!container) return;
+      const total = Number(meta.total || 0);
+      const page = Number(meta.page || 1);
+      const perPage = Number(meta.per_page || invoicePerPage || 20);
+      const totalPages = Math.max(Number(meta.total_pages || 1), 1);
+
+      if (total <= 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const startItem = ((page - 1) * perPage) + 1;
+      const endItem = Math.min(page * perPage, total);
+      const prevDisabled = page <= 1;
+      const nextDisabled = page >= totalPages;
+
+      container.innerHTML = `
+        <div class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="text-sm text-slate-600">
+            Showing <span class="font-semibold text-slate-900">${startItem}-${endItem}</span> of
+            <span class="font-semibold text-slate-900">${total}</span> invoices
+          </div>
+          <div class="flex items-center gap-2 self-start sm:self-auto">
+            <button onclick="changeInvoicePage(${page - 1})" ${prevDisabled ? 'disabled' : ''} class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+            <span class="text-sm font-semibold text-slate-700 min-w-[92px] text-center">Page ${page} / ${totalPages}</span>
+            <button onclick="changeInvoicePage(${page + 1})" ${nextDisabled ? 'disabled' : ''} class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+          </div>
+        </div>
+      `;
     }
 async function loadFeeStats() {
   if (!schoolId) return;
@@ -1565,15 +1615,21 @@ function statCard(title, value, icon, color) {
     }
 
     async function loadInvoices() {
-      if (!schoolId) { document.getElementById('invTable').innerHTML = '<div class="text-center py-8 text-gray-400">Configure school first</div>'; return; }
+      if (!schoolId) {
+        document.getElementById('invTable').innerHTML = '<div class="text-center py-8 text-gray-400">Configure school first</div>';
+        document.getElementById('invPagination').innerHTML = '';
+        return;
+      }
       const academicYearId = await resolveFeeAcademicYearId();
-      const params = { school_id: schoolId, branch_code: selectedBranchCode, per_page: 20, include_items: false };
+      const params = { school_id: schoolId, branch_code: selectedBranchCode, page: invoiceCurrentPage, per_page: invoicePerPage, include_items: false };
       const stat = document.getElementById('invStatus').value; if (stat) params.status = stat;
       const classroomId = document.getElementById('invClassFilter').value; if (classroomId) params.classroom_id = classroomId;
       const fatherName = document.getElementById('invFatherFilter').value.trim(); if (fatherName) params.father_name = fatherName;
       if (academicYearId) params.academic_year_id = academicYearId;
       try {
         const r = await FeesAPI.getInvoices(params); const invs = r?.data || [];
+        invoicePaginationMeta = r?.meta || { total: invs.length, page: invoiceCurrentPage, per_page: invoicePerPage, total_pages: 1 };
+        invoiceCurrentPage = Math.min(invoicePaginationMeta.page || invoiceCurrentPage, Math.max(invoicePaginationMeta.total_pages || 1, 1));
         const hdrs = ['Invoice No', 'Student', 'Father', 'Class', 'Net Amount', 'Balance', 'Status', ''];
         const rows = invs.map(inv => `
           <td class="px-4 py-3 font-mono text-xs text-gray-600 ">${inv.invoice_no}</td>
@@ -1603,7 +1659,11 @@ function statCard(title, value, icon, color) {
           </div></td>
         `);
         document.getElementById('invTable').innerHTML = buildTable(hdrs, rows, 'No invoices found');
-      } catch (e) { document.getElementById('invTable').innerHTML = `<div class="text-center py-8 text-red-400">Error: ${e.message}</div>`; }
+        renderInvoicePagination(invoicePaginationMeta);
+      } catch (e) {
+        document.getElementById('invTable').innerHTML = `<div class="text-center py-8 text-red-400">Error: ${e.message}</div>`;
+        document.getElementById('invPagination').innerHTML = '';
+      }
     }
 
     async function viewInvoice(id) {
@@ -1961,9 +2021,9 @@ function statCard(title, value, icon, color) {
       setTimeout(() => printWindow.print(), 300);
     }
 
-    document.getElementById('invStatus').addEventListener('change', loadInvoices);
-    document.getElementById('invClassFilter').addEventListener('change', loadInvoices);
-    document.getElementById('invFatherFilter').addEventListener('input', debounce(() => loadInvoices()));
+    document.getElementById('invStatus').addEventListener('change', () => { resetInvoicePagination(); loadInvoices(); });
+    document.getElementById('invClassFilter').addEventListener('change', () => { resetInvoicePagination(); loadInvoices(); });
+    document.getElementById('invFatherFilter').addEventListener('input', debounce(() => { resetInvoicePagination(); loadInvoices(); }));
     document.getElementById('inv_structure').addEventListener('change', () => {
       renderAnnualFeeHeadOptions();
       renderInvoiceEstimate();
