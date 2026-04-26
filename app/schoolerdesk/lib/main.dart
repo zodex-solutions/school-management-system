@@ -13,7 +13,7 @@ class SchoolerDeskApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SchoolerDesk',
+      title: 'RS Memorial School',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,
@@ -37,7 +37,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  static const _brandName = 'SchoolerDesk';
+  static const _brandName = 'RS Memorial School';
 
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
@@ -133,7 +133,7 @@ class RoleSelectionScreen extends StatelessWidget {
             children: [
               const Spacer(),
               const Text(
-                'Welcome to SchoolerDesk',
+                'Welcome to RS Memorial School',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 30,

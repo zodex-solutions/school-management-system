@@ -157,7 +157,7 @@
             </div>
             <button onclick="downloadStudentImportTemplate()" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 whitespace-nowrap">Download CSV Template</button>
           </div>
-          <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 mt-5">
+          <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 mt-5">
             <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
               <label class="lbl">Upload Student CSV</label>
               <input id="studentImportFile" type="file" accept=".csv" class="finput" />
@@ -167,11 +167,15 @@
                 <div class="rounded-xl bg-white border border-slate-200 px-3 py-2">Branch: <span id="studentImportBranch" class="font-medium text-slate-700">Main School</span></div>
               </div>
             </div>
-            <div class="flex flex-col gap-3 lg:w-56">
+            <div class="flex flex-col gap-3">
               <button id="studentImportBtn" onclick="uploadStudentCsv()" class="px-5 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed">Upload Data</button>
-              <div id="studentImportResult" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 min-h-[92px]">Download the CSV template, fill the data, save the file, and then upload it from here.</div>
+              <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                <strong>Smart duplicate check is enabled</strong><br>
+                <span class="text-emerald-700">The sheet Adm No is ignored. New students get a fresh admission number; matching existing students are updated instead of duplicated.</span>
+              </div>
             </div>
           </div>
+          <div id="studentImportResult" class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500 min-h-[92px]">Download the CSV template, fill the data, save the file, and then upload it from here.</div>
         </div>
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
@@ -479,6 +483,33 @@
     </div>
   </div>
 
+  <div id="promoteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="modal-box w-full max-w-2xl">
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <div>
+          <h3 class="text-lg font-bold text-gray-900">Promote Student</h3>
+          <p id="promoteHint" class="text-sm text-gray-500 mt-1">Next academic year aur next class select karke student ko move kijiye.</p>
+        </div>
+        <button onclick="document.getElementById('promoteModal').style.display='none'" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl">X</button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div><label class="lbl">Target Academic Year</label><select id="promote_ay" class="finput" onchange="loadPromotionClasses()"><option value="">Select year</option></select></div>
+          <div><label class="lbl">Target Class</label><select id="promote_class" class="finput" onchange="loadPromotionSections()"><option value="">Select class</option></select></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div><label class="lbl">Target Section</label><select id="promote_section" class="finput"><option value="">Select section</option></select></div>
+          <div><label class="lbl">Branch</label><select id="promote_branch" class="finput"><option value="">School Branch</option></select></div>
+        </div>
+        <div><label class="lbl">Promotion Remark</label><textarea id="promote_remark" rows="3" class="finput resize-none" placeholder="Optional note for promotion history"></textarea></div>
+      </div>
+      <div class="flex gap-3 px-6 py-4 border-t justify-end">
+        <button onclick="document.getElementById('promoteModal').style.display='none'" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm">Cancel</button>
+        <button onclick="submitPromotion()" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Promote Student</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl text-white font-medium shadow-2xl">
   </div>
   <style>
@@ -525,6 +556,8 @@
     let selectedBranchCode = studentPageParams.get('branch_code') || '';
     let currentStudentTab = 'active';
     let editingStudentId = '';
+    let promotionStudentId = '';
+    let promotionClassCache = [];
     let selectedSiblingStudents = [];
     let siblingSearchCache = {};
 
@@ -602,8 +635,106 @@ async function loadStats() {
           document.getElementById('m_branch').value = scopedFormBranch;
         }
         document.getElementById('m_branch').disabled = !!getAssignedBranchCode();
+        document.getElementById('promote_branch').innerHTML = branchOpts;
+        document.getElementById('promote_branch').disabled = !!getAssignedBranchCode();
         updateStudentImportMeta();
       } catch (e) { }
+    }
+
+    async function openPromoteModal(id, studentName, currentAcademicYearId, currentClassroomId, currentSectionId, currentClassroomName, currentSectionName, currentBranchCode) {
+      promotionStudentId = id;
+      promotionClassCache = [];
+      document.getElementById('promoteHint').textContent = `${studentName} ko next academic year/class me move kijiye. Save ke baad old class assignment replace ho jayegi.`;
+      document.getElementById('promote_class').innerHTML = '<option value="">Select class</option>';
+      document.getElementById('promote_section').innerHTML = '<option value="">Select section</option>';
+      document.getElementById('promote_remark').value = '';
+      document.getElementById('promote_branch').value = currentBranchCode || '';
+      try {
+        const r = await AcademicYearAPI.list(currentSchoolId);
+        const years = r?.data || [];
+        document.getElementById('promote_ay').innerHTML = '<option value="">Select year</option>' + years.map(year => `<option value="${year.id}">${year.name}${year.is_current ? ' (Current)' : ''}</option>`).join('');
+        const currentIndex = years.findIndex(year => year.id === currentAcademicYearId);
+        const preferredYear = years[currentIndex + 1]?.id || currentAcademicYearId || years[0]?.id || '';
+        document.getElementById('promote_ay').value = preferredYear;
+        await loadPromotionClasses(
+          preferredYear === currentAcademicYearId ? currentClassroomId : '',
+          preferredYear === currentAcademicYearId ? currentSectionId : '',
+          preferredYear === currentAcademicYearId ? currentClassroomName : currentClassroomName,
+          preferredYear === currentAcademicYearId ? currentSectionName : currentSectionName
+        );
+      } catch (e) {
+        showToast('Academic years load failed: ' + e.message, 'error');
+        return;
+      }
+      document.getElementById('promoteModal').style.display = 'flex';
+    }
+
+    async function loadPromotionClasses(preferredClassId = '', preferredSectionId = '', preferredClassName = '', preferredSectionName = '') {
+      const targetAyId = document.getElementById('promote_ay').value;
+      document.getElementById('promote_class').innerHTML = '<option value="">Select class</option>';
+      document.getElementById('promote_section').innerHTML = '<option value="">Select section</option>';
+      if (!currentSchoolId || !targetAyId) return;
+      try {
+        const r = await ClassAPI.list(currentSchoolId, targetAyId);
+        promotionClassCache = r?.data || [];
+        document.getElementById('promote_class').innerHTML = '<option value="">Select class</option>' + promotionClassCache.map(c => `<option value="${c.id}" data-secs='${JSON.stringify(c.sections || [])}'>${c.name}</option>`).join('');
+        if (preferredClassId && promotionClassCache.some(c => c.id === preferredClassId)) {
+          document.getElementById('promote_class').value = preferredClassId;
+        } else if (preferredClassName) {
+          const matchedClass = promotionClassCache.find(c => String(c.name || '').toLowerCase() === String(preferredClassName || '').toLowerCase());
+          if (matchedClass) document.getElementById('promote_class').value = matchedClass.id;
+        }
+        loadPromotionSections(preferredSectionId, preferredSectionName);
+      } catch (e) {
+        showToast('Classes load failed: ' + e.message, 'error');
+      }
+    }
+
+    function loadPromotionSections(preferredSectionId = '', preferredSectionName = '') {
+      const classEl = document.getElementById('promote_class');
+      const secEl = document.getElementById('promote_section');
+      const opt = classEl.options[classEl.selectedIndex];
+      secEl.innerHTML = '<option value="">Select section</option>';
+      if (!opt?.dataset?.secs) return;
+      const sections = JSON.parse(opt.dataset.secs);
+      sections.forEach(s => secEl.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+      if (preferredSectionId && sections.some(s => s.id === preferredSectionId)) {
+        secEl.value = preferredSectionId;
+      } else if (preferredSectionName) {
+        const matchedSection = sections.find(s => String(s.name || '').toLowerCase() === String(preferredSectionName || '').toLowerCase());
+        if (matchedSection) secEl.value = matchedSection.id;
+      }
+    }
+
+    async function submitPromotion() {
+      if (!promotionStudentId) return;
+      const academicYearId = document.getElementById('promote_ay').value;
+      const classroomId = document.getElementById('promote_class').value;
+      const sectionId = document.getElementById('promote_section').value;
+      if (!academicYearId || !classroomId || !sectionId) {
+        showToast('Academic year, class aur section select karna zaroori hai', 'error');
+        return;
+      }
+      const branchEl = document.getElementById('promote_branch');
+      const selectedBranch = branchEl.value || null;
+      const branchOpt = branchEl.options[branchEl.selectedIndex];
+      try {
+        await StudentAPI.promote(promotionStudentId, {
+          academic_year_id: academicYearId,
+          classroom_id: classroomId,
+          section_id: sectionId,
+          branch_code: selectedBranch,
+          branch_name: branchOpt?.dataset?.name || branchOpt?.textContent || currentSchoolName || null,
+          remarks: document.getElementById('promote_remark').value.trim() || null
+        });
+        showToast('Student promoted successfully');
+        document.getElementById('promoteModal').style.display = 'none';
+        document.getElementById('detModal').style.display = 'none';
+        loadStudents(1);
+        loadStats();
+      } catch (e) {
+        showToast('Promotion failed: ' + e.message, 'error');
+      }
     }
 
     async function loadAcademicYearMeta() {
@@ -869,7 +1000,7 @@ async function loadStats() {
         const hdrs = ['Adm No', 'Name', 'Class/Sec', 'Gender', 'Father', 'Phone', 'Status', 'Actions'];
         const rows = students.map(s => `
       <td class="px-4 py-3 font-mono text-xs text-gray-500">
-  ${s.admission_no ? s.admission_no.slice(-4) : '-'}
+  ${s.admission_no || '-'}
 </td>
       <td class="px-4 py-3"><div class="flex items-center gap-2">
         <div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-bold text-xs flex-shrink-0">${s.first_name.charAt(0).toUpperCase()}</div>
@@ -1157,6 +1288,7 @@ async function loadStats() {
 
         <div class="flex gap-3">
           <button onclick="editStudent('${id}'); document.getElementById('detModal').style.display = 'none';" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl text-sm font-medium hover:bg-blue-200">Edit Student</button>
+          <button onclick="openPromoteModal('${id}','${(s.full_name || '').replace(/'/g, "\\'")}','${s.academic_year_id || ''}','${s.classroom_id || ''}','${s.section_id || ''}','${(s.classroom_name || '').replace(/'/g, "\\'")}','${(s.section_name || '').replace(/'/g, "\\'")}','${s.branch_code || ''}')" class="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-medium hover:bg-emerald-200">Promote Student</button>
           <button onclick="genTC('${id}','${(s.full_name || '').replace(/'/g, "\\'")}')" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl text-sm font-medium hover:bg-orange-200">Generate TC</button>
         </div>
       </div>`;
@@ -1400,20 +1532,51 @@ async function loadStats() {
       const fd = new FormData();
       fd.append('file', file);
       button.disabled = true;
-      resultBox.textContent = 'Uploading and importing student data...';
+      resultBox.innerHTML = `
+        <div class="font-semibold text-slate-800">Uploading and checking student data...</div>
+        <div class="mt-2 text-slate-500">The sheet Adm No will be ignored. Existing matches will be updated, and only new students will receive fresh admission numbers.</div>`;
       try {
         const r = await StudentAPI.importCsv(currentSchoolId, ayId, fd, branchCode, branch?.name || currentSchoolName || '');
         const data = r?.data || {};
+        const rowList = (title, rows, color, emptyText) => {
+          const preview = (rows || []).slice(0, 12);
+          return `
+            <details class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" ${preview.length ? 'open' : ''}>
+              <summary class="cursor-pointer font-semibold ${color}">${title}: ${(rows || []).length}</summary>
+              ${preview.length ? `<div class="mt-3 max-h-80 overflow-auto divide-y divide-slate-100 pr-1">${preview.map(row => `
+                <div class="py-3 text-sm text-slate-600">
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span class="rounded-lg bg-slate-100 px-2 py-1 font-mono text-xs text-slate-500">Row ${row.row || '-'}</span>
+                    <span class="font-semibold text-slate-900">${row.admission_no || '-'}</span>
+                    <span class="text-slate-700">${row.name || row.incoming_name || '-'}</span>
+                  </div>
+                  ${row.source_admission_no ? `<span class="block mt-2 text-xs text-slate-400">Sheet Adm No ignored: ${row.source_admission_no}</span>` : ''}
+                  ${row.reason ? `<span class="block mt-2 text-xs ${color}">${row.reason}${row.existing_name ? `: ${row.existing_name}` : ''}</span>` : ''}
+                  ${row.classroom ? `<span class="block mt-2 text-xs text-slate-400">${row.classroom}${row.section ? ' / ' + row.section : ''}${row.branch ? ' · ' + row.branch : ''}</span>` : ''}
+                </div>`).join('')}</div>` : `<div class="mt-2 text-xs text-slate-400">${emptyText}</div>`}
+              ${(rows || []).length > preview.length ? `<div class="mt-2 text-xs text-slate-400">Showing first ${preview.length} rows only.</div>` : ''}
+            </details>`;
+        };
         resultBox.innerHTML = `
-          <div class="font-semibold text-slate-800">Import completed</div>
-          <div class="mt-2 text-slate-600">Created: <span class="font-medium">${data.created || 0}</span></div>
-          <div class="text-slate-600">Updated: <span class="font-medium">${data.updated || 0}</span></div>
-          <div class="text-slate-600">Skipped: <span class="font-medium">${data.skipped || 0}</span></div>
-          <div class="text-slate-600">Classes created: <span class="font-medium">${data.classes_created || 0}</span></div>
-          <div class="text-slate-600">Sections created: <span class="font-medium">${data.sections_created || 0}</span></div>
-          <div class="text-slate-500 mt-2 text-xs">${(data.errors || []).slice(0, 3).join(' | ') || 'No import errors'}</div>`;
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <div class="font-semibold text-slate-900">Import completed</div>
+              <div class="text-xs text-slate-500 mt-1">New admission numbers were assigned only to newly created students. Existing matches were updated.</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mt-4">
+            <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-700"><div class="text-xs font-semibold uppercase tracking-wide">Created</div><div class="text-2xl font-bold mt-1">${data.created || 0}</div></div>
+            <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-blue-700"><div class="text-xs font-semibold uppercase tracking-wide">Updated</div><div class="text-2xl font-bold mt-1">${data.updated || 0}</div></div>
+            <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-amber-700"><div class="text-xs font-semibold uppercase tracking-wide">Existing</div><div class="text-2xl font-bold mt-1">${data.existing || 0}</div></div>
+            <div class="rounded-2xl bg-slate-100 border border-slate-200 p-4 text-slate-700"><div class="text-xs font-semibold uppercase tracking-wide">Skipped</div><div class="text-2xl font-bold mt-1">${data.skipped || 0}</div></div>
+            <div class="rounded-2xl bg-violet-50 border border-violet-100 p-4 text-violet-700"><div class="text-xs font-semibold uppercase tracking-wide">New Class / Section</div><div class="text-2xl font-bold mt-1">${data.classes_created || 0}/${data.sections_created || 0}</div></div>
+          </div>
+          ${rowList('Created rows', data.created_rows || [], 'text-emerald-700', 'No new students created')}
+          ${rowList('Updated rows', data.updated_rows || [], 'text-blue-700', 'No existing students matched this upload')}
+          ${rowList('Other skipped rows', (data.skipped_rows || []).filter(row => row.reason !== 'Admission no already exists'), 'text-red-600', 'No other skipped rows')}
+          <div class="text-slate-500 mt-3 text-xs">${(data.errors || []).slice(0, 5).join(' | ') || 'No import errors'}</div>`;
         fileInput.value = '';
-        showToast(`Import complete. Created ${data.created || 0}, updated ${data.updated || 0}`, 'success');
+        showToast(`Import complete. Created ${data.created || 0}, updated ${data.updated || 0}, skipped ${data.skipped || 0}`, 'success');
         loadStudents(1);
         loadStats();
       } catch (e) {

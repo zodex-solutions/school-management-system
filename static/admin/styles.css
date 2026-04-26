@@ -279,6 +279,24 @@ a {
     gap: 14px;
 }
 
+.inline-note {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(15, 118, 110, 0.08);
+    border: 1px solid rgba(15, 118, 110, 0.14);
+}
+
+.inline-note strong,
+.inline-note span {
+    display: block;
+}
+
+.inline-note span {
+    margin-top: 4px;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
 label {
     display: grid;
     gap: 8px;
@@ -339,6 +357,34 @@ textarea {
 table {
     width: 100%;
     border-collapse: collapse;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(180, 83, 9, 0.1);
+    color: var(--brand-dark);
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.table-form {
+    display: grid;
+    gap: 8px;
+    min-width: 220px;
+}
+
+.table-form input {
+    padding: 10px 12px;
+    border-radius: 12px;
 }
 
 th,
