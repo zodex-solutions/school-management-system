@@ -62,6 +62,22 @@ var ROLE_MODULE_PRESETS = {
   hr: ['dashboard', 'staff', 'payroll', 'attendance', 'reports'],
 };
 
+function isTeacherLikeRole(roleName) {
+  roleName = String(roleName || '').trim().toLowerCase();
+  return roleName.indexOf('teacher') !== -1 || roleName.indexOf('faculty') !== -1;
+}
+
+function filterRestrictedModules(modules, user) {
+  if (!Array.isArray(modules)) return modules;
+  var roleName = String((user && (user.role_name || user.role)) || '').trim().toLowerCase();
+  if (isTeacherLikeRole(roleName)) {
+    return modules.filter(function(module) {
+      return String(module || '').trim().toLowerCase() !== 'fees';
+    });
+  }
+  return modules;
+}
+
 var LAYOUT_ICONS = {
   'grid':        '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   'home':        '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/>',
@@ -99,12 +115,12 @@ function getAccessibleModules(user) {
   }).map(function(permission) {
     return String(permission.module || '').trim().toLowerCase();
   }).filter(Boolean) : [];
-  if (explicitPermissions.length) return explicitPermissions;
+  if (explicitPermissions.length) return filterRestrictedModules(explicitPermissions, user);
 
   var roleName = String(user.role_name || user.role || '').trim().toLowerCase();
   if (!roleName) return null;
   if (roleName.indexOf('super') !== -1 || roleName.indexOf('admin') !== -1 || roleName.indexOf('principal') !== -1) return null;
-  if (roleName.indexOf('teacher') !== -1 || roleName.indexOf('faculty') !== -1) return ROLE_MODULE_PRESETS.teacher;
+  if (isTeacherLikeRole(roleName)) return filterRestrictedModules(ROLE_MODULE_PRESETS.teacher, user);
   if (roleName.indexOf('parent') !== -1) return ROLE_MODULE_PRESETS.parent;
   if (roleName.indexOf('student') !== -1) return ROLE_MODULE_PRESETS.student;
   if (roleName.indexOf('account') !== -1 || roleName.indexOf('fee') !== -1) return ROLE_MODULE_PRESETS.accountant;

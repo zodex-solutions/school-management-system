@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -16,10 +15,8 @@ class SchoolerDeskApp extends StatelessWidget {
       title: 'RS Memorial School',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: Colors.white,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF0E4D92),
-          brightness: Brightness.light,
         ),
         useMaterial3: true,
       ),
@@ -27,6 +24,8 @@ class SchoolerDeskApp extends StatelessWidget {
     );
   }
 }
+
+//////////////////// SPLASH ////////////////////
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -37,49 +36,34 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  static const _brandName = 'RS Memorial School';
+  static const _brand = "RS Memorial School";
 
-  late final AnimationController _controller;
-  late final Animation<double> _fadeAnimation;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<int> _textCountAnimation;
-  Timer? _navigationTimer;
+  late AnimationController _controller;
+  late Animation<double> _fade;
+  late Animation<double> _scale;
+  late Animation<int> _textAnim;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    );
 
-    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-    _scaleAnimation = Tween<double>(
-      begin: 0.94,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-    _textCountAnimation = StepTween(
-      begin: 0,
-      end: _brandName.length,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2));
+
+    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    _scale =
+        Tween(begin: 0.9, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+    _textAnim = StepTween(begin: 0, end: _brand.length).animate(_controller);
 
     _controller.forward();
-    _navigationTimer = Timer(const Duration(milliseconds: 2800), () {
-      if (!mounted) {
-        return;
-      }
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const RoleSelectionScreen()),
+    Timer(const Duration(seconds: 3), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const BranchSelectionScreen()),
       );
     });
-  }
-
-  @override
-  void dispose() {
-    _navigationTimer?.cancel();
-    _controller.dispose();
-    super.dispose();
   }
 
   @override
@@ -88,23 +72,17 @@ class _SplashScreenState extends State<SplashScreen>
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
-          builder: (context, child) {
-            final visibleCharacters = _textCountAnimation.value.clamp(
-              0,
-              _brandName.length,
-            );
-
+          builder: (_, __) {
             return Opacity(
-              opacity: _fadeAnimation.value,
+              opacity: _fade.value,
               child: Transform.scale(
-                scale: _scaleAnimation.value,
+                scale: _scale.value,
                 child: Text(
-                  _brandName.substring(0, visibleCharacters),
+                  _brand.substring(0, _textAnim.value),
                   style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
                     color: Color(0xFF0E4D92),
-                    fontSize: 38,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
                   ),
                 ),
               ),
@@ -116,269 +94,222 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-class RoleSelectionScreen extends StatelessWidget {
-  const RoleSelectionScreen({super.key});
+//////////////////// BRANCH SELECTION ////////////////////
 
-  static const String staffUrl = 'https://erp.rsmemorialpublicschool.com/login.html';
-  static const String parentUrl = 'https://erp.rsmemorialpublicschool.com/parent-login';
+class BranchSelectionScreen extends StatelessWidget {
+  const BranchSelectionScreen({super.key});
+
+  final List<Map<String, String>> branches = const [
+    {
+      "name": "Main Branch",
+      "subtitle": "RS Memorial Public School",
+      "staffUrl": "https://erp.rsmemorialpublicschool.com/login.html",
+      "parentUrl": "https://erp.rsmemorialpublicschool.com/parent-login",
+    },
+    {
+      "name": "Krish Icon",
+      "subtitle": "RS Memorial Krish Icon",
+      "staffUrl": "https://krish-icon.rsmemorialpublicschool.com/login.html",
+      "parentUrl": "https://krish-icon.rsmemorialpublicschool.com/parent-login",
+    },
+    {
+      "name": "Krish Star",
+      "subtitle": "RS Memorial Krish Star THD",
+      "staffUrl": "https://krish-star-thd.rsmemorialpublicschool.com/login.html",
+      "parentUrl": "https://krish-star-thd.rsmemorialpublicschool.com/parent-login",
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              const Text(
-                'Welcome to RS Memorial School',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0E4D92),
+      appBar: AppBar(title: const Text("Select Branch")),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: branches.length,
+        itemBuilder: (_, index) {
+          final branch = branches[index];
+
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RoleSelectionScreen(
+                    branchName: branch["name"]!,
+                    staffUrl: branch["staffUrl"]!,
+                    parentUrl: branch["parentUrl"]!,
+                  ),
                 ),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0E4D92), Color(0xFF1E88E5)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 8,
+                    color: Colors.black.withOpacity(0.1),
+                  )
+                ],
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Choose your login portal to continue.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Color(0xFF5B6472)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    branch["name"]!,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    branch["subtitle"]!,
+                    style: const TextStyle(color: Colors.white70),
+                  )
+                ],
               ),
-              const SizedBox(height: 48),
-              _LoginButton(
-                label: 'Staff Login',
-                onTap: () =>
-                    _openPortal(context, title: 'Staff Login', url: staffUrl),
-              ),
-              const SizedBox(height: 16),
-              _LoginButton(
-                label: 'Parent Login',
-                isPrimary: false,
-                onTap: () =>
-                    _openPortal(context, title: 'Parent Login', url: parentUrl),
-              ),
-              const Spacer(),
-            ],
-          ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+//////////////////// ROLE SELECTION ////////////////////
+
+class RoleSelectionScreen extends StatelessWidget {
+  final String staffUrl;
+  final String parentUrl;
+  final String branchName;
+
+  const RoleSelectionScreen({
+    super.key,
+    required this.staffUrl,
+    required this.parentUrl,
+    required this.branchName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(branchName)),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Spacer(),
+            const Text(
+              "Select Your Role",
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 40),
+
+            _btn(
+              "Staff Login",
+              Icons.school,
+              true,
+              () => _open(context, "Staff Login", staffUrl),
+            ),
+
+            const SizedBox(height: 16),
+
+            _btn(
+              "Parent Login",
+              Icons.people,
+              false,
+              () => _open(context, "Parent Login", parentUrl),
+            ),
+
+            const Spacer(),
+          ],
         ),
       ),
     );
   }
 
-  void _openPortal(
-    BuildContext context, {
-    required String title,
-    required String url,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
+  Widget _btn(String text, IconData icon, bool primary, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      height: 60,
+      child: ElevatedButton.icon(
+        icon: Icon(icon),
+        label: Text(text),
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              primary ? const Color(0xFF0E4D92) : Colors.white,
+          foregroundColor:
+              primary ? Colors.white : const Color(0xFF0E4D92),
+          side: primary
+              ? BorderSide.none
+              : const BorderSide(color: Color(0xFF0E4D92)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
+    );
+  }
+
+  void _open(BuildContext context, String title, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
         builder: (_) => WebPortalScreen(title: title, url: url),
       ),
     );
   }
 }
 
-class _LoginButton extends StatelessWidget {
-  const _LoginButton({
-    required this.label,
-    required this.onTap,
-    this.isPrimary = true,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final bool isPrimary;
-
-  @override
-  Widget build(BuildContext context) {
-    final backgroundColor = isPrimary ? const Color(0xFF0E4D92) : Colors.white;
-    final foregroundColor = isPrimary ? Colors.white : const Color(0xFF0E4D92);
-
-    return SizedBox(
-      height: 58,
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          foregroundColor: foregroundColor,
-          elevation: isPrimary ? 0 : 0,
-          side: isPrimary
-              ? BorderSide.none
-              : const BorderSide(color: Color(0xFF0E4D92), width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
-  }
-}
+//////////////////// WEBVIEW ////////////////////
 
 class WebPortalScreen extends StatefulWidget {
-  const WebPortalScreen({super.key, required this.title, required this.url});
-
   final String title;
   final String url;
+
+  const WebPortalScreen({super.key, required this.title, required this.url});
 
   @override
   State<WebPortalScreen> createState() => _WebPortalScreenState();
 }
 
 class _WebPortalScreenState extends State<WebPortalScreen> {
-  late final WebViewController _controller;
-  bool _isLoading = true;
-
-  static const String _dairyFeeHeadScript = r'''
-(() => {
-  const headLabel = 'Dairy Fee';
-  const marker = 'data-schoolerdesk-dairy-fee';
-
-  function clean(text) {
-    return (text || '').replace(/\s+/g, ' ').trim();
-  }
-
-  function hasDairyFee(root) {
-    return Array.from(root.querySelectorAll('*')).some((element) => {
-      return clean(element.textContent) === headLabel ||
-        element.getAttribute(marker) === 'true';
-    });
-  }
-
-  function rowForLabel(label) {
-    const labelElement = Array.from(document.querySelectorAll('body *')).find(
-      (element) => clean(element.textContent) === label,
-    );
-
-    if (!labelElement) {
-      return null;
-    }
-
-    let row = labelElement;
-    for (let depth = 0; depth < 8 && row; depth += 1) {
-      if (row.querySelector && row.querySelector('input, textarea')) {
-        return row;
-      }
-      row = row.parentElement;
-    }
-
-    return null;
-  }
-
-  function updateLabel(row) {
-    const textNodes = Array.from(row.querySelectorAll('*')).filter((element) => {
-      const tagName = element.tagName;
-      return clean(element.textContent) &&
-        element.children.length === 0 &&
-        tagName !== 'INPUT' &&
-        tagName !== 'TEXTAREA' &&
-        tagName !== 'SELECT' &&
-        tagName !== 'OPTION';
-    });
-    const target = textNodes.find((element) => /fee/i.test(clean(element.textContent))) ||
-      textNodes[0];
-
-    if (target) {
-      target.textContent = headLabel;
-    }
-  }
-
-  function updateAmountFields(row) {
-    row.querySelectorAll('input, textarea').forEach((field) => {
-      field.value = '';
-      field.placeholder = field.placeholder || 'Amount ₹';
-
-      if (field.name) {
-        field.name = field.name.replace(/note[_\-\s]?book|book|tuition|annual/ig, 'dairy');
-      } else {
-        field.name = 'dairy_fee';
-      }
-
-      if (field.id) {
-        field.id = field.id.replace(/note[_\-\s]?book|book|tuition|annual/ig, 'dairy');
-      } else {
-        field.id = 'dairy_fee';
-      }
-
-      field.dispatchEvent(new Event('input', { bubbles: true }));
-      field.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-  }
-
-  function addDairyFeeHead() {
-    const anchor = rowForLabel('Note Book Fee') ||
-      rowForLabel('Books Fee') ||
-      rowForLabel('Tuition Fee Monthly');
-
-    if (!anchor || !anchor.parentElement || hasDairyFee(anchor.parentElement)) {
-      return;
-    }
-
-    const row = anchor.cloneNode(true);
-    row.setAttribute(marker, 'true');
-    updateLabel(row);
-    updateAmountFields(row);
-    anchor.insertAdjacentElement('afterend', row);
-  }
-
-  if (!window.__schoolerdeskDairyFeeObserver) {
-    window.__schoolerdeskDairyFeeObserver = true;
-    const observer = new MutationObserver(addDairyFeeHead);
-    observer.observe(document.body || document.documentElement, {
-      childList: true,
-      subtree: true,
-    });
-  }
-
-  addDairyFeeHead();
-})();
-''';
+  late WebViewController _controller;
+  bool loading = true;
 
   @override
   void initState() {
     super.initState();
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (_) {
-            if (mounted) {
-              setState(() {
-                _isLoading = true;
-              });
-            }
-          },
-          onPageFinished: (_) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-            unawaited(_installDairyFeeHeadPatch());
-          },
+          onPageStarted: (_) => setState(() => loading = true),
+          onPageFinished: (_) => setState(() => loading = false),
         ),
       )
       ..loadRequest(Uri.parse(widget.url));
   }
 
-  Future<void> _installDairyFeeHeadPatch() async {
-    await _controller.runJavaScript(_dairyFeeHeadScript);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title), centerTitle: true),
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
-          if (_isLoading) const Center(child: CircularProgressIndicator()),
+          if (loading)
+            const Center(child: CircularProgressIndicator()),
         ],
       ),
     );
