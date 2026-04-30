@@ -429,6 +429,7 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
       { name: 'Admission Fee', code: 'ADM' },
       { name: 'Annual Examination Fee', code: 'EXAM' },
       { name: 'Stationary kit / Activity Charge', code: 'ACT' },
+      { name: 'Uniform Fee', code: 'UNI' },
       { name: 'Tuition Fee Monthly', code: 'TUI' },
       { name: 'Books Fee', code: 'BOOK' },
       { name: 'Note Book Fee', code: 'NOTE' },
@@ -1809,11 +1810,12 @@ function statCard(title, value, icon, color) {
       const admissionFee = getValueByCode('ADM');
       const annualExamFee = getValueByCode('EXAM');
       const activityCharge = getValueByCode('ACT');
+      const uniformFee = getValueByCode('UNI');
       const booksFee = getValueByCode('BOOK');
       const noteBookFee = getValueByCode('NOTE');
       const dairyFee = getValueByCode('DAIRY');
       const tuitionMonthly = getValueByCode('TUI');
-      const total = registrationFee + admissionFee + annualExamFee + activityCharge + booksFee + noteBookFee + dairyFee + (tuitionMonthly * 12);
+      const total = registrationFee + admissionFee + annualExamFee + activityCharge + uniformFee + booksFee + noteBookFee + dairyFee + (tuitionMonthly * 12);
       const totalInput = document.getElementById('str_yearly_total');
       if (totalInput) totalInput.value = total ? String(total) : '0';
     }
@@ -1939,7 +1941,7 @@ function statCard(title, value, icon, color) {
       try {
         const academicYearId = await resolveFeeAcademicYearId();
         const r = await FeesAPI.getStructures({ school_id: schoolId, academic_year_id: academicYearId || '' }); const data = r?.data || [];
-        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Books Fee', 'Note Book Fee', 'Dairy Fee', 'Tuition Fee Monthly', 'Tuition Fee Yearly Upto 30th April 2027', ''];
+        const hdrs = ['Name', 'Class', 'Registration Fee', 'Admission Fee', 'Annual Examination Fee', 'Stationary kit / Activity Charge', 'Uniform Fee', 'Books Fee', 'Note Book Fee', 'Dairy Fee', 'Tuition Fee Monthly', 'Tuition Fee Yearly Upto 30th April 2027', ''];
         const rows = data.map(s => `
           <td class="px-4 py-3 font-medium text-gray-900 text-sm">${s.name}</td>
           <td class="px-4 py-3 text-sm text-gray-600">${s.classroom || '-'}</td>
@@ -1947,6 +1949,7 @@ function statCard(title, value, icon, color) {
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.ADM || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.EXAM || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.ACT || 0)}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.UNI || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.BOOK || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.NOTE || 0)}</td>
           <td class="px-4 py-3 text-sm text-gray-700 font-medium">${formatCurrency(s.fee_breakdown?.DAIRY || 0)}</td>

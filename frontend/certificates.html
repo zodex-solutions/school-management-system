@@ -373,6 +373,10 @@
     let ayId = localStorage.getItem('ay_id') || '';
     let students = [], currentCertHtml = '';
 
+    function getSelectedCertificateType() {
+      return document.getElementById('selectedCertType')?.value || 'Bonafide Certificate';
+    }
+
     async function init() {
       schoolId = await initializeSchoolContext() || schoolId;
       if (!schoolId) return;
@@ -420,15 +424,18 @@
         return;
       }
       try {
+        const certType = getSelectedCertificateType();
+        const isTransferCertificate = certType === 'Transfer Certificate';
         const r = await StudentAPI.list({
           school_id: schoolId,
           classroom_id: classId,
           section_id: sectionId,
           per_page: 100,
-          admission_status: 'Active'
+          student_view: isTransferCertificate ? 'all' : 'active',
+          admission_status: isTransferCertificate ? '' : 'Active'
         });
         students = r?.data || [];
-        document.getElementById('cert_student').innerHTML = '<option value="">Select student</option>' + students.map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})</option>`).join('');
+        document.getElementById('cert_student').innerHTML = '<option value="">Select student</option>' + students.map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})${s.admission_status === 'Transferred' ? ' - Transferred' : ''}</option>`).join('');
         if (!students.length) {
           resetCertificateStudents('No students found');
         }
@@ -452,6 +459,9 @@
       // Show/hide specific fields
       document.getElementById('tcFields').classList.toggle('hidden', type !== 'Transfer Certificate');
       document.getElementById('charFields').classList.toggle('hidden', type !== 'Character Certificate');
+      if (document.getElementById('cert_class').value && document.getElementById('cert_section').value) {
+        loadCertificateStudents();
+      }
     }
 
     function loadStudentInfo() {

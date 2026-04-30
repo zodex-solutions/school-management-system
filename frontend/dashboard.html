@@ -76,23 +76,6 @@
       border-bottom-color: #6366f1
     }
 
-    .module-card {
-      border-radius: 1.25rem;
-      padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: .75rem;
-      cursor: pointer;
-      transition: all .2s;
-      border: 1.5px solid;
-      text-decoration: none
-    }
-
-    .module-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 24px rgba(0, 0, 0, .08)
-    }
-
     .quick-btn {
       display: flex;
       align-items: center;
@@ -316,13 +299,6 @@
           </div>
         </div>
 
-        <!-- All Modules Grid -->
-        <div>
-          <h3 class="font-outfit" style="font-weight:800;color:#0f172a;font-size:1.25rem;margin-bottom:1.25rem">All
-            Modules</h3>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" id="moduleGrid"></div>
-        </div>
-
       </div>
     </main>
   </div>
@@ -386,34 +362,6 @@
     <svg style="width:1rem;height:1rem;color:#d1d5db;margin-left:auto;flex-shrink:0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
   </a>`
     ).join('') || '<div class="text-sm text-gray-400 text-center py-6">No quick actions available for this role</div>';
-
-    // Module grid
-   const modules = [
-  { icon: 'building-2', label: 'Institution', href: '/institution', module: 'institution', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
-  { icon: 'graduation-cap', label: 'Students', href: '/students', module: 'students', bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
-  { icon: 'users', label: 'Staff & HR', href: '/staff', module: 'staff', bg: '#fefce8', border: '#fef08a', text: '#a16207' },
-  { icon: 'book-open', label: 'Academics', href: '/academics', module: 'academics', bg: '#faf5ff', border: '#e9d5ff', text: '#7e22ce' },
-  { icon: 'file-text', label: 'Exams', href: '/exams', module: 'exams', bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' },
-  { icon: 'indian-rupee', label: 'Fees', href: '/fees', module: 'fees', bg: '#fff7ed', border: '#fed7aa', text: '#c2410c' },
-  { icon: 'calendar-days', label: 'Attendance', href: '/attendance', module: 'attendance', bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46' },
-  { icon: 'bus', label: 'Transport', href: '/transport', module: 'transport', bg: '#f0fdfa', border: '#99f6e4', text: '#0f766e' },
-  { icon: 'library', label: 'Library', href: '/library', module: 'library', bg: '#eef2ff', border: '#c7d2fe', text: '#4338ca' },
-  { icon: 'boxes', label: 'Inventory', href: '/inventory', module: 'inventory', bg: '#f7fee7', border: '#d9f99d', text: '#3f6212' },
-  { icon: 'heart-pulse', label: 'Health', href: '/health', module: 'health', bg: '#fdf2f8', border: '#fbcfe8', text: '#be185d' },
-  { icon: 'message-circle', label: 'Communication', href: '/communication', module: 'communication', bg: '#faf5ff', border: '#e9d5ff', text: '#6b21a8' },
-  { icon: 'bar-chart-3', label: 'Reports', href: '/reports', module: 'reports', bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af' },
-  { icon: 'home', label: 'Hostel', href: '/hostel', module: 'hostel', bg: '#fefce8', border: '#fef08a', text: '#92400e' },
-  { icon: 'briefcase', label: 'Payroll', href: '/payroll', module: 'payroll', bg: '#f0fdf4', border: '#bbf7d0', text: '#14532d' },
-  { icon: 'graduation-cap', label: 'Admissions', href: '/admissions', module: 'admissions', bg: '#fff7ed', border: '#fed7aa', text: '#9a3412' },
-  { icon: 'scroll-text', label: 'Certificates', href: '/certificates', module: 'certificates', bg: '#faf5ff', border: '#ddd6fe', text: '#5b21b6' },
-  { icon: 'users-round', label: 'Parents', href: '/parent-portal', module: 'parents', bg: '#fdf2f8', border: '#f9a8d4', text: '#9d174d' },
-];
-    document.getElementById('moduleGrid').innerHTML = modules.filter(m => hasModuleAccess(m.module)).map(m =>
-      `<a href="${m.href}" class="module-card" style="background:${m.bg};border-color:${m.border}">
-    <div data-lucide="${m.icon}" style="width:28px;height:28px;"></div>
-    <div style="font-family:Outfit,sans-serif;font-size:.875rem;font-weight:700;color:${m.text}">${m.label}</div>
-  </a>`
-    ).join('');
 
     function updateBranchContextLabel() {
       const selectedBranch = schoolBranches.find(branch => branch.code === selectedBranchCode);
@@ -552,15 +500,6 @@
       } catch (e) { console.error(e) }
     }
     load();
-    document.getElementById('moduleGrid').innerHTML = modules.map(m =>
-  `<a href="${m.href}" class="module-card" style="background:${m.bg};border-color:${m.border}">
-    <div data-lucide="${m.icon}" style="width:28px;height:28px;"></div>
-    <div style="font-family:Outfit,sans-serif;font-size:.875rem;font-weight:700;color:${m.text}">
-      ${m.label}
-    </div>
-  </a>`
-).join('');
-
     lucide.createIcons();
 
     function getIcon(name, size = 18) {

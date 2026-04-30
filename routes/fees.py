@@ -27,6 +27,7 @@ ALLOWED_FEE_STRUCTURE_CATEGORIES = [
     {"name": "Admission Fee", "code": "ADM"},
     {"name": "Annual Examination Fee", "code": "EXAM"},
     {"name": "Stationary kit / Activity Charge", "code": "ACT"},
+    {"name": "Uniform Fee", "code": "UNI"},
     {"name": "Tuition Fee Mly", "code": "TUI"},
     {"name": "Books Fee", "code": "BOOK"},
     {"name": "Note Book Fee", "code": "NOTE"},
@@ -39,6 +40,7 @@ ALLOWED_CATEGORY_BY_NAME = {item["name"].lower(): item for item in ALLOWED_FEE_S
 ALLOWED_CATEGORY_ALIASES = {
     "tuition fee monthly": "TUI",
     "tuition fee yearly": "TUI",
+    "uniform fee": "UNI",
     "books fee": "BOOK",
     "note book fee": "NOTE",
     "notebook fee": "NOTE",
@@ -54,7 +56,7 @@ def _normalize_fee_category(name: str, code: str):
     if not allowed:
         raise HTTPException(
             status_code=400,
-            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Tuition Fee Mly, Books Fee, Note Book Fee, Dairy Fee",
+            detail="Only these fee structure categories are allowed: Registration Fee, Admission Fee, Annual Examination Fee, Stationary kit / Activity Charge, Uniform Fee, Tuition Fee Mly, Books Fee, Note Book Fee, Dairy Fee",
         )
     return allowed["name"], allowed["code"]
 
@@ -79,7 +81,7 @@ def _build_fee_breakdown(items: List) -> dict:
             code = matched["code"] if matched else ""
         if code in breakdown:
             breakdown[code] = float(getattr(entry, "amount", 0) or 0)
-    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + breakdown["BOOK"] + breakdown["NOTE"] + breakdown["DAIRY"] + (breakdown["TUI"] * 12)
+    breakdown["TUIY"] = breakdown["REG"] + breakdown["ADM"] + breakdown["EXAM"] + breakdown["ACT"] + breakdown["UNI"] + breakdown["BOOK"] + breakdown["NOTE"] + breakdown["DAIRY"] + (breakdown["TUI"] * 12)
     return breakdown
 
 
