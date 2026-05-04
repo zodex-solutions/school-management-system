@@ -10,5 +10,3 @@ __pycache__/
 *.log
 *.pot
 
-config.py
-setup.shss
