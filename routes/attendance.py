@@ -48,6 +48,11 @@ def _serialize_staff_record(record: StaffAttendanceRecord):
     }
 
 
+def _normalize_day(value: Optional[datetime] = None) -> datetime:
+    base = value or datetime.utcnow()
+    return base.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 class AttendanceRecord(BaseModel):
     student_id: str
     status: str  # Present, Absent, Late, Excused
@@ -435,6 +440,38 @@ async def get_staff_attendance(
     })
 
 
+@router.get("/staff/self")
+async def get_my_staff_attendance(
+    school_id: str,
+    date: Optional[datetime] = Query(None),
+    current_user: User = Depends(get_current_user)
+):
+    school_id = resolve_school_access(current_user, school_id)
+    school = School.objects.get(id=school_id)
+    staff = Staff.objects(user_account=current_user, school=school, is_active=True).first()
+    if not staff:
+        raise HTTPException(403, "This user is not linked to any active staff profile")
+
+    target_date = _normalize_day(date)
+    attendance = StaffAttendance.objects(school=school, date=target_date).first()
+    if not attendance:
+        return success_response({
+            "date": target_date.isoformat(),
+            "staff_id": str(staff.id),
+            "record": None
+        })
+
+    record = next(
+        (item for item in (attendance.records or []) if item.staff and str(item.staff.id) == str(staff.id)),
+        None
+    )
+    return success_response({
+        "date": target_date.isoformat(),
+        "staff_id": str(staff.id),
+        "record": _serialize_staff_record(record) if record else None
+    })
+
+
 @router.post("/staff/self-checkin")
 async def mark_my_staff_attendance(
     data: StaffSelfCheckin,
@@ -466,7 +503,10 @@ async def mark_my_staff_attendance(
             if enforce_geofence:
                 raise HTTPException(400, location_note)
 
-    att_date = (data.date or datetime.utcnow()).replace(hour=0, minute=0, second=0, microsecond=0)
+    att_date = _normalize_day(data.date)
+    today = _normalize_day()
+    if att_date != today:
+        raise HTTPException(400, "Self attendance can only be marked for the current day")
     attendance = StaffAttendance.objects(school=school, date=att_date).first()
     check_in_time = data.check_in_time or datetime.now().strftime("%H:%M")
     record = StaffAttendanceRecord(

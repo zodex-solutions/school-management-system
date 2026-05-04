@@ -101,22 +101,22 @@ class BranchSelectionScreen extends StatelessWidget {
 
   final List<Map<String, String>> branches = const [
     {
-      "name": "Main Branch",
+      "name": "RS Memorial Public School",
       "subtitle": "RS Memorial Public School",
       "staffUrl": "https://erp.rsmemorialpublicschool.com/login.html",
       "parentUrl": "https://erp.rsmemorialpublicschool.com/parent-login",
     },
     {
-      "name": "Krish Icon",
-      "subtitle": "RS Memorial Krish Icon",
-      "staffUrl": "https://krish-icon.rsmemorialpublicschool.com/login.html",
-      "parentUrl": "https://krish-icon.rsmemorialpublicschool.com/parent-login",
+      "name": "Kids Star Play School",
+      "subtitle": "Kids Star Play School",
+      "staffUrl": "https://kids-krish.rsmemorialpublicschool.com/login.html",
+      "parentUrl": "https://kids-krish.rsmemorialpublicschool.com/parent-login",
     },
     {
       "name": "Krish Star",
-      "subtitle": "RS Memorial Krish Star THD",
-      "staffUrl": "https://krish-star-thd.rsmemorialpublicschool.com/login.html",
-      "parentUrl": "https://krish-star-thd.rsmemorialpublicschool.com/parent-login",
+      "subtitle": "Kids Star Primary School",
+      "staffUrl": "https://kids-thada.rsmemorialpublicschool.com/login.html",
+      "parentUrl": "https://kids-thada.rsmemorialpublicschool.com/parent-login",
     },
   ];
 

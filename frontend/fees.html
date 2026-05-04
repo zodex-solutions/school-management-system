@@ -106,6 +106,11 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
                 <div><label class="lbl">Class</label><select id="pay_class" class="finput" onchange="loadPaySections(); loadPayStudents()"><option value="">Select class</option></select></div>
                 <div><label class="lbl">Section</label><select id="pay_section" class="finput" onchange="loadPayStudents()"><option value="">Select section</option></select></div>
               </div>
+              <div>
+                <label class="lbl">Father Name</label>
+                <input id="pay_father_name" class="finput" placeholder="Type father name to show all children" oninput="handlePayFatherNameInput()" />
+                <p class="mt-1 text-xs text-slate-400">Optional. If entered, all matching children for that parent will be shown.</p>
+              </div>
               <div><label class="lbl">Student *</label><select id="pay_student" class="finput" onchange="loadStudentInvoices()"><option value="">Select student</option></select></div>
               <div><label class="lbl">Invoice *</label><select id="pay_invoice" class="finput"><option value="">Select invoice</option></select></div>
               <div id="invoiceDetails" class="hidden bg-blue-50 rounded-xl p-4 text-sm">
@@ -406,6 +411,8 @@ h1,h2,h3,h4,.font-outfit{font-family:"Outfit",sans-serif}
     let invoiceStudentMeta = null;
     let invoiceClassCache = [];
     let invoiceBilledAnnualHeads = new Set();
+    let invoiceBilledTuitionMonths = new Set();
+    let invoiceBilledTransportMonths = new Set();
     let invoiceEditAcademicYearId = '';
     let invoiceCurrentPage = 1;
     let invoicePerPage = 20;
@@ -745,6 +752,7 @@ function statCard(title, value, icon, color) {
       const studId = document.getElementById('inv_student').value;
       invoiceStudentMeta = null;
       document.querySelectorAll('.inv_tuition_month, .inv_transport_month').forEach(cb => cb.checked = false);
+      renderInvoiceMonthAvailability();
       document.getElementById('inv_transport_toggle').checked = false;
       document.getElementById('inv_transport_meta').classList.add('hidden');
       if (!studId) { renderInvoiceEstimate(); return; }
@@ -766,6 +774,7 @@ function statCard(title, value, icon, color) {
         renderAnnualFeeHeadOptions();
         renderInvoiceEstimate();
         await billedHeadsPromise;
+        renderInvoiceMonthAvailability();
         renderAnnualFeeHeadOptions();
         if (s.transport_route_name) {
           document.getElementById('inv_transport_toggle').checked = true;
@@ -801,6 +810,7 @@ function statCard(title, value, icon, color) {
       document.getElementById('inv_transport_toggle').checked = false;
       document.getElementById('inv_transport_meta').classList.add('hidden');
       document.querySelectorAll('.inv_tuition_month, .inv_transport_month').forEach(cb => cb.checked = false);
+      renderInvoiceMonthAvailability();
       document.getElementById('inv_due').value = '';
       document.getElementById('inv_disc').value = '0';
       document.getElementById('inv_rem').value = '';
@@ -866,6 +876,7 @@ function statCard(title, value, icon, color) {
           ? inv.transport_months
           : (Array.isArray(inv.items) ? (extractMonthsFromInvoiceItem(inv.items.find(item => isTransportHead(item.category)) || {}).length ? extractMonthsFromInvoiceItem(inv.items.find(item => isTransportHead(item.category)) || {}) : currentTransportDefaults) : currentTransportDefaults);
         document.querySelectorAll('.inv_transport_month').forEach(cb => cb.checked = savedTransportMonths.includes(cb.value));
+        renderInvoiceMonthAvailability(savedTuitionMonths, savedTransportMonths);
         const invoiceStructureItems = (inv.items || []).filter(item => !isTransportHead(item.category));
         const matchingStructure = findStructureForInvoiceItems(invoiceStructureItems) || getSelectedFeeStructure() || getDefaultInvoiceStructureForStudent(student);
         if (matchingStructure?.id) {
@@ -948,6 +959,21 @@ function statCard(title, value, icon, color) {
       return monthNames.filter(month => new RegExp(`\\b${month}\\b`, 'i').test(text));
     }
 
+    function renderInvoiceMonthAvailability(preselectedTuitionMonths = [], preselectedTransportMonths = []) {
+      document.querySelectorAll('.inv_tuition_month').forEach(cb => {
+        const isLocked = invoiceBilledTuitionMonths.has(cb.value);
+        cb.disabled = isLocked;
+        if (isLocked && !preselectedTuitionMonths.includes(cb.value)) cb.checked = false;
+        cb.closest('label')?.classList.toggle('opacity-50', isLocked);
+      });
+      document.querySelectorAll('.inv_transport_month').forEach(cb => {
+        const isLocked = invoiceBilledTransportMonths.has(cb.value);
+        cb.disabled = isLocked;
+        if (isLocked && !preselectedTransportMonths.includes(cb.value)) cb.checked = false;
+        cb.closest('label')?.classList.toggle('opacity-50', isLocked);
+      });
+    }
+
     function getSelectedAnnualFeeHeads() {
       return Array.from(document.querySelectorAll('.inv_annual_head:checked')).map(el => el.value);
     }
@@ -984,6 +1010,8 @@ function statCard(title, value, icon, color) {
 
     async function loadBilledAnnualHeadsForInvoiceStudent() {
       invoiceBilledAnnualHeads = new Set();
+      invoiceBilledTuitionMonths = new Set();
+      invoiceBilledTransportMonths = new Set();
       const studId = document.getElementById('inv_student').value;
       if (!schoolId || !studId) return;
       try {
@@ -996,6 +1024,8 @@ function statCard(title, value, icon, color) {
         });
         (res?.data || []).forEach(inv => {
           if (editingInvoiceId && inv.id === editingInvoiceId) return;
+          (inv.tuition_months || []).forEach(month => invoiceBilledTuitionMonths.add(month));
+          (inv.transport_months || []).forEach(month => invoiceBilledTransportMonths.add(month));
           (inv.items || []).forEach(item => {
             const category = item.category || item.description || '';
             if (category && !isTuitionHead(category) && !isTransportHead(category)) {
@@ -1679,19 +1709,46 @@ function statCard(title, value, icon, color) {
       const academicYearId = await resolveFeeAcademicYearId();
       const classId = document.getElementById('pay_class').value;
       const sectionId = document.getElementById('pay_section').value;
-      if (!classId || !sectionId) {
+      const fatherName = document.getElementById('pay_father_name').value.trim();
+      if (!fatherName && (!classId || !sectionId)) {
         document.getElementById('pay_student').innerHTML = '<option value="">Select student</option>';
         document.getElementById('pay_invoice').innerHTML = '<option value="">Select invoice</option>';
         document.getElementById('invoiceDetails').style.display = 'none';
         return;
       }
       try {
-        const r = await StudentAPI.list({ school_id: schoolId, academic_year_id: academicYearId || '', classroom_id: classId, section_id: sectionId, branch_code: selectedBranchCode, per_page: 100, admission_status: 'Active' });
+        const params = { school_id: schoolId, academic_year_id: academicYearId || '', branch_code: selectedBranchCode, per_page: 100, admission_status: 'Active' };
+        if (fatherName) {
+          params.search = fatherName;
+        } else {
+          params.classroom_id = classId;
+          params.section_id = sectionId;
+        }
+        const r = await StudentAPI.list(params);
+        let students = r?.data || [];
+        if (fatherName) {
+          const normalizedFather = fatherName.toLowerCase();
+          students = students.filter(s => String(s.father_name || '').toLowerCase().includes(normalizedFather));
+          if (classId) students = students.filter(s => s.classroom_id === classId);
+          if (sectionId) students = students.filter(s => s.section_id === sectionId);
+        }
         document.getElementById('pay_student').innerHTML = '<option value="">Select student</option>' +
-          (r?.data || []).map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})</option>`).join('');
+          students.map(s => `<option value="${s.id}">${s.full_name} (${s.admission_no})${s.classroom_name ? ` • ${s.classroom_name}${s.section_name ? ' / ' + s.section_name : ''}` : ''}</option>`).join('');
         document.getElementById('pay_invoice').innerHTML = '<option value="">Select invoice</option>';
         document.getElementById('invoiceDetails').style.display = 'none';
       } catch (e) { showToast('Payment student load error: ' + e.message, 'error'); }
+    }
+
+    function handlePayFatherNameInput() {
+      document.getElementById('pay_student').innerHTML = '<option value="">Select student</option>';
+      document.getElementById('pay_invoice').innerHTML = '<option value="">Select invoice</option>';
+      document.getElementById('invoiceDetails').style.display = 'none';
+      const fatherName = document.getElementById('pay_father_name').value.trim();
+      if (fatherName.length >= 2) {
+        loadPayStudents();
+      } else if (!fatherName) {
+        loadPayStudents();
+      }
     }
 
     async function loadPaymentClasses() {

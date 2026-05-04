@@ -448,6 +448,46 @@ def _find_recent_duplicate_invoice(school: School, student: Student, ay: Academi
     return None
 
 
+def _ensure_months_not_already_invoiced(
+    school: School,
+    student: Student,
+    ay: AcademicYear,
+    tuition_months: Optional[List[str]],
+    transport_months: Optional[List[str]],
+    *,
+    exclude_invoice_id: Optional[str] = None,
+):
+    requested_tuition = set(tuition_months or [])
+    requested_transport = set(transport_months or [])
+    if not requested_tuition and not requested_transport:
+        return
+
+    query = FeeInvoice.objects(
+        school=school,
+        student=student,
+        academic_year=ay,
+        status__ne="Cancelled"
+    )
+    if exclude_invoice_id:
+        query = query.filter(id__ne=exclude_invoice_id)
+
+    billed_tuition = set()
+    billed_transport = set()
+    for invoice in query:
+        billed_tuition.update(invoice.tuition_months or [])
+        billed_transport.update(invoice.transport_months or [])
+
+    duplicate_tuition = sorted(requested_tuition & billed_tuition)
+    duplicate_transport = sorted(requested_transport & billed_transport)
+    if duplicate_tuition or duplicate_transport:
+        parts = []
+        if duplicate_tuition:
+            parts.append(f"Tuition already invoiced for: {', '.join(duplicate_tuition)}")
+        if duplicate_transport:
+            parts.append(f"Transport already invoiced for: {', '.join(duplicate_transport)}")
+        raise HTTPException(400, " | ".join(parts))
+
+
 def _student_invoice_payload(student: Optional[Student]) -> dict:
     if not student:
         return {}
@@ -671,6 +711,13 @@ async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_c
     if scoped_branch and student.branch_code != scoped_branch:
         raise HTTPException(403, "Access denied for this branch")
     ay = _resolve_academic_year(school, data.academic_year_id or (str(student.academic_year.id) if student.academic_year else None))
+    _ensure_months_not_already_invoiced(
+        school,
+        student,
+        ay,
+        data.tuition_months,
+        data.transport_months,
+    )
     
     items, selected_tuition_months, selected_transport_months = _build_invoice_items(
         student,
@@ -752,6 +799,14 @@ async def update_invoice(invoice_id: str, data: InvoiceCreate, current_user: Use
         raise HTTPException(403, "Access denied for this branch")
 
     ay = _resolve_academic_year(invoice.school, data.academic_year_id or (str(student.academic_year.id) if student.academic_year else None))
+    _ensure_months_not_already_invoiced(
+        invoice.school,
+        student,
+        ay,
+        data.tuition_months,
+        data.transport_months,
+        exclude_invoice_id=str(invoice.id),
+    )
     items, selected_tuition_months, selected_transport_months = _build_invoice_items(
         student,
         data.fee_structure_id,
@@ -879,6 +934,8 @@ async def list_invoices(
             "balance_amount": inv.balance_amount,
             "status": inv.status
         }
+        row["tuition_months"] = inv.tuition_months or []
+        row["transport_months"] = inv.transport_months or []
         if include_items:
             row["items"] = inv.items
         result.append(row)

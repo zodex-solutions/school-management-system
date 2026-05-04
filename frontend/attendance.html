@@ -176,16 +176,16 @@
         <div
           style="background:#fff;border-radius:1.25rem;border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
           <div class="flex border-b border-gray-100 px-2 gap-1">
-            <button onclick="switchTab(0)"
+            <button id="attendanceTab0" onclick="switchTab(0)"
               class="atab px-5 py-4 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">Mark
               Student</button>
-            <button onclick="switchTab(1)"
+            <button id="attendanceTab1" onclick="switchTab(1)"
               class="atab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">View
               Records</button>
-            <button onclick="switchTab(2)"
+            <button id="attendanceTab2" onclick="switchTab(2)"
               class="atab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Staff
               Attendance</button>
-            <button onclick="switchTab(3)"
+            <button id="attendanceTab3" onclick="switchTab(3)"
               class="atab px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Holidays</button>
           </div>
 
@@ -242,7 +242,7 @@
           <div id="atab2" class="p-6 hidden">
             <h4 class="font-bold text-gray-900 mb-4">Mark Staff Attendance</h4>
             <div class="grid lg:grid-cols-2 gap-4 mb-5">
-              <div class="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+              <div id="staffGeofenceCard" class="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
                 <div class="flex items-center justify-between gap-3">
                   <div>
                     <div class="text-sm font-semibold text-gray-900">Attendance Location Lock</div>
@@ -276,6 +276,7 @@
                       <option value="Half-Day">Half Day</option>
                     </select></div>
                   <div><label class="lbl">Check In Time</label><input id="self_staff_time" type="time" class="finput" /></div>
+                  <div><label class="lbl">Attendance Date</label><input id="self_staff_date" type="date" class="finput" /></div>
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <button onclick="markMyAttendanceFromDevice()" class="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700">Mark My Attendance</button>
@@ -283,7 +284,7 @@
                 <div id="selfAttendanceStatus" class="text-xs text-gray-500">This works only when the login user is linked to a staff profile.</div>
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-4 mb-5">
+            <div id="staffManagerBlock" class="grid grid-cols-2 gap-4 mb-5">
               <div><label class="lbl">Date</label><input id="staff_att_date" type="date" class="finput" /></div>
               <div class="flex items-end"><button onclick="loadStaffForAtt()"
                   class="w-full px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700">Load
@@ -354,10 +355,13 @@
     let resolvedAttendanceAyId = localStorage.getItem('ay_id') || localStorage.getItem('academic_year_id') || '';
     let loadedStudents = [];
     let schoolMeta = null;
+    const currentUser = getUser() || {};
+    const currentRoleName = String(currentUser.role_name || currentUser.role || '').trim().toLowerCase();
+    const teacherSelfServiceOnly = isTeacherLikeRole(currentRoleName);
 
     // Set today
     const today = new Date().toISOString().split('T')[0];
-    ['att_date', 'view_date', 'staff_att_date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = today; });
+    ['att_date', 'view_date', 'staff_att_date', 'self_staff_date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = today; });
     const now = new Date();
     const selfStaffTime = document.getElementById('self_staff_time');
     if (selfStaffTime) selfStaffTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -366,6 +370,34 @@
       document.querySelectorAll('.atab').forEach((b, i) => { b.classList.toggle('border-blue-600', i === idx); b.classList.toggle('text-blue-600', i === idx); b.classList.toggle('border-transparent', i !== idx); b.classList.toggle('text-gray-500', i !== idx); });
       document.querySelectorAll('[id^="atab"]').forEach(t => { t.classList.toggle('hidden', parseInt(t.id.replace('atab', '')) !== idx); });
       if (idx === 3) loadHolidays();
+    }
+
+    function configureTeacherSelfAttendanceView() {
+      if (!teacherSelfServiceOnly) return;
+      ['attendanceTab0', 'attendanceTab1', 'attendanceTab3'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      const managerBlock = document.getElementById('staffManagerBlock');
+      if (managerBlock) managerBlock.style.display = 'none';
+      const geofenceCard = document.getElementById('staffGeofenceCard');
+      if (geofenceCard) geofenceCard.style.display = 'none';
+      const selfDate = document.getElementById('self_staff_date');
+      if (selfDate) {
+        selfDate.value = today;
+        selfDate.min = today;
+        selfDate.max = today;
+        selfDate.disabled = true;
+      }
+      const staffDate = document.getElementById('staff_att_date');
+      if (staffDate) {
+        staffDate.value = today;
+        staffDate.min = today;
+        staffDate.max = today;
+        staffDate.disabled = true;
+      }
+      document.getElementById('selfAttendanceStatus').textContent = 'You can mark only today\'s attendance from your teacher login.';
+      switchTab(2);
     }
 
    function renderAttendanceSummary(summary = {}) {
@@ -408,6 +440,26 @@
           : 'Location lock is currently not configured.';
       } catch (e) {
         document.getElementById('geoStatus').textContent = 'Could not load attendance location settings.';
+      }
+    }
+
+    async function loadMyAttendanceStatus() {
+      if (!schoolId) return;
+      try {
+        const res = await AttendanceAPI.getMyStaffAtt({ school_id: schoolId, date: new Date(today).toISOString() });
+        const record = res?.data?.record || null;
+        if (!record) {
+          document.getElementById('selfAttendanceStatus').textContent = teacherSelfServiceOnly
+            ? 'You have not marked attendance for today yet.'
+            : 'This works only when the login user is linked to a staff profile.';
+          return;
+        }
+        const note = record.location_status ? ` • ${record.location_status}` : '';
+        document.getElementById('selfAttendanceStatus').textContent = `${record.staff_name || 'Staff'} is already marked ${record.status} for today${record.check_in_time ? ` at ${record.check_in_time}` : ''}${note}`;
+        if (record.status) document.getElementById('self_staff_status').value = record.status;
+        if (record.check_in_time) document.getElementById('self_staff_time').value = record.check_in_time;
+      } catch (e) {
+        document.getElementById('selfAttendanceStatus').textContent = e.message || 'Unable to load your attendance status';
       }
     }
 
@@ -465,31 +517,46 @@
 
     async function markMyAttendanceFromDevice() {
       if (!schoolId) return;
-      if (!navigator.geolocation) { showToast('Browser location support not available', 'error'); return; }
-      document.getElementById('selfAttendanceStatus').textContent = 'Getting current location...';
-      navigator.geolocation.getCurrentPosition(async (pos) => {
+      const payload = {
+        school_id: schoolId,
+        date: new Date(document.getElementById('self_staff_date').value || today).toISOString(),
+        status: document.getElementById('self_staff_status').value,
+        check_in_time: document.getElementById('self_staff_time').value || null
+      };
+      const submitSelfAttendance = async (position = null) => {
         try {
+          if (position?.coords) {
+            payload.latitude = position.coords.latitude;
+            payload.longitude = position.coords.longitude;
+            payload.accuracy_meters = position.coords.accuracy || null;
+          }
           const res = await AttendanceAPI.markMyStaff({
-            school_id: schoolId,
-            date: new Date(document.getElementById('staff_att_date').value || today).toISOString(),
-            status: document.getElementById('self_staff_status').value,
-            check_in_time: document.getElementById('self_staff_time').value || null,
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy_meters: pos.coords.accuracy || null
+            ...payload
           });
           const data = res?.data || {};
           document.getElementById('selfAttendanceStatus').textContent = `${data.staff_name || 'Staff'} marked ${data.status}. ${data.location_status || ''}${data.distance_from_school_meters != null ? ` • Distance ${Math.round(data.distance_from_school_meters)}m` : ''}`;
           showToast(res?.message || 'Attendance marked');
           loadAttendanceSummary();
-          loadStaffForAtt();
+          loadMyAttendanceStatus();
+          if (!teacherSelfServiceOnly) loadStaffForAtt();
         } catch (e) {
           document.getElementById('selfAttendanceStatus').textContent = e.message || 'Unable to mark self attendance';
           showToast('Error: ' + e.message, 'error');
         }
-      }, (err) => {
+      };
+
+      if (!navigator.geolocation) {
+        document.getElementById('selfAttendanceStatus').textContent = 'Location not available. Trying attendance without device location.';
+        await submitSelfAttendance();
+        return;
+      }
+
+      document.getElementById('selfAttendanceStatus').textContent = 'Getting current location...';
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        await submitSelfAttendance(pos);
+      }, async (err) => {
         document.getElementById('selfAttendanceStatus').textContent = err?.message || 'Unable to fetch location';
-        showToast(err?.message || 'Unable to fetch location', 'error');
+        await submitSelfAttendance();
       }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     }
 
@@ -731,10 +798,13 @@
 
     (async function initAttendancePage() {
       schoolId = await initializeSchoolContext() || schoolId;
+      configureTeacherSelfAttendanceView();
       await resolveAttendanceAcademicYearId();
       await loadClassesForAtt();
       await loadSchoolGeoSettings();
       await loadAttendanceSummary();
+      await loadMyAttendanceStatus();
+      if (!teacherSelfServiceOnly) await loadStaffForAtt();
     })();
 
     
